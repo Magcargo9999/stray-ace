@@ -1,0 +1,30 @@
+{
+  "hull": "hex_hull.png",
+  "turret": "hex_turret.png",
+  "hullSize": [
+    32,
+    32
+  ],
+  "turretSize": [
+    13,
+    13
+  ],
+  "mountInHull": [
+    16.5,
+    18.5
+  ],
+  "pivotInTurret": [
+    6.5,
+    6.5
+  ],
+  "forward": "up",
+  "drawOrder": [
+    "hull",
+    "turret",
+    "hitPointOverlay"
+  ],
+  "hitPointMarkerInHull": [
+    16.5,
+    18.5
+  ]
+}

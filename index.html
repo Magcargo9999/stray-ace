@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<title>STRAY//ACE — 프로토타입</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/galmuri@2.40.3/dist/galmuri.css">
+<link rel="stylesheet" href="css/ui.css">
+</head>
+<body>
+<canvas id="game"></canvas>
+
+<div id="loading" class="full center"><div class="logo">STRAY<span>//</span>ACE</div><div class="dim">불러오는 중…</div></div>
+
+<div id="title" class="full center" style="display:none">
+  <div class="logo">STRAY<span>//</span>ACE</div>
+  <div class="tag">탄막을 스치고, 챙기고, 빠져나가라.</div>
+  <button class="btn big" id="title-start">격납고로</button>
+  <div class="small dim">WASD 이동 · 마우스 조준 · 좌클릭 사격 · Q/E 장비 · Space 파일럿 기술 · Tab 화물칸 · F 교체 줍기 · Esc 일시정지</div>
+  <button class="btn small ghostbtn" id="title-reset">저장 데이터 초기화</button>
+  <div class="small dim ver">프로토타입 v0.13 · 1단계</div>
+</div>
+
+<div id="hangar" class="full" style="display:none">
+  <header>
+    <div class="logo sm">STRAY<span>//</span>ACE <span class="dim">격납고</span></div>
+    <nav id="hg-tabs">
+      <button data-tab="sortie">출격 준비</button><button data-tab="stash">창고</button><button data-tab="bench">작업대</button>
+      <button data-tab="shop">상점</button><button data-tab="contracts">의뢰</button><button data-tab="records">기록</button>
+    </nav>
+    <div class="credits" id="hg-credits">₵0</div>
+    <button class="btn small" id="hg-settings">설정</button>
+  </header>
+  <div id="hg-quest" class="quest"></div>
+  <div id="hg-line" class="line"></div>
+  <main id="hg-body"></main>
+</div>
+
+<div id="tabwin" style="display:none">
+  <div class="space" data-discard><span>여기로 끌어 놓으면 우주에 버린다</span></div>
+  <div class="panel">
+    <div class="phead"><b>화물칸</b> <span class="dim">시간 30% · 이동 가능 · 사격 불가</span><button class="btn tiny" id="tw-close">닫기 [Tab]</button></div>
+    <div class="pbody">
+      <div class="pcol">
+        <div id="tw-cargo"></div>
+        <div class="row2"><button class="btn tiny" id="tw-sort">자동 정렬</button></div>
+        <h4>보안 칸 <span class="dim small">격추돼도 남는다</span></h4>
+        <div id="tw-secure"></div>
+      </div>
+      <div class="pcol">
+        <h4>근처 아이템</h4>
+        <div id="tw-ground"></div>
+      </div>
+      <div class="pcol wide"><div id="tw-status"></div></div>
+    </div>
+    <div class="keys small dim">끌기: 이동 · 끄는 중 R: 회전 · 우클릭: 사용/버리기 · Shift+클릭: 보안칸↔화물칸 · Ctrl+클릭: 즉시 버리기 · 왼쪽 우주로 끌기: 버리기</div>
+  </div>
+</div>
+
+<div id="result" class="full center" style="display:none"><div class="inner"></div><button class="btn big" id="result-go">격납고로</button></div>
+<div id="settings" class="full center" style="display:none"><div class="inner"></div></div>
+<div id="toasts"></div>
+
+<script src="js/data.js"></script>
+<script src="js/story.js"></script>
+<script src="js/quest.js"></script>
+<script src="js/grid.js"></script>
+<script src="js/save.js"></script>
+<script src="js/audio.js"></script>
+<script src="js/input.js"></script>
+<script src="js/combat.js"></script>
+<script src="js/raid.js"></script>
+<script src="js/render.js"></script>
+<script src="js/inventory.js"></script>
+<script src="js/hangar.js"></script>
+<script src="js/main.js"></script>
+</body>
+</html>
