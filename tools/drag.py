@@ -1,0 +1,26 @@
+import asyncio
+from playwright.async_api import async_playwright
+async def main():
+    async with async_playwright() as p:
+        b = await p.chromium.launch(executable_path='/usr/bin/google-chrome')
+        pg = await b.new_page(viewport={'width': 1280, 'height': 720})
+        pg.on('pageerror', lambda e: print('ERR', e))
+        pg.on('console', lambda m: print('CON', m.text) if m.type in ('error','log') else None)
+        await pg.goto('http://localhost:8765/index.html'); await pg.wait_for_timeout(1200)
+        await pg.evaluate("localStorage.clear()"); await pg.reload(); await pg.wait_for_timeout(1200)
+        await pg.click('#title-start'); await pg.click('#hg-body .btn.big'); await pg.wait_for_timeout(500)
+        await pg.evaluate("()=>{const R=SA.R;R.player.invuln=999;['core','engine','scrap'].forEach(id=>SA.Grid.add(R.cargo,id));}")
+        await pg.keyboard.press('Tab'); await pg.wait_for_timeout(400)
+        box = await pg.locator('#tw-cargo .item').first.bounding_box()
+        sec = await pg.locator('#tw-secure').bounding_box()
+        print('item', box, 'sec', sec)
+        await pg.mouse.move(box['x']+8, box['y']+8); await pg.mouse.down()
+        await pg.wait_for_timeout(100)
+        print('dragging?', await pg.evaluate("!!document.querySelector('.ghost')"))
+        await pg.mouse.move(sec['x']+10, sec['y']+10, steps=5)
+        await pg.wait_for_timeout(100)
+        print('elem at', await pg.evaluate(f"document.elementFromPoint({sec['x']+10},{sec['y']+10}).id || document.elementFromPoint({sec['x']+10},{sec['y']+10}).className"))
+        await pg.mouse.up(); await pg.wait_for_timeout(200)
+        print('secure', await pg.evaluate("JSON.stringify(SA.R.secure.items)"), 'tabOpen', await pg.evaluate("SA.R.tabOpen"))
+        await b.close()
+asyncio.run(main())
