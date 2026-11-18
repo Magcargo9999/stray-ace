@@ -255,7 +255,8 @@ SA.Hangar = (() => {
   const bench = (body) => {
     const prof = P(), left = h('div', 'col wide'), right = h('div', 'col wide');
     left.appendChild(h('h3', '', '제작'));
-    for (const rid of prof.recipes) {
+    const ord = (r) => ['main', 'sub', 'act', 'pas'].indexOf((SA.PARTS[r] || {}).slot) * 10 + ['일반', '강화', '전설'].indexOf((SA.PARTS[r] || {}).tier);
+    for (const rid of prof.recipes.slice().sort((a, b) => ord(a) - ord(b))) {
       const r = SA.RECIPES[rid], d = SA.PARTS[rid]; if (!r || !d) continue;
       const have = (k) => SA.Grid.count(prof.stash, k);
       const fromOk = !r.from || prof.parts.some(p => p.id === r.from);
