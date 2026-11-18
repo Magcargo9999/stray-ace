@@ -52,7 +52,7 @@ SA.PARTS = {
   cooler:  { name: '냉각기', slot: 'pas', tier: '일반', val: 160, desc: '주무기 연사 +15%.' },
   plating: { name: '차폐 장갑', slot: 'pas', tier: '일반', val: 160, desc: '침식 상승 속도 -20%.' },
   engine2: { name: '추진 엔진', slot: 'pas', tier: '일반', val: 160, desc: '이동 속도 +12%.' },
-  barrier: { name: '베리어 발생기', slot: 'pas', tier: '일반', val: 260, onlyShip: 'bastion', desc: '바스티온 전용. 4초간 안 맞으면 차오르는 보호막 40.' },
+  barrier: { name: '베리어 발생기', slot: 'pas', tier: '일반', val: 260, desc: '4초간 안 맞으면 차오르는 보호막 40.' },
   raven:   { name: '레이븐 추진기', slot: 'pas', tier: '전설', val: 900, desc: '이동 +15%, 파일럿 기술 쿨타임 -20%.' },
 };
 
@@ -82,9 +82,9 @@ SA.SHIPS = {
   swift:   { name: '스위프트', role: '고속', price: 5000, hp: 70, speed: 168, accel: 18, turn: 22, hitR: 2, sub: 1, act: 2, pas: 3, cargo: [3, 4],
              img: 'assets/swift_hull.png', size: [21, 34], mount: [0.5, 0.587],
              subMounts: [[0, -8]], desc: '빠르고 판정이 작다. 맷집은 약하다.' },
-  bastion: { name: '바스티온', role: '중장갑', price: 5500, hp: 160, speed: 104, accel: 9, turn: 7, hitR: 3, sub: 2, act: 2, pas: 3, cargo: [5, 5], barrierSlot: true,
+  bastion: { name: '바스티온', role: '중장갑', price: 5500, hp: 160, speed: 104, accel: 9, turn: 7, hitR: 3, sub: 2, act: 2, pas: 4, cargo: [5, 5],
              img: 'assets/bastion_hull.png', size: [44, 34], mount: [0.503, 0.523],
-             subMounts: [[-14, 6], [14, 6]], desc: '느리지만 튼튼하다. 베리어를 달 수 있다. 포탑 회전이 느리다.' },
+             subMounts: [[-14, 6], [14, 6]], desc: '느리지만 튼튼하다. 패시브 칸이 넉넉하다. 포탑 회전이 느리다.' },
   arsenal: { name: '아스날', role: '다소켓', price: 6000, hp: 60, speed: 130, accel: 14, turn: 18, hitR: 2.5, sub: 5, act: 2, pas: 5, cargo: [3, 3],
              img: 'assets/arsenal_hull.png', size: [36, 37], mount: [0.5, 0.466],
              subMounts: [[-8.5, 2], [8.5, 2], [-13, 9.5], [13.5, 9.5], [0, 11.5]], desc: '포탑 소켓 5개가 알아서 쏜다. 실수 허용량 최저.' },

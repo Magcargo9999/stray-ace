@@ -99,8 +99,7 @@ SA.Hangar = (() => {
     for (let i = 0; i < sh.sub; i++) col2.appendChild(slotRow(`서브웨폰 ${i + 1} (자동)`, 'sub', i, lo.sub[i]));
     col2.appendChild(slotRow('Q 액티브', 'act', 0, lo.act[0]));
     col2.appendChild(slotRow('E 액티브', 'act', 1, lo.act[1]));
-    const nPas = sh.pas + (sh.barrierSlot ? 1 : 0);
-    for (let i = 0; i < nPas; i++) col2.appendChild(slotRow(i === sh.pas ? '베리어 전용' : `패시브 ${i + 1}`, 'pas', i, lo.pas[i]));
+    for (let i = 0; i < sh.pas; i++) col2.appendChild(slotRow(`패시브 ${i + 1}`, 'pas', i, lo.pas[i]));
     const auto = h('button', 'btn small', '빈 칸 자동 장착'); auto.onclick = () => { autoEquip(prof.ship); go('sortie'); };
     col2.appendChild(auto);
 
@@ -158,14 +157,11 @@ SA.Hangar = (() => {
   };
   const pickPart = (e, kind, idx) => {
     const prof = P(), lo = prof.loadouts[prof.ship], sh = SA.SHIPS[prof.ship];
-    const isBarrierSlot = kind === 'pas' && sh.barrierSlot && idx === sh.pas;
     const used = new Set([lo.main, ...lo.sub, ...lo.act, ...lo.pas].filter(Boolean));
     const opts = prof.parts.filter(p => {
       const d = SA.PARTS[p.id];
       if (d.slot !== kind || used.has(p.uid)) return false;
       if (d.onlyShip && d.onlyShip !== prof.ship) return false;
-      if (isBarrierSlot) return p.id === 'barrier';
-      if (kind === 'pas' && p.id === 'barrier') return false;
       return true;
     });
     const m = h('div', 'ctx wide');
@@ -193,8 +189,7 @@ SA.Hangar = (() => {
     if (!lo.main) { const p = best('main'); if (p) lo.main = p.uid; }
     for (let i = 0; i < sh.sub; i++) if (!lo.sub[i]) { const p = best('sub'); if (p) lo.sub[i] = p.uid; }
     for (let i = 0; i < 2; i++) if (!lo.act[i]) { const p = best('act'); if (p) lo.act[i] = p.uid; }
-    for (let i = 0; i < sh.pas; i++) if (!lo.pas[i]) { const p = best('pas', q => q.id !== 'barrier'); if (p) lo.pas[i] = p.uid; }
-    if (sh.barrierSlot && !lo.pas[sh.pas]) { const p = best('pas', q => q.id === 'barrier'); if (p) lo.pas[sh.pas] = p.uid; }
+    for (let i = 0; i < sh.pas; i++) if (!lo.pas[i]) { const p = best('pas'); if (p) lo.pas[i] = p.uid; }
     save();
   };
   const sortieGo = () => {
@@ -315,14 +310,14 @@ SA.Hangar = (() => {
       const s = SA.SHIPS[id], own = prof.ships.includes(id);
       const c = h('div', 'card ship');
       c.appendChild(shipImg(id));
-      c.appendChild(h('div', '', `<b>${s.name}</b> <span class="dim">${s.role}</span><div class="small">${s.desc}</div><div class="small dim">HP ${s.hp} · 속도 ${s.speed} · 서브 ${s.sub} · 패시브 ${s.pas}${s.barrierSlot ? '+베리어' : ''} · 화물 ${s.cargo[0]}×${s.cargo[1]}</div>`));
+      c.appendChild(h('div', '', `<b>${s.name}</b> <span class="dim">${s.role}</span><div class="small">${s.desc}</div><div class="small dim">HP ${s.hp} · 속도 ${s.speed} · 서브 ${s.sub} · 패시브 ${s.pas} · 화물 ${s.cargo[0]}×${s.cargo[1]}</div>`));
       const b = h('button', 'btn small' + (own ? ' dis' : ''), own ? '보유' : `구매 ₵${s.price}`);
       b.onclick = () => {
         if (own) return;
         if (prof.credits < s.price) { toast('크레딧이 부족하다.', '#ffb3b3'); SA.Audio.sfx('deny'); return; }
         prof.credits -= s.price; prof.ships.push(id);
         const cur = prof.loadouts[prof.ship];   // 지금 기체의 장착을 최대한 그대로 옮긴다
-        prof.loadouts[id] = { main: cur.main, sub: cur.sub.slice(0, s.sub), act: cur.act.slice(), pas: cur.pas.filter(u => { const q = part(u); return q && q.id !== 'barrier'; }).slice(0, s.pas) };
+        prof.loadouts[id] = { main: cur.main, sub: cur.sub.slice(0, s.sub), act: cur.act.slice(), pas: cur.pas.slice(0, s.pas) };
         autoEquip(id); prof.ship = id; toast(`${s.name} 구매 — 가진 부품으로 자동 장착했다`, '#5dffb0'); SA.Audio.sfx('buy'); save(); render();
       };
       c.appendChild(b); c1.appendChild(c);

@@ -34,8 +34,8 @@ SA.Raid = (() => {
     };
     const subs = (lo.sub || []).slice(0, ship.sub).map((u, i) => part(u) && SA.PARTS[part(u).id].slot === 'sub'
       ? { part: part(u), cd: 0, ang: -Math.PI / 2, ox: ship.subMounts[i][0], oy: ship.subMounts[i][1], orb: i * Math.PI, x: 0, y: 0 } : null).filter(Boolean);
-    const pas = (lo.pas || []).slice(0, ship.pas + (ship.barrierSlot ? 1 : 0)).map(part).filter(Boolean);
-    const hasBarrier = pas.some(p => p.id === 'barrier') && ship.barrierSlot;
+    const pas = (lo.pas || []).slice(0, ship.pas).map(part).filter(Boolean);
+    const hasBarrier = pas.some(p => p.id === 'barrier');
     R.player = {
       x: 0, y: 0, vx: 0, vy: 0, aim: -Math.PI / 2, ship: prof.ship, def: ship, pilot: prof.pilot,
       hp: ship.hp, maxHp: ship.hp, speed: ship.speed, accel: ship.accel, turn: ship.turn, hitR: ship.hitR,
