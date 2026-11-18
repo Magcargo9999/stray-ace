@@ -77,16 +77,16 @@ SA.START_RECIPES = ['twin', 'plating', 'engine2', 'magnet', 'missile', 'barrier'
 // 기체. mount = 포탑/판정점 (도트 좌표, 0~1 비율)
 SA.SHIPS = {
   hex:     { name: '헥스', role: '기본', price: 0, hp: 100, speed: 130, accel: 14, turn: 18, hitR: 2.5, sub: 2, act: 2, pas: 3, cargo: [4, 4],
-             img: 'assets/hex_hull.png', turretImg: 'assets/hex_turret.png', size: [32, 32], mount: [16.5 / 32, 18.5 / 32],
+             flames: [[11.5, 30.5], [21.5, 30.5]], img: 'assets/hex_hull.png', turretImg: 'assets/hex_turret.png', size: [32, 32], mount: [16.5 / 32, 18.5 / 32],
              subMounts: [[-9, 4], [9, 4]], desc: '모든 능력치가 평균. 지급 기체.' },
   swift:   { name: '스위프트', role: '고속', price: 5000, hp: 70, speed: 168, accel: 18, turn: 22, hitR: 2, sub: 1, act: 2, pas: 3, cargo: [3, 4],
-             img: 'assets/swift_hull.png', size: [21, 34], mount: [0.5, 0.587],
+             flames: [[10.5, 33]], img: 'assets/swift_hull.png', size: [21, 34], mount: [0.5, 0.587],
              subMounts: [[0, -8]], desc: '빠르고 판정이 작다. 맷집은 약하다.' },
   bastion: { name: '바스티온', role: '중장갑', price: 5500, hp: 160, speed: 104, accel: 9, turn: 7, hitR: 3, sub: 2, act: 2, pas: 4, cargo: [5, 5],
-             img: 'assets/bastion_hull.png', size: [44, 34], mount: [0.503, 0.523],
+             flames: [[16.5, 33], [28, 33]], img: 'assets/bastion_hull.png', size: [44, 34], mount: [0.503, 0.523],
              subMounts: [[-14, 6], [14, 6]], desc: '느리지만 튼튼하다. 패시브 칸이 넉넉하다. 포탑 회전이 느리다.' },
   arsenal: { name: '아스날', role: '다소켓', price: 6000, hp: 60, speed: 130, accel: 14, turn: 18, hitR: 2.5, sub: 5, act: 2, pas: 5, cargo: [3, 3],
-             img: 'assets/arsenal_hull.png', size: [36, 37], mount: [0.5, 0.466],
+             flames: [[14.2, 35], [21.8, 35]], img: 'assets/arsenal_hull.png', size: [36, 37], mount: [0.5, 0.466],
              subMounts: [[-8.5, 2], [8.5, 2], [-13, 9.5], [13.5, 9.5], [0, 11.5]], desc: '포탑 소켓 5개가 알아서 쏜다. 실수 허용량 최저.' },
 };
 

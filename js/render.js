@@ -17,7 +17,7 @@ SA.Render = (() => {
     return c;
   };
   const load = (done) => {
-    const list = [['hex', 'assets/hex_hull.png'], ['hexTurret', 'assets/hex_turret.png'], ['swift', 'assets/swift_hull.png'], ['bastion', 'assets/bastion_hull.png'], ['arsenal', 'assets/arsenal_hull.png']];
+    const list = [['hex', 'assets/hex_hull.png'], ['hexTurret', 'assets/hex_turret.png'], ['swift', 'assets/swift_hull.png'], ['bastion', 'assets/bastion_hull.png'], ['arsenal', 'assets/arsenal_hull.png'], ['flame', 'assets/engine_flame.png']];
     for (const id in SA.ENEMIES) if (SA.ENEMIES[id].img) list.push(['en_' + id, SA.ENEMIES[id].img]);
     let left = list.length;
     for (const [k, src] of list) {
@@ -291,10 +291,14 @@ SA.Render = (() => {
   const drawPlayer = (ctx, R) => {
     const P = R.player;
     const blink = P.invuln > 0 && P.rollT <= 0 && P.shieldT <= 0 && Math.floor(R.t * 20) % 2 === 0;
-    // 엔진 불꽃
-    const s = SA.SHIPS[P.ship], fy = P.y + (1 - s.mount[1]) * s.size[1];
-    const fl = 2 + Math.random() * 3 + (P.skillState === 'boost' ? 5 : 0);
-    ctx.fillStyle = '#ffb347'; ctx.fillRect(P.x - 1.5, fy, 3, fl); ctx.fillStyle = '#fff3c4'; ctx.fillRect(P.x - 0.5, fy, 1, fl * 0.6);
+    // 엔진 불꽃: 8×8 3프레임 도트. 노즐마다 하나씩, 이동·부스트에 따라 길이가 변한다
+    const s = SA.SHIPS[P.ship], ox = P.x - s.mount[0] * s.size[0], oy = P.y - s.mount[1] * s.size[1];
+    const mv = Math.min(1, Math.hypot(P.vx, P.vy) / P.speed), ly = (0.6 + 0.5 * mv) * (P.skillState === 'boost' ? 1.6 : 1);
+    if (IMG.flame && s.flames) {
+      const fr = Math.floor(R.t * 12) % 3;
+      ctx.imageSmoothingEnabled = false;
+      for (const [fx0, fy0] of s.flames) ctx.drawImage(IMG.flame, fr * 8, 0, 8, 8, ox + fx0 - 4, oy + fy0 - 0.5, 8, 8 * ly);
+    }
     if (!blink) drawShip(ctx, R, P.x, P.y, P.aim);
     for (const sb of P.subs) {
       ctx.save(); ctx.translate(sb.x, sb.y);
