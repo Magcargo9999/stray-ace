@@ -294,7 +294,7 @@ SA.Hangar = (() => {
       SA.Grid.takeMats(prof.stash, r.mats);
       prof.parts = prof.parts.filter(p => p !== src);
       const np = SA.Save.newPart(rid); prof.parts.push(np);
-      for (const s in prof.loadouts) { const l = prof.loadouts[s]; if (l.main === src.uid) l.main = np.uid; }   // 장착 중이면 그대로 교체
+      for (const s in prof.loadouts) { const l = prof.loadouts[s]; if (l.main === src.uid) l.main = np.uid; for (const k of ['sub', 'act', 'pas']) l[k] = l[k].map(u => u === src.uid ? np.uid : u); }   // 장착 중이면 그대로 교체
     } else {
       if (!SA.Grid.takeMats(prof.stash, r.mats)) { SA.Audio.sfx('deny'); toast('재료가 부족하다.', '#ffb3b3'); return; }
       prof.parts.push(SA.Save.newPart(rid));
@@ -341,7 +341,33 @@ SA.Hangar = (() => {
       };
       c.appendChild(b); c2.appendChild(c);
     }
+    c2.appendChild(h('h3', '', '재료 배달'));
+    const D = SA.SHOP.delivery, dv = deliveryStock(), left = D.every - (Date.now() % D.every);
+    c2.appendChild(h('div', 'dim small', `재고는 20분마다 바뀐다. 다음 교체까지 ${Math.floor(left / 60000)}분 ${Math.floor(left / 1000) % 60}초. 판매가의 ${D.mul}배.`));
+    for (const st of dv.stock) {
+      const d = SA.ITEMS[st.id], price = Math.ceil(d.val * D.mul);
+      const c = h('div', 'sellrow', `<img src="${SA.Render.iconSrc(st.id)}" style="width:${d.w * 16}px;height:${d.h * 16}px"><span>${d.name} <b>${st.n}</b>개 남음<br><span class="dim small">${d.desc}</span></span>`);
+      const b = h('button', 'btn small' + (st.n ? '' : ' dis'), st.n ? `₵${price}` : '품절');
+      b.onclick = () => {
+        if (!st.n) return;
+        if (prof.credits < price) { toast('크레딧이 부족하다.', '#ffb3b3'); SA.Audio.sfx('deny'); return; }
+        if (!SA.Grid.add(prof.stash, st.id)) { toast('창고가 가득 찼다.', '#ffb3b3'); return; }
+        prof.credits -= price; st.n--; SA.Audio.sfx('buy'); save(); render();
+      };
+      c.appendChild(b); c2.appendChild(c);
+    }
     body.append(c1, c2);
+  };
+  // 20분 단위 시간 칸마다 재고를 새로 뽑는다 (게임을 꺼 둔 동안에도 흐른다)
+  const deliveryStock = () => {
+    const prof = P(), D = SA.SHOP.delivery, slot = Math.floor(Date.now() / D.every);
+    if (!prof.deliv || prof.deliv.slot !== slot) {
+      const pool = D.pool.slice().sort(() => Math.random() - 0.5).slice(0, D.kinds);
+      const stock = pool.map(id => ({ id, n: 2 + Math.floor(Math.random() * 4) }));
+      for (const [id, p] of D.rare) if (Math.random() < p) stock.push({ id, n: 1 + Math.floor(Math.random() * 2) });
+      prof.deliv = { slot, stock }; save();
+    }
+    return prof.deliv;
   };
 
   // ── 의뢰 ──

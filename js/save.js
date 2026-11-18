@@ -23,15 +23,26 @@ SA.Save = (() => {
       stats: { raids: 0, extracts: 0, deaths: 0, kills: 0, bestValue: 0 },
       settings: { music: 0.5, sfx: 0.7 },
       seenTips: false,
-      bpMiss: 0,              // 새 설계도 없이 출격한 횟수 (불운 보정)
+      bpMiss: 0,
+      deliv: { slot: -1, stock: [] },   // 배달 상점 재고 (20분마다 교체)              // 새 설계도 없이 출격한 횟수 (불운 보정)
       bring: {},              // 이번 출격에 가져갈 소모품 개수
     };
   };
 
+  // 예전 세이브 정리: 사라진 아이템(연료 전지 등)은 판매가로 환불, 모르는 부품·제작법은 뺀다
+  const LEGACY = { fuel: 60 };
+  const migrate = (p) => {
+    for (const it of p.stash.items.slice()) if (!SA.ITEMS[it.id]) { p.credits += LEGACY[it.id] || 0; SA.Grid.remove(p.stash, it.uid); }
+    p.parts = p.parts.filter(q => SA.PARTS[q.id]);
+    p.recipes = p.recipes.filter(r => SA.RECIPES[r]);
+    for (const r of ['pulse', 'mg', 'emp', 'harpoon']) if (!p.recipes.includes(r)) p.recipes.push(r);
+    for (const id in p.bring) if (!SA.ITEMS[id]) delete p.bring[id];
+    return p;
+  };
   const load = () => {
     try {
       const s = localStorage.getItem(KEY);
-      if (s) return Object.assign(fresh(), JSON.parse(s));
+      if (s) return migrate(Object.assign(fresh(), JSON.parse(s)));
     } catch (e) { console.warn('save load failed', e); }
     return fresh();
   };

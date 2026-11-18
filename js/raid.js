@@ -3,11 +3,11 @@ SA.Raid = (() => {
   const U = SA.U, C = () => SA.Combat;
 
   const LOOT = {
-    wreck: [['scrap', 1], ['scrap', .7], ['wire', .5], ['core', .4], ['engine', .25], ['debris', .22], ['goldchip', .15], ['fuel', .4]],
-    crate: [['fuel', .6], ['repairkit', .35], ['canister', .3], ['goldchip', .2], ['wire', .5], ['bp_scatter', .08], ['bp_cooler', .08]],
-    cache: [['core', 1], ['engine', .6], ['scrap', 1], ['fuel', .5], ['bp_shield', .12], ['bp_lance', .08]],
-    nest:  [['goldchip', 1], ['engine', 1], ['debris', .7], ['canister', .6]],
-    distress: [['repairkit', 1], ['canister', .8], ['goldchip', .8], ['scrap', 1], ['fuel', .7]],
+    wreck: [['scrap', 1], ['scrap', .7], ['wire', .5], ['core', .5], ['engine', .25], ['debris', .22], ['goldchip', .15], ['prec', .15], ['bp:일반', .06]],
+    crate: [['core', .4], ['repairkit', .35], ['canister', .3], ['goldchip', .2], ['wire', .5], ['prec', .3], ['bp:일반', .12], ['bp:강화', .04]],
+    cache: [['core', 1], ['engine', .6], ['scrap', 1], ['prec', .8], ['prec', .4], ['bp:일반', .15], ['bp:강화', .12]],
+    nest:  [['goldchip', 1], ['engine', 1], ['debris', .7], ['canister', .6], ['prec', .6], ['bp:강화', .5]],
+    distress: [['repairkit', 1], ['canister', .8], ['goldchip', .8], ['scrap', 1], ['prec', .4], ['bp:강화', .25]],
   };
 
   const F = () => U.pick(['k_', 'e_']);   // 왕국군/제국군 무작위
@@ -19,14 +19,16 @@ SA.Raid = (() => {
     const ship = SA.SHIPS[prof.ship];
     const lo = prof.loadouts[prof.ship] || {};
     const part = (uid) => prof.parts.find(p => p.uid === uid) || null;
+    const hasP = (id) => (lo.pas || []).slice(0, ship.pas).some(u => part(u) && part(u).id === id && part(u).dur > 0);
     const m = SA.MAPS.mine, S = SA.CFG.MAP_SCALE;
     const R = SA.R = {
       t: 0, state: 'play', timeScale: 1, tabOpen: false, paused: false,
       map: { w: Math.round(SA.CFG.VIEW_W * m.sx * S), h: Math.round(SA.CFG.VIEW_H * m.sy * S), name: m.name },
       asteroids: [], astGrid: new Map(), nebulas: [], pois: [], extracts: [],
       enemies: [], eb: [], pb: [], items: [], fx: [], texts: [], rings: [], after: [],
-      cargo: SA.Grid.make(ship.cargo[0], ship.cargo[1]),
-      secure: SA.Grid.make(SA.CFG.SECURE_W, SA.CFG.SECURE_H),
+      cargo: SA.Grid.make(ship.cargo[0], ship.cargo[1] + (hasP('cargo') ? 1 : 0)),
+      secure: SA.Grid.make(SA.CFG.SECURE_W + (hasP('secure2') ? 1 : 0), SA.CFG.SECURE_H),
+      bolts: [], beams: [], strikes: [], wells: [],
       corr: 0, stage: 0, graze: 0, kills: 0, shake: 0, hurtFlash: 0,
       msgs: [], pickLog: [], hint: null, hintT: 0, boss: null, bossEngaged: false, ravenKilled: false,
       mouseWorld: { x: 0, y: 0 }, cam: { x: 0, y: 0 }, spawnT: 0, corrT: 0, hunterSpawned: false,
@@ -151,15 +153,22 @@ SA.Raid = (() => {
   // ── 메시지 ──
   const msg = (text, col = '#fff', life = 3.5) => { SA.R.msgs.push({ text, col, life, max: life }); if (SA.R.msgs.length > 4) SA.R.msgs.shift(); };
 
-  const grazeBonus = () => Math.min(0.3, Math.floor(SA.R.graze / 40) * 0.05);
+  const grazeBonus = () => { const amp = SA.R.player && C().hasPas(SA.R.player, 'grazeamp'); return Math.min(amp ? 0.5 : 0.3, Math.floor(SA.R.graze / (amp ? 25 : 40)) * 0.05); };
 
   // 불운 보정: 새 설계도 없이 출격할수록 설계도 확률 +25%씩 (최대 3배). 새 설계도를 등록하면 초기화.
-  const pity = (id) => (SA.ITEMS[id] && SA.ITEMS[id].kind === 'bp') ? Math.min(3, 1 + .25 * (SA.profile.bpMiss || 0)) : 1;
+  const pity = (id) => id.startsWith('bp') ? Math.min(3, 1 + .25 * (SA.profile.bpMiss || 0)) : 1;
+  // 'bp:강화' → 그 등급의 설계도 하나. 모르는 설계도를 70% 우선.
+  const resolve = (id) => {
+    if (!id.startsWith('bp:')) return id;
+    const pool = SA.BP_POOL[id.slice(3)] || [], unk = pool.filter(r => !SA.profile.recipes.includes(r));
+    return 'bp_' + U.pick(unk.length && Math.random() < 0.7 ? unk : pool);
+  };
   const dropLoot = (e) => {
     const R = SA.R, table = e.loot || (SA.ENEMIES[e.type] || {}).drops || [], b = grazeBonus();
     for (const [id, p] of table) if (Math.random() < (p >= 1 ? 1 : p * (1 + b) * pity(id))) spawnItem(R, id, e.x, e.y);
   };
   const spawnItem = (R, id, x, y, spd = 70) => {
+    id = resolve(id);
     const a = Math.random() * 6.28, s = U.rnd(20, spd);
     R.items.push({ id, x, y, vx: Math.cos(a) * s, vy: Math.sin(a) * s, full: false, chk: 0, t: 0 });
   };
@@ -181,6 +190,7 @@ SA.Raid = (() => {
     S.updatePlayer(R, dt, rdt);
     S.updateEnemies(R, dt);
     S.updateBullets(R, dt);
+    S.updateExtra(R, dt);
     updateItems(R, dt);
     updatePois(R, dt);
     updateCorrosion(R, dt);
@@ -356,10 +366,10 @@ SA.Raid = (() => {
       const inside = U.d2(x.x, x.y, P.x, P.y) < SA.CFG.EXTRACT_R ** 2;
       if (inside) {
         const before = Math.floor(x.prog);
-        x.prog += dt;
+        x.prog += dt * (C().hasPas(R.player, 'exitacc') ? 1 / 0.7 : 1);
         if (Math.floor(x.prog) !== before) SA.Audio.sfx('beep');
         if (x.prog >= SA.CFG.EXTRACT_TIME) { R.state = 'extracting'; SA.Audio.sfx('extract'); R.extractFx = 1.2; setTimeout(() => finish(true), 900); return; }
-      } else x.prog = Math.max(0, x.prog - dt * 3);   // 벗어나면 빠르게 줄어든다 (바로 0이 아니라 스트레스 완화)
+      } else x.prog = Math.max(0, x.prog - dt * (C().hasPas(R.player, 'exitacc') ? 1.5 : 3));   // 벗어나면 빠르게 줄어든다 (바로 0이 아니라 스트레스 완화)
     }
   };
 

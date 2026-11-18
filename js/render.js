@@ -58,12 +58,14 @@ SA.Render = (() => {
       case 'crystal': p(ol, 6, 1, 4, 14); p(ol, 3, 5, 10, 6); p('#6f4bd1', 7, 2, 2, 12); p('#b98cff', 4, 6, 8, 4); p('#e8dbff', 7, 4, 1, 4); break;
       case 'debris': p(ol, 2, 2, 28, 44); p('#5e656e', 3, 3, 26, 42); p('#9aa3ad', 5, 5, 10, 18); p('#7b838c', 16, 24, 11, 18);
         for (const [a, b] of [[6, 6], [24, 6], [6, 40], [24, 40]]) p('#cfd6dd', a, b, 2, 2); p('#3a3f46', 3, 23, 26, 1); break;
+      case 'prec': p(ol, 2, 2, 12, 12); p('#2b4a66', 3, 3, 10, 10); p('#7fd3ff', 5, 5, 6, 6); p('#0d1018', 7, 7, 2, 2); for (const [a, b] of [[3, 7], [11, 7], [7, 3], [7, 11]]) p('#cfeeff', a, b, 2, 2); break;
+      case 'ace': p(ol, 3, 1, 10, 14); p('#5a0f1e', 4, 2, 8, 12); p('#ff4d6d', 5, 3, 6, 9); p('#ffd166', 7, 4, 2, 6); p('#ffd166', 5, 6, 6, 2); p('#ffffff', 7, 4, 1, 1); break;
       case 'blackbox': p(ol, 2, 3, 12, 11); p('#2a2d36', 3, 4, 10, 9); p('#ff8f3d', 3, 7, 10, 2); p('#ffd0a8', 5, 7, 2, 1); break;
       case 'canister': p(ol, 4, 2, 8, 28); p('#2a8f87', 5, 4, 6, 24); p('#7ff0e0', 6, 6, 2, 20); p('#d8fffa', 6, 2, 4, 2); p('#1b5a55', 5, 14, 6, 2); break;
       case 'repairkit': p(ol, 2, 3, 12, 11); p('#3f8f3a', 3, 4, 10, 9); p('#e9ffe0', 7, 5, 2, 7); p('#e9ffe0', 5, 7, 6, 3); break;
       default: // 설계도
-        p(ol, 2, 2, 12, 12); p(id === 'bp_raven' ? '#7a5a12' : '#1f4f8a', 3, 3, 10, 10);
-        p(id === 'bp_raven' ? '#ffd166' : '#cfe3ff', 4, 5, 8, 1); p('#cfe3ff', 4, 8, 6, 1); p('#cfe3ff', 4, 10, 7, 1); p('#ffffff', 10, 4, 2, 2);
+        p(ol, 2, 2, 12, 12); const tc = { 강화: '#3a7a2a', 전설: '#7a5a12' }[(SA.PARTS[d.recipe] || {}).tier] || '#1f4f8a'; p(tc, 3, 3, 10, 10);
+        p(tc === '#7a5a12' ? '#ffd166' : '#cfe3ff', 4, 5, 8, 1); p('#cfe3ff', 4, 8, 6, 1); p('#cfe3ff', 4, 10, 7, 1); p('#ffffff', 10, 4, 2, 2);
     }
     iconCache[id] = c;
     return c;
@@ -133,6 +135,16 @@ SA.Render = (() => {
     for (const p of R.pois) if (vis(p.x, p.y, 90)) drawPoi(ctx, R, p);
     // 소행성
     for (const a of R.asteroids) if (!a.hidden && vis(a.x, a.y, a.len || a.r)) drawAst(ctx, a);
+    // 궤도 폭격 예고 · 중력 우물
+    for (const st of R.strikes) {
+      if (st.t > 0) { ctx.strokeStyle = `rgba(255,120,80,${0.4 + 0.4 * Math.sin(R.t * 20)})`; ctx.lineWidth = 1; ctx.beginPath(); ctx.arc(st.x, st.y, st.r * (0.4 + 0.6 * Math.max(0, 1 - st.t)), 0, 6.29); ctx.stroke(); }
+      else { ctx.fillStyle = `rgba(255,220,160,${0.6 + st.t * 3})`; ctx.fillRect(st.x - 3, st.y - 400, 6, 400); }
+    }
+    for (const w of R.wells) {
+      ctx.strokeStyle = 'rgba(185,140,255,0.5)'; ctx.lineWidth = 1;
+      for (let i = 0; i < 3; i++) { const r = ((R.t * 60 + i * 50) % w.r); ctx.beginPath(); ctx.arc(w.x, w.y, w.r - r, 0, 6.29); ctx.stroke(); }
+      ctx.fillStyle = '#1a0d33'; ctx.beginPath(); ctx.arc(w.x, w.y, 8, 0, 6.29); ctx.fill(); ctx.strokeStyle = '#b98cff'; ctx.stroke();
+    }
     // 떠다니는 아이템
     for (const it of R.items) if (vis(it.x, it.y, 20)) {
       const d = SA.ITEMS[it.id], w = d.w * 8, h = d.h * 8, bob = Math.sin(it.t * 4) * 1;
@@ -148,6 +160,7 @@ SA.Render = (() => {
     // 플레이어 탄
     for (const b of R.pb) {
       if (!vis(b.x, b.y, 6)) continue;
+      if (b.mine) { ctx.fillStyle = '#0d1018'; ctx.fillRect(b.x - 3, b.y - 3, 6, 6); ctx.fillStyle = Math.sin(R.t * 12) > 0 ? '#ffcf6b' : '#7a5a1e'; ctx.fillRect(b.x - 1.5, b.y - 1.5, 3, 3); continue; }
       ctx.strokeStyle = b.col; ctx.lineWidth = b.w;
       const l = b.missile ? 0.012 : 0.018;
       ctx.beginPath(); ctx.moveTo(b.x - b.vx * l, b.y - b.vy * l); ctx.lineTo(b.x, b.y); ctx.stroke();
@@ -163,9 +176,26 @@ SA.Render = (() => {
     // 적 탄 (맨 위: 가장 잘 보여야 한다)
     for (const b of R.eb) {
       if (!vis(b.x, b.y, 8)) continue;
-      ctx.fillStyle = b.col; ctx.beginPath(); ctx.arc(b.x, b.y, b.r, 0, 6.29); ctx.fill();
+      ctx.fillStyle = b.frz > 0 ? '#cfe3ff' : b.col; ctx.beginPath(); ctx.arc(b.x, b.y, b.r, 0, 6.29); ctx.fill();
       ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.arc(b.x, b.y, b.r * 0.5, 0, 6.29); ctx.fill();
     }
+    // 번개·광선 (EMP 부채꼴, 충전 캐논)
+    for (const b of R.bolts) {
+      ctx.strokeStyle = b.col; ctx.lineWidth = 1.4; ctx.globalAlpha = Math.min(1, b.life * 10);
+      ctx.beginPath(); b.pts.forEach(([x, y], i) => i ? ctx.lineTo(x, y) : ctx.moveTo(x, y)); ctx.stroke();
+    }
+    for (const b of R.beams) {
+      const k = b.life / b.max; ctx.globalAlpha = k;
+      ctx.save(); ctx.translate(b.x, b.y); ctx.rotate(b.a);
+      if (b.cone) { ctx.fillStyle = 'rgba(143,211,255,0.35)'; ctx.beginPath(); ctx.moveTo(0, 0); ctx.arc(0, 0, b.len * (1.2 - k * 0.2), -b.cone, b.cone); ctx.closePath(); ctx.fill(); ctx.strokeStyle = b.col; ctx.lineWidth = 1.5; ctx.stroke(); }
+      else { ctx.fillStyle = b.col; ctx.fillRect(0, -b.w / 2 * k, b.len, b.w * k); ctx.fillStyle = '#ffffff'; ctx.fillRect(0, -b.w / 5 * k, b.len, b.w / 2.5 * k); }
+      ctx.restore();
+    }
+    ctx.globalAlpha = 1;
+    // 충전 중 표시
+    for (const a of P.acts) if (a && a.charge !== undefined) { const c = a.charge / 1.5; ctx.strokeStyle = c >= 1 ? '#ffffff' : '#9ff'; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.arc(P.x, P.y, 26, -Math.PI / 2, -Math.PI / 2 + c * 6.283); ctx.stroke(); }
+    if (P.reflectT > 0) { ctx.strokeStyle = 'rgba(255,208,240,0.7)'; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.arc(P.x, P.y, 34, 0, 6.29); ctx.stroke(); }
+    if (P.odT > 0) { ctx.strokeStyle = `rgba(255,77,109,${0.4 + 0.3 * Math.sin(R.t * 20)})`; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(P.x, P.y, 20, 0, 6.29); ctx.stroke(); }
     for (const f of R.fx) { ctx.globalAlpha = Math.max(0, f.life / f.max); ctx.fillStyle = f.col; ctx.fillRect(f.x - f.size / 2, f.y - f.size / 2, f.size, f.size); }
     ctx.globalAlpha = 1;
     for (const r of R.rings) { ctx.globalAlpha = Math.max(0, r.life * 3); ctx.strokeStyle = r.col; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(r.x, r.y, r.r, 0, 6.29); ctx.stroke(); }
@@ -278,6 +308,7 @@ SA.Render = (() => {
     }
     ctx.restore();
     if (e.type === 'raven') label(ctx, 'RAVEN', e.x, e.y - 18, '#ff4d6d', 6);
+    if (e.stun > 0) label(ctx, '기절', e.x, e.y - e.r - 12, '#8fd3ff', 6);
     if (!e.boss && !e.crate && e.hp < e.maxHp) { ctx.fillStyle = '#300'; ctx.fillRect(e.x - 10, e.y - e.r - 6, 20, 2); ctx.fillStyle = '#ff6b6b'; ctx.fillRect(e.x - 10, e.y - e.r - 6, 20 * e.hp / e.maxHp, 2); }
   };
 
@@ -316,7 +347,8 @@ SA.Render = (() => {
     for (const sb of P.subs) {
       ctx.save(); ctx.translate(sb.x, sb.y);
       if (sb.part.id === 'drone') { ctx.fillStyle = '#ffe6a8'; ctx.fillRect(-2.5, -2.5, 5, 5); ctx.fillStyle = '#0d1018'; ctx.fillRect(-1, -1, 2, 2); }
-      else { ctx.rotate(sb.ang); ctx.fillStyle = '#0d1018'; ctx.fillRect(-2, -2, 8, 4); ctx.fillStyle = '#c9b27a'; ctx.fillRect(-1, -1, 6, 2); }
+      else { const c = { intercept: '#7fe3ff', chain: '#9fd8ff', hturret: '#ffb347', flamer: '#ff7a3d', mine: '#ffcf6b', gzcharge: '#fff3a8' }[sb.part.id] || '#c9b27a';
+        ctx.rotate(sb.ang); ctx.fillStyle = '#0d1018'; ctx.fillRect(-2, -2, 8, 4); ctx.fillStyle = c; ctx.fillRect(-1, -1, 6, 2); }
       ctx.restore();
     }
     if (P.barrier > 0) { ctx.strokeStyle = `rgba(110,220,255,${0.25 + P.barrier / P.barrierMax * 0.4})`; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.arc(P.x, P.y - 2, 22, 0, 6.29); ctx.stroke(); }
