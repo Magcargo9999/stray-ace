@@ -122,7 +122,7 @@ SA.ENEMIES = {
                drops: [['scrap', .8], ['engine', .25], ['core', .3], ['bp_cooler', .06]] },
   corrode: { name: '침식체', ai: 'corrode', hp: 34, r: 11, speed: 52, color: '#b98cff', drops: [['crystal', .7]] },
   hunter:  { name: '심연의 사냥꾼', ai: 'hunter', hp: 700, r: 28, speed: 70, color: '#8a5cff', boss: true, drops: [['crystal', 1], ['crystal', .6], ['bp_drone', .5], ['goldchip', .8]] },
-  raven:   { name: '네임드 용병 레이븐', ai: 'raven', hp: 480, r: 12, speed: 150, color: '#ff4d6d', boss: true, drops: [['bp_raven', 1], ['goldchip', 1], ['goldchip', .7], ['blackbox', 1], ['engine', .6]] },
+  raven:   { name: '네임드 용병 레이븐', ai: 'raven', img: 'assets/raven_hull.png', size: [30, 27], pivot: [0.5, 0.5], hp: 480, r: 12, speed: 150, color: '#ff4d6d', boss: true, drops: [['bp_raven', 1], ['goldchip', 1], ['goldchip', .7], ['blackbox', 1], ['engine', .6]] },
 };
 
 // 침식 단계: at = 침식률 하한(%)

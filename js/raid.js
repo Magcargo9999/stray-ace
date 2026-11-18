@@ -117,13 +117,17 @@ SA.Raid = (() => {
     for (let i = 0; i < 6; i++) { const p = place(0.3, 0.8, 300); S.spawnEnemy(R, F() + 'fighter', p.x, p.y); }
 
     // 소행성: 띠 3개 (빈틈 = 통로) + 흩뿌림
+    // 엄폐물: 바위 50% · 소행성 30% · 길쭉한 파편 20%. 파편은 원 3개로 충돌을 잡는다.
     const addAst = (x, y, r) => {
       if (x < 20 || y < 20 || x > W - 20 || y > H - 20) return;
-      if (!keep.every(k => U.d2(x, y, k.x, k.y) > (k.r + r) ** 2)) return;
-      if (!R.asteroids.every(a => U.d2(x, y, a.x, a.y) > (a.r + r + 6) ** 2)) return;
-      const n = 9 + Math.floor(Math.random() * 5), poly = [];
-      for (let i = 0; i < n; i++) poly.push(r * U.rnd(0.78, 1.08));
-      R.asteroids.push({ x, y, r, poly, rot: Math.random() * 6.28, shade: U.rnd(0.85, 1.15) });
+      const kind = Math.random() < 0.5 ? 'rock' : Math.random() < 0.6 ? 'planet' : 'shard';
+      const rr = kind === 'shard' ? r * 1.5 : r;
+      if (!keep.every(k => U.d2(x, y, k.x, k.y) > (k.r + rr) ** 2)) return;
+      if (!R.asteroids.every(a => U.d2(x, y, a.x, a.y) > (Math.max(a.r, (a.len || 0) / 2) + rr + 6) ** 2)) return;
+      if (kind !== 'shard') { R.asteroids.push({ x, y, r, kind, flip: Math.random() < 0.5 && kind === 'rock' }); return; }
+      const len = r * 3, rot = U.rnd(-0.45, 0.45), ax = Math.cos(rot - 0.49), ay = Math.sin(rot - 0.49), cr = len / 4.6 / 2 * 1.05;
+      R.asteroids.push({ x, y, r: cr, kind, len, rot });
+      for (const t of [-0.3, 0.3, -0.15, 0.15]) R.asteroids.push({ x: x + ax * len * t, y: y + ay * len * t, r: cr * (Math.abs(t) > 0.2 ? 0.85 : 1), hidden: true });
     };
     for (const d of [0.28, 0.52, 0.76]) {
       const a0 = U.rnd(0, 6.28), span = U.rnd(2.2, 3.6);

@@ -17,7 +17,7 @@ SA.Render = (() => {
     return c;
   };
   const load = (done) => {
-    const list = [['hex', 'assets/hex_hull.png'], ['hexTurret', 'assets/hex_turret.png'], ['swift', 'assets/swift_hull.png'], ['bastion', 'assets/bastion_hull.png'], ['arsenal', 'assets/arsenal_hull.png'], ['flame', 'assets/engine_flame.png']];
+    const list = [['hex', 'assets/hex_hull.png'], ['hexTurret', 'assets/hex_turret.png'], ['swift', 'assets/swift_hull.png'], ['bastion', 'assets/bastion_hull.png'], ['arsenal', 'assets/arsenal_hull.png'], ['flame', 'assets/engine_flame.png'], ['ast_rock', 'assets/m_rock.png'], ['ast_planet', 'assets/m_planetoid.png'], ['ast_shard', 'assets/m_shard.png']];
     for (const id in SA.ENEMIES) if (SA.ENEMIES[id].img) list.push(['en_' + id, SA.ENEMIES[id].img]);
     let left = list.length;
     for (const [k, src] of list) {
@@ -32,6 +32,10 @@ SA.Render = (() => {
       if (IMG[id]) pre[id] = shrink(IMG[id], s.size[0] * Z, s.size[1] * Z);
     }
     for (const id in SA.ENEMIES) { const d = SA.ENEMIES[id]; if (d.img && IMG['en_' + id]) pre['en_' + id] = shrink(IMG['en_' + id], d.size[0] * Z, d.size[1] * Z); }
+    // 엄폐물: 크기 단계별로 미리 축소 (작은 원본은 그대로 확대)
+    for (const k of ['rock', 'shard']) if (IMG['ast_' + k]) {
+      const im = IMG['ast_' + k]; pre['ast_' + k] = [24, 48, 96].map(d => { const s = d * Z / Math.max(im.width, im.height); return shrink(im, im.width * s, im.height * s); });
+    }
   };
 
   // ── 아이템 아이콘 (16px/칸 도트, 코드로 그림) ──
@@ -128,17 +132,7 @@ SA.Render = (() => {
     // POI
     for (const p of R.pois) if (vis(p.x, p.y, 90)) drawPoi(ctx, R, p);
     // 소행성
-    for (const a of R.asteroids) if (vis(a.x, a.y, a.r)) {
-      ctx.save(); ctx.translate(a.x, a.y); ctx.rotate(a.rot);
-      ctx.beginPath();
-      a.poly.forEach((r, i) => { const t = i / a.poly.length * 6.283; i ? ctx.lineTo(Math.cos(t) * r, Math.sin(t) * r) : ctx.moveTo(Math.cos(t) * r, Math.sin(t) * r); });
-      ctx.closePath();
-      ctx.fillStyle = `rgb(${46 * a.shade | 0},${42 * a.shade | 0},${40 * a.shade | 0})`; ctx.fill();
-      ctx.strokeStyle = '#0b0c10'; ctx.lineWidth = 1.5; ctx.stroke();
-      ctx.fillStyle = 'rgba(160,140,120,0.18)'; ctx.beginPath(); ctx.arc(-a.r * 0.3, -a.r * 0.3, a.r * 0.45, 0, 6.29); ctx.fill();
-      ctx.fillStyle = 'rgba(0,0,0,0.25)'; ctx.beginPath(); ctx.arc(a.r * 0.25, a.r * 0.2, a.r * 0.18, 0, 6.29); ctx.fill();
-      ctx.restore();
-    }
+    for (const a of R.asteroids) if (!a.hidden && vis(a.x, a.y, a.len || a.r)) drawAst(ctx, a);
     // 떠다니는 아이템
     for (const it of R.items) if (vis(it.x, it.y, 20)) {
       const d = SA.ITEMS[it.id], w = d.w * 8, h = d.h * 8, bob = Math.sin(it.t * 4) * 1;
@@ -219,6 +213,22 @@ SA.Render = (() => {
     }
   };
 
+  // 엄폐물 도트: 바위·소행성은 회전 없이(빛 방향 유지), 파편은 원래 기울기 근처로만 회전
+  const drawAst = (ctx, a) => {
+    if (a.kind === 'planet' && IMG.ast_planet) {
+      const d = a.r * 2.12; ctx.imageSmoothingEnabled = false; ctx.drawImage(IMG.ast_planet, a.x - d / 2, a.y - d / 2, d, d); return;
+    }
+    const set = pre['ast_' + a.kind];
+    if (set) {
+      const big = a.kind === 'shard' ? a.len : a.r * 2.15;
+      const c = set[big <= 24 ? 0 : big <= 48 ? 1 : 2], k = big / (Math.max(c.width, c.height) / Z) / Z;
+      const w = c.width * k, h = c.height * k;
+      ctx.imageSmoothingEnabled = true;
+      ctx.save(); ctx.translate(a.x, a.y); if (a.rot) ctx.rotate(a.rot); if (a.flip) ctx.scale(-1, 1);
+      ctx.drawImage(c, -w / 2, -h / 2, w, h); ctx.restore(); return;
+    }
+    ctx.fillStyle = '#3a3634'; ctx.beginPath(); ctx.arc(a.x, a.y, a.r, 0, 6.29); ctx.fill();
+  };
   const shipPoly = (ctx, pts) => { ctx.beginPath(); pts.forEach(([a, b], i) => i ? ctx.lineTo(a, b) : ctx.moveTo(a, b)); ctx.closePath(); };
 
   const drawEnemy = (ctx, R, e) => {
@@ -228,9 +238,12 @@ SA.Render = (() => {
       const w = D.size[0], h = D.size[1], pv = D.pivot || [0.5, 0.5];
       ctx.save(); ctx.translate(e.x, e.y); ctx.rotate((D.ai === 'turret' ? e.a : e.face) + Math.PI / 2);
       if (fl) ctx.filter = 'brightness(2.6)';
+      if (e.inv > 0) ctx.globalAlpha = 0.5;
       ctx.imageSmoothingEnabled = true;
       ctx.drawImage(spr, -w * pv[0], -h * pv[1], w, h);
       ctx.restore();
+      if (e.stun > 0) label(ctx, '기절', e.x, e.y - e.r - 12, '#8fd3ff', 6);
+      if (e.type === 'raven') { label(ctx, 'RAVEN', e.x, e.y - 20, '#ff4d6d', 6); return; }
       if (e.hp < e.maxHp) { ctx.fillStyle = '#300'; ctx.fillRect(e.x - 10, e.y - e.r - 8, 20, 2); ctx.fillStyle = D.faction === 'kingdom' ? '#8fb6ff' : '#ff6b6b'; ctx.fillRect(e.x - 10, e.y - e.r - 8, 20 * e.hp / e.maxHp, 2); }
       return;
     }
@@ -310,7 +323,8 @@ SA.Render = (() => {
     if (P.shieldT > 0) { ctx.fillStyle = 'rgba(160,255,240,0.18)'; ctx.beginPath(); ctx.arc(P.x, P.y - 2, 24, 0, 6.29); ctx.fill(); }
     if (P.skillState === 'repair') { ctx.strokeStyle = '#9df07f'; ctx.lineWidth = 1; ctx.beginPath(); ctx.arc(P.x, P.y, 18 + Math.sin(R.t * 10) * 2, 0, 6.29); ctx.stroke(); }
     // 판정점: 항상 보인다
-    ctx.fillStyle = '#ff2e63'; ctx.beginPath(); ctx.arc(P.x, P.y, P.hitR + 1.2, 0, 6.29); ctx.fill();
+    ctx.fillStyle = '#062018'; ctx.beginPath(); ctx.arc(P.x, P.y, P.hitR + 2.2, 0, 6.29); ctx.fill();
+    ctx.fillStyle = '#3dffb5'; ctx.beginPath(); ctx.arc(P.x, P.y, P.hitR + 1.2, 0, 6.29); ctx.fill();
     ctx.fillStyle = '#ffffff'; ctx.beginPath(); ctx.arc(P.x, P.y, P.hitR, 0, 6.29); ctx.fill();
   };
 
