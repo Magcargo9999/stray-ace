@@ -91,13 +91,16 @@ SA.SHIPS = {
 };
 
 SA.PILOTS = {
-  kai:   { name: '카이', title: '회전왕', skill: 'roll', cd: 4, cost: 0, desc: '배럴 롤: 0.4초 무적 + 이동 방향으로 미끄러짐.' },
-  mina:  { name: '미나', title: '정비병', skill: 'repair', cd: 15, cost: 0, desc: '자가수리: 3초간 감속, 체력 25% 회복.' },
-  bruno: { name: '브루노', title: '돌격대장', skill: 'ram', cd: 6, cost: 400, desc: '램 돌진: 앞으로 돌진, 부딪힌 적에게 피해 + 경로의 탄 삭제.' },
-  jet:   { name: '제트', title: '애프터버너', skill: 'boost', cd: 8, cost: 300, desc: '가속 부스트: 2초간 이동 +60%.' },
-  silva: { name: '실바', title: '유령', skill: 'warp', cd: 5, cost: 500, desc: '단거리 워프: 커서 방향으로 순간이동.' },
-  raven: { name: '레이븐', title: '옛 제자', skill: 'slip', cd: 9, cost: 0, hidden: true, desc: '슬립스트림: 2초간 판정이 작아지고 스치기 범위 2배, 스칠 때마다 쿨타임 -0.2초.' },
+  kai:   { name: '카이', title: '회전왕', color: '#5dffb0', quote: '빙글 돌면, 탄이 알아서 비켜 간다.', skill: 'roll', cd: 4, cost: 0, desc: '배럴 롤: 0.4초 무적 + 이동 방향으로 미끄러짐.' },
+  mina:  { name: '미나', title: '정비병', color: '#ffd166', quote: '고칠 수 있으면, 아직 안 끝난 거야.', skill: 'repair', cd: 15, cost: 0, desc: '자가수리: 3초간 감속, 체력 25% 회복.' },
+  bruno: { name: '브루노', title: '돌격대장', color: '#ff8f3d', quote: '정면이 제일 안전해. 뒤에서 맞으면 아프거든.', skill: 'ram', cd: 6, cost: 400, desc: '램 돌진: 앞으로 돌진, 부딪힌 적에게 피해 + 경로의 탄 삭제.' },
+  jet:   { name: '제트', title: '애프터버너', color: '#6ec6ff', quote: '빨리 가면, 그만큼 덜 맞아.', skill: 'boost', cd: 8, cost: 300, desc: '가속 부스트: 2초간 이동 +60%.' },
+  silva: { name: '실바', title: '유령', color: '#b3a1ff', quote: '네가 쏜 자리엔, 이미 내가 없어.', skill: 'warp', cd: 5, cost: 500, desc: '단거리 워프: 커서 방향으로 순간이동.' },
+  raven: { name: '레이븐', title: '옛 제자', color: '#ff4d6d', quote: '탄 사이엔 길이 있어요. 가르쳐 주신 대로.', skill: 'slip', cd: 9, cost: 0, hidden: true, desc: '슬립스트림: 2초간 판정이 작아지고 스치기 범위 2배, 스칠 때마다 쿨타임 -0.2초.' },
+  // 파일럿이 모두 부상일 때만 나가는 직접 출격 (기술 없음, 침식 3배)
+  cmdr:  { name: '단장', title: '직접 출격', color: '#8f9bb8', quote: '전원 부상이다. 그래도 누군가는 떠야 한다.', skill: null, cd: 0, cost: 0, hidden: true, desc: '파일럿 기술 없음. 침식이 3배 빠르게 찬다.' },
 };
+SA.CMDR_CORR = 3;
 SA.INJURY_RAIDS = 2;
 
 // 적. drops: [아이템, 확률]
@@ -115,6 +118,8 @@ SA.ENEMIES = {
                drops: [['scrap', .7], ['wire', .3], ['core', .25]] },
   e_turret:  { name: '제국 쌍포대', faction: 'empire', ai: 'turret', hp: 60, r: 10, speed: 0, img: 'assets/e_turret.png', size: [14, 21], pivot: [0.5, 0.72],
                drops: [['scrap', .7], ['fuel', .3], ['core', .25]] },
+  m_turret:  { name: '폐광 포대', faction: 'mine', ai: 'turret', hp: 95, r: 13, speed: 0, img: 'assets/m_turret.png', size: [26, 33], pivot: [0.5, 0.57],
+               drops: [['scrap', .8], ['engine', .25], ['core', .3], ['bp_cooler', .06]] },
   corrode: { name: '침식체', ai: 'corrode', hp: 34, r: 11, speed: 52, color: '#b98cff', drops: [['crystal', .7]] },
   hunter:  { name: '심연의 사냥꾼', ai: 'hunter', hp: 700, r: 28, speed: 70, color: '#8a5cff', boss: true, drops: [['crystal', 1], ['crystal', .6], ['bp_drone', .5], ['goldchip', .8]] },
   raven:   { name: '네임드 용병 레이븐', ai: 'raven', hp: 480, r: 12, speed: 150, color: '#ff4d6d', boss: true, drops: [['bp_raven', 1], ['goldchip', 1], ['goldchip', .7], ['blackbox', 1], ['engine', .6]] },

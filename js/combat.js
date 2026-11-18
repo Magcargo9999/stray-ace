@@ -136,7 +136,7 @@ SA.Combat = (() => {
       if (P.skillState === 'repair') P.hp = Math.min(P.maxHp, P.hp + P.maxHp * 0.25 / 3 * dt);
       if (P.skillT <= 0) P.skillState = null;
     }
-    if (I.hit('Space') && !R.tabOpen) {
+    if (I.hit('Space') && !R.tabOpen && SA.PILOTS[P.pilot].skill) {
       if (P.skillCd > 0) SA.Audio.sfx('deny');
       else useSkill(R, P, mx, my);
     }
@@ -287,6 +287,10 @@ SA.Combat = (() => {
             e.a += U.clamp(U.angDiff(e.a, aP), -2 * dt, 2 * dt);
             e.t2 += dt;
             if (cyc < 2.5) while (e.t2 > 0.16) { e.t2 -= 0.16; for (const s of [-1, 1]) eb(R, e.x + Math.cos(e.a + 1.57) * 3 * s, e.y + Math.sin(e.a + 1.57) * 3 * s, e.a, 120, { r: 3, col: '#ff4d6d' }); }
+          } else if (D.faction === 'mine') {   // 폐광 포대: 느린 4갈래 회전 + 주기마다 조준 3연발
+            e.t2 += dt;
+            if (cyc < 3) while (e.t2 > 0.16) { e.t2 -= 0.16; e.a += 0.17 * e.dir; for (let k = 0; k < 4; k++) eb(R, e.x, e.y, e.a + k * 1.5708, 70, { r: 3.5, col: '#ffcf6b' }); }
+            else if (cyc > 3.6 && e.t2 > 0.3) { e.t2 = 0; eb(R, e.x, e.y, aP, 110, { r: 5, dmg: 16, col: '#ffb040' }); }
           } else if (cyc < 3) {            // 왕국 포대: 회전 나선
             e.t2 += dt;
             while (e.t2 > 0.11) { e.t2 -= 0.11; e.a += 0.23 * e.dir; eb(R, e.x, e.y, e.a, 88, { r: 3.5 }); eb(R, e.x, e.y, e.a + Math.PI, 88, { r: 3.5 }); }

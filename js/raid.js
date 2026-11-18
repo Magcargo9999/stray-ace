@@ -96,8 +96,8 @@ SA.Raid = (() => {
     S.spawnEnemy(R, 'crate', nest.x + 30, nest.y + 20, { crate: true, def: { hp: 30, r: 11 }, loot: LOOT.nest });
     for (let i = 0; i < 2; i++) S.spawnEnemy(R, F() + 'fighter', nest.x + U.rnd(-80, 80), nest.y + U.rnd(-80, 80));
 
-    const tf = F();
-    const tb = addPoi('turrets', place(0.32, 0.5), { clear: 120, label: tf === 'k_' ? '왕국 포대 기지' : '제국 포대 기지' });
+    const tf = U.pick(['k_', 'e_', 'm_']);
+    const tb = addPoi('turrets', place(0.32, 0.5), { clear: 120, label: { k_: '왕국 포대 기지', e_: '제국 포대 기지', m_: '폐광 포대 기지' }[tf] });
     for (let i = 0; i < 3; i++) { const a = i / 3 * 6.28; S.spawnEnemy(R, tf + 'turret', tb.x + Math.cos(a) * 55, tb.y + Math.sin(a) * 55, { a: a, dir: i % 2 ? 1 : -1 }); }
     S.spawnEnemy(R, 'crate', tb.x, tb.y, { crate: true, def: { hp: 30, r: 11 }, loot: LOOT.cache });
 
@@ -294,7 +294,7 @@ SA.Raid = (() => {
 
   const updateCorrosion = (R, dt) => {
     const P = R.player, st = SA.CORROSION[R.stage];
-    let rate = st.rate * (C().hasPas(P, 'plating') ? 0.8 : 1) * (P.outside ? 4 : 1);
+    let rate = st.rate * (C().hasPas(P, 'plating') ? 0.8 : 1) * (P.outside ? 4 : 1) * (P.pilot === 'cmdr' ? SA.CMDR_CORR : 1);
     R.corr = Math.min(100, R.corr + rate * dt);
     let ns = 0; for (let i = 0; i < SA.CORROSION.length; i++) if (R.corr >= SA.CORROSION[i].at) ns = i;
     if (ns !== R.stage) {
@@ -397,7 +397,7 @@ SA.Raid = (() => {
     // 파일럿 부상 카운트
     for (const id in prof.pilots) if (id !== R.player.pilot && prof.pilots[id].injury > 0) prof.pilots[id].injury--;
     if (!ok) {
-      prof.pilots[R.player.pilot].injury = SA.INJURY_RAIDS;
+      if (prof.pilots[R.player.pilot]) prof.pilots[R.player.pilot].injury = SA.INJURY_RAIDS;
       const healthy = Object.keys(prof.pilots).find(id => !prof.pilots[id].injury);
       if (healthy) prof.pilot = healthy;
       const P = R.player;

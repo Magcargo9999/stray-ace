@@ -426,7 +426,7 @@ SA.Render = (() => {
     };
     P.acts.forEach((a, i) => slot(bx + i * 92, i ? 'E' : 'Q', a ? SA.PARTS[a.part.id].name : '비어 있음', a ? a.cd : 0, a ? SA.PARTS[a.part.id].cd : 1, !!a && SA.Combat.eff(a.part) > 0));
     const pl = SA.PILOTS[P.pilot];
-    slot(bx + 184, 'SPACE', SA.PILOTS[P.pilot].title, P.skillCd, pl.cd, true);
+    slot(bx + 184, 'SPACE', SA.PILOTS[P.pilot].title, P.skillCd, pl.cd, !!pl.skill);
 
     // 우하단: 화물 미니 격자
     const cg = R.cargo, cs = 9, cx = W - 24 - Math.max(cg.w, 2) * cs - 30 - 2 * cs, cy = H - 24 - Math.max(cg.h, 2) * cs;

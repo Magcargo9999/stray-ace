@@ -65,7 +65,7 @@ SA.Main = (() => {
     const pl = SA.PILOTS[r.pilot];
     w.querySelector('.inner').innerHTML = `
       <h1 class="${r.ok ? 'ok' : 'bad'}">${r.ok ? '탈출 성공' : '격추'}</h1>
-      <div class="dim">${r.ok ? '살아서 돌아왔다. 화물은 전부 창고로.' : `화물을 잃었다. 보안 칸만 살아남았다. ${pl.name}은(는) ${SA.INJURY_RAIDS}회 출격 동안 쉬어야 한다.${SA.profile.pilot !== r.pilot ? ` 다음 출격은 ${SA.PILOTS[SA.profile.pilot].name}이(가) 나간다.` : ''}`}</div>
+      <div class="dim">${r.ok ? '살아서 돌아왔다. 화물은 전부 창고로.' : `화물을 잃었다. 보안 칸만 살아남았다. ${r.pilot === 'cmdr' ? '단장은 무사히 기체를 버리고 탈출했다.' : `${pl.name}은(는) ${SA.INJURY_RAIDS}회 출격 동안 쉬어야 한다.`}${SA.profile.pilot !== r.pilot ? ` 다음 출격은 ${SA.PILOTS[SA.profile.pilot].name}이(가) 나간다.` : ''}`}</div>
       <div class="stats"><span>시간 <b>${Math.floor(r.time / 60)}:${String(Math.floor(r.time % 60)).padStart(2, '0')}</b></span><span>격추 <b>${r.kills}</b></span><span>스침 <b>${r.graze}</b></span><span>침식 <b>${Math.floor(r.corr)}%</b></span></div>
       <h3>가져온 것 <span class="ok">₵${r.value}</span></h3><div class="icons">${list(r.brought)}</div>
       ${r.lost.length ? `<h3>잃은 것</h3><div class="icons lost">${list(r.lost)}</div>` : ''}

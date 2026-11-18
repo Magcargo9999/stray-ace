@@ -47,13 +47,28 @@ SA.Hangar = (() => {
     const prof = P();
     const col1 = h('div', 'col'), col2 = h('div', 'col wide'), col3 = h('div', 'col');
     col1.appendChild(h('h3', '', '파일럿'));
+    // 전원 부상이면 단장이 직접 나간다. 한 명이라도 회복하면 원래대로.
+    const healthy = Object.keys(prof.pilots).filter(id => !prof.pilots[id].injury);
+    if (!healthy.length) prof.pilot = 'cmdr';
+    else if (prof.pilot === 'cmdr' || prof.pilots[prof.pilot].injury) prof.pilot = healthy[0];
+    const portrait = (pl, id, inj) => `<div class="portrait" style="--pc:${pl.color}"><img src="assets/pilot_${id}.png" onerror="this.remove()"><span>${pl.name[0]}</span>${inj ? '<i class="x"></i>' : ''}</div>`;
+    const cardOf = (id, pl, inj) => {
+      const c = h('div', 'card pilot' + (prof.pilot === id ? ' on' : '') + (inj ? ' off' : ''),
+        `${portrait(pl, id, inj)}<div class="pinfo"><b>${pl.name}</b> <span class="dim">${pl.title}</span>${inj ? ` <span class="bad">부상 · ${inj}회 휴식</span>` : ''}<div class="quote">“${pl.quote}”</div></div>`);
+      c.title = pl.skill ? `${pl.desc} (쿨타임 ${pl.cd}초 · Space)` : pl.desc;
+      return c;
+    };
+    if (!healthy.length) {
+      col1.appendChild(h('div', 'warn small', '파일럿이 모두 부상이다. 단장이 직접 출격한다.'));
+      col1.appendChild(cardOf('cmdr', SA.PILOTS.cmdr, 0));
+    }
     for (const id in prof.pilots) {
-      const pl = SA.PILOTS[id], inj = prof.pilots[id].injury;
-      const c = h('div', 'card' + (prof.pilot === id ? ' on' : '') + (inj ? ' off' : ''),
-        `<b>${pl.name}</b> <span class="dim">${pl.title}</span>${inj ? ` <span class="bad">부상 · ${inj}회 휴식</span>` : ''}<div class="small">${pl.desc}</div><div class="dim small">쿨타임 ${pl.cd}초 · Space</div>`);
+      const pl = SA.PILOTS[id], inj = prof.pilots[id].injury, c = cardOf(id, pl, inj);
       c.onclick = () => { if (inj) { SA.Audio.sfx('deny'); toast(`${pl.name}은(는) 부상 중이다. ${inj}회 출격 동안 쉬어야 한다.`, '#ffb3b3'); return; } prof.pilot = id; save(); go('sortie'); };
       col1.appendChild(c);
     }
+    const cur = SA.PILOTS[prof.pilot];
+    col1.appendChild(h('div', 'small pskill', `<b>${cur.name}</b> — ${cur.desc}${cur.skill ? `<div class="dim">쿨타임 ${cur.cd}초 · Space</div>` : ''}`));
     const unhired = Object.keys(SA.PILOTS).filter(id => !prof.pilots[id] && !SA.PILOTS[id].hidden);
     if (unhired.length) col1.appendChild(h('div', 'dim small', `고용 가능한 파일럿 ${unhired.length}명 — 상점`));
 
@@ -184,7 +199,7 @@ SA.Hangar = (() => {
   };
   const sortieGo = () => {
     const prof = P(), lo = prof.loadouts[prof.ship];
-    if (prof.pilots[prof.pilot].injury) { toast('선택한 파일럿이 부상 중이다.', '#ffb3b3'); SA.Audio.sfx('deny'); return; }
+    if (prof.pilot !== 'cmdr' && prof.pilots[prof.pilot].injury) { toast('선택한 파일럿이 부상 중이다.', '#ffb3b3'); SA.Audio.sfx('deny'); return; }
     if (!lo.main) { toast('주무기를 장착해야 출격할 수 있다.', '#ffb3b3'); SA.Audio.sfx('deny'); return; }
     close(); SA.Main.startRaid();
   };
