@@ -15,6 +15,7 @@ SA.Raid = (() => {
 
   // ── 시작 ──
   const start = (prof) => {
+    prof.bpMiss = (prof.bpMiss || 0) + 1;
     const ship = SA.SHIPS[prof.ship];
     const lo = prof.loadouts[prof.ship] || {};
     const part = (uid) => prof.parts.find(p => p.uid === uid) || null;
@@ -148,9 +149,11 @@ SA.Raid = (() => {
 
   const grazeBonus = () => Math.min(0.3, Math.floor(SA.R.graze / 40) * 0.05);
 
+  // 불운 보정: 새 설계도 없이 출격할수록 설계도 확률 +25%씩 (최대 3배). 새 설계도를 등록하면 초기화.
+  const pity = (id) => (SA.ITEMS[id] && SA.ITEMS[id].kind === 'bp') ? Math.min(3, 1 + .25 * (SA.profile.bpMiss || 0)) : 1;
   const dropLoot = (e) => {
     const R = SA.R, table = e.loot || (SA.ENEMIES[e.type] || {}).drops || [], b = grazeBonus();
-    for (const [id, p] of table) if (Math.random() < (p >= 1 ? 1 : p * (1 + b))) spawnItem(R, id, e.x, e.y);
+    for (const [id, p] of table) if (Math.random() < (p >= 1 ? 1 : p * (1 + b) * pity(id))) spawnItem(R, id, e.x, e.y);
   };
   const spawnItem = (R, id, x, y, spd = 70) => {
     const a = Math.random() * 6.28, s = U.rnd(20, spd);
@@ -250,7 +253,7 @@ SA.Raid = (() => {
             p.done = true;
             if (p.type === 'wreck') {
               const tbl = LOOT.wreck; let n = 0;
-              for (const [id, pr] of tbl) if (Math.random() < pr * (1 + grazeBonus())) { spawnItem(R, id, p.x, p.y, 110); n++; }
+              for (const [id, pr] of tbl) if (Math.random() < pr * (1 + grazeBonus()) * pity(id)) { spawnItem(R, id, p.x, p.y, 110); n++; }
               if (n < 2) spawnItem(R, 'scrap', p.x, p.y, 110);
               if (p.blackbox) { spawnItem(R, 'blackbox', p.x, p.y, 110); msg('블랙박스 발견', '#ff8f3d'); }
               SA.Audio.sfx('open');

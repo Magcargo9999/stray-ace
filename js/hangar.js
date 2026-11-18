@@ -25,7 +25,7 @@ SA.Hangar = (() => {
     for (const it of st.items.slice()) {
       const d = SA.ITEMS[it.id];
       if (d.kind === 'bp' && !P().recipes.includes(d.recipe)) {
-        P().recipes.push(d.recipe); SA.Grid.remove(st, it.uid);
+        P().recipes.push(d.recipe); P().bpMiss = 0; SA.Grid.remove(st, it.uid);
         toast(`설계도 등록: ${SA.PARTS[d.recipe].name} — 작업대에서 제작 가능`, '#ffd166');
       }
     }
@@ -198,7 +198,7 @@ SA.Hangar = (() => {
       menu: (it, grid) => {
         const d = SA.ITEMS[it.id], a = [[`판매 ₵${d.val}`, () => { SA.Grid.remove(grid, it.uid); prof.credits += d.val; SA.Audio.sfx('buy'); save(); render(); }]];
         if (it.id === 'blackbox') a.unshift(['해독 (기록 열람)', () => decode(it)]);
-        if (d.kind === 'bp' && prof.recipes.includes(d.recipe)) a.push(['(이미 아는 설계도)', () => {}]);
+        if (d.kind === 'bp' && prof.recipes.includes(d.recipe)) a.push(['(이미 아는 설계도 — 판매)', () => {}]);
         return a;
       },
       onQuickDiscard: null,

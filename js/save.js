@@ -23,6 +23,7 @@ SA.Save = (() => {
       stats: { raids: 0, extracts: 0, deaths: 0, kills: 0, bestValue: 0 },
       settings: { music: 0.5, sfx: 0.7 },
       seenTips: false,
+      bpMiss: 0,              // 새 설계도 없이 출격한 횟수 (불운 보정)
       bring: {},              // 이번 출격에 가져갈 소모품 개수
     };
   };
