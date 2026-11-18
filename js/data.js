@@ -126,11 +126,12 @@ SA.ENEMIES = {
 };
 
 // 침식 단계: at = 침식률 하한(%)
+// 침식 진행 시간(일반): 안정 3:30 → 오염 2:30 → 침식 2:00 → 붕괴 1:30 (100%까지 약 9:30)
 SA.CORROSION = [
-  { at: 0,  name: '안정', fire: 1.0,  speed: 1.0,  rate: 30 / 480 },
-  { at: 30, name: '오염', fire: 0.9,  speed: 1.0,  rate: 30 / 240 },
-  { at: 60, name: '침식', fire: 0.8,  speed: 0.85, rate: 30 / 240, durDrain: true, spawnCorrode: true },
-  { at: 90, name: '붕괴', fire: 0.65, speed: 0.75, rate: 10 / 120, durDrain: true, spawnCorrode: true, hpDrain: 1, hunter: true },
+  { at: 0,  name: '안정', fire: 1.0,  speed: 1.0,  rate: 30 / 210 },
+  { at: 30, name: '오염', fire: 0.9,  speed: 1.0,  rate: 30 / 150 },
+  { at: 60, name: '침식', fire: 0.8,  speed: 0.85, rate: 30 / 120, durDrain: true, spawnCorrode: true },
+  { at: 90, name: '붕괴', fire: 0.65, speed: 0.75, rate: 10 / 90, durDrain: true, spawnCorrode: true, hpDrain: 1, hunter: true },
 ];
 
 SA.SHOP = {
