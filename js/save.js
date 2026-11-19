@@ -26,6 +26,9 @@ SA.Save = (() => {
       bpMiss: 0,              // 새 설계도 없이 출격한 횟수 (불운 보정)
       deliv: { slot: -1, stock: [] },   // 배달 상점 재고 (20분마다 교체)
       bring: {},              // 이번 출격에 가져갈 소모품 개수
+      rescued: { teo: false, deliv: false },   // 조난 구조로 연 시설 (테오: 강화 제작, 도리: 배달 상점)
+      resc: { escapes: 0, pity: 0, pending: null },   // 구조 신호 상태: 직전 구조 후 탈출 수, 불운 보정, 아직 못 구한 신호
+      rescMig: true,
     };
   };
 
@@ -37,12 +40,21 @@ SA.Save = (() => {
     p.recipes = p.recipes.filter(r => SA.RECIPES[r]);
     for (const r of ['pulse', 'mg']) if (!p.recipes.includes(r)) p.recipes.push(r);   // 기본 두 개는 항상 안다
     for (const id in p.bring) if (!SA.ITEMS[id]) delete p.bring[id];
+    // 조난 구조 도입 전 세이브: 테오·도리는 다시 구조해야 한다(이미 쌓은 메인퀘스트는 유지)
+    p.rescued = Object.assign({ teo: false, deliv: false }, p.rescued || {});
+    p.resc = Object.assign({ escapes: 0, pity: 0, pending: null }, p.resc || {});
+    if (!p.rescMig) {
+      p.rescMig = true;
+      const ri = SA.STORY.main.findIndex(q => q.rescue);
+      if (p.mq && p.mq.i >= ri) p.mq.i++;   // 새로 끼워 넣은 구조 퀘스트 칸만큼 밀어 진행도를 지킨다
+    }
+    for (const it of p.stash.items.slice()) if (SA.ITEMS[it.id].kind === 'capsule') SA.Grid.remove(p.stash, it.uid);
     return p;
   };
   const load = () => {
     try {
       const s = localStorage.getItem(KEY);
-      if (s) return migrate(Object.assign(fresh(), JSON.parse(s)));
+      if (s) { const j = JSON.parse(s), p = Object.assign(fresh(), j); p.rescMig = !!j.rescMig; return migrate(p); }
     } catch (e) { console.warn('save load failed', e); }
     return fresh();
   };

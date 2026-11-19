@@ -92,10 +92,18 @@ SA.Raid = (() => {
     const S = C();
 
     const joined = SA.profile && SA.profile.pilots.raven;
+    // 레이븐이 합류한 뒤에는 그가 둥지에 없다 — 놓친 전용 설계도는 둥지 상자에서 (모르는 것만)
+    const nestLoot = joined ? LOOT.nest.concat([['bp_raven', .2], ['bp_sensor', .25]].filter(([id]) => !SA.profile.recipes.includes(id.slice(3)))) : LOOT.nest;
     const nest = addPoi('nest', ell(R, 0.06, U.rnd(0, 6.28)), { clear: 160, label: joined ? '버려진 둥지' : '레이븐 둥지' });
     if (joined) { S.spawnEnemy(R, 'k_frigate', nest.x - 60, nest.y); S.spawnEnemy(R, 'e_frigate', nest.x + 60, nest.y); }
     else S.spawnEnemy(R, 'raven', nest.x, nest.y);
-    S.spawnEnemy(R, 'crate', nest.x + 30, nest.y + 20, { crate: true, def: { hp: 30, r: 11 }, loot: LOOT.nest });
+    const rid = SA.Rescue.plan();
+    if (rid) {
+      const rp = place(0.3, 0.58, 700) || ell(R, 0.45, U.rnd(0, 6.28));
+      addPoi('rescue', rp, { clear: 150, label: '구조 신호', target: rid, seen: true, waves: 0, started: false });
+      R.rescueId = rid;
+    }
+    S.spawnEnemy(R, 'crate', nest.x + 30, nest.y + 20, { crate: true, def: { hp: 30, r: 11 }, loot: nestLoot });
     for (let i = 0; i < 2; i++) S.spawnEnemy(R, F() + 'fighter', nest.x + U.rnd(-80, 80), nest.y + U.rnd(-80, 80));
 
     const tf = U.pick(['k_', 'e_', 'm_']);
@@ -258,6 +266,7 @@ SA.Raid = (() => {
       const d = Math.sqrt(U.d2(p.x, p.y, P.x, P.y));
       if (!p.seen && d < 380) { p.seen = true; if (p.type !== 'distress') C().text(R, p.x, p.y - 40, p.label, '#cfe3ff'); }
       if (p.done || P.dead) continue;
+      if (p.type === 'rescue') { updateRescue(R, p, d, dt); continue; }
       if (p.type === 'wreck' || p.type === 'distress') {
         const need = p.type === 'wreck' ? 2.5 : 3;
         if (d < 46) {
@@ -289,6 +298,38 @@ SA.Raid = (() => {
         msg('조난 신호 포착 — 미니맵 확인', '#ffd166', 5);
         SA.Audio.sfx('beep');
       }
+    }
+  };
+  // ── 조난 구조: 반경 안에 10초 머물면 캡슐 회수 (벗어나면 일시정지). 도중 적 2파. 탈출해야 확정.
+  const updateRescue = (R, p, d, dt) => {
+    const C0 = SA.RESCUE, P = R.player, cap = 'cap_' + p.target;
+    if (d > 52) return;
+    if (!p.started) {
+      if (!SA.Grid.findSpot(R.cargo, cap)) {
+        if (!p.warnT || R.t - p.warnT > 4) { p.warnT = R.t; msg('화물칸에 2×2 빈 자리가 필요하다 — Tab으로 비우고 다시 와라', '#ffb3b3', 4); SA.Audio.sfx('deny'); }
+        return;
+      }
+      p.started = true;
+      msg(`${C0.targets[p.target].name} 구조 시작 — ${C0.hold}초 버텨라`, '#6ee7ff', 4);
+      SA.Audio.sfx('siren');
+    }
+    p.prog += dt;
+    SA.Audio.sfx('salvage', Math.min(1, p.prog / C0.hold));
+    const f = F();
+    if (p.waves < 1 && p.prog >= C0.hold * 0.25) {
+      p.waves = 1; msg('습격 1파!', '#ff6b7a', 3);
+      for (let i = 0; i < 4; i++) { const a = i / 4 * 6.28 + 0.5; C().spawnEnemy(R, f + 'fighter', p.x + Math.cos(a) * 300, p.y + Math.sin(a) * 300, { awake: true }); }
+    }
+    if (p.waves < 2 && p.prog >= C0.hold * 0.65) {
+      p.waves = 2; msg('습격 2파!', '#ff4d6d', 3);
+      for (let i = 0; i < 3; i++) { const a = i / 3 * 6.28; C().spawnEnemy(R, f + 'fighter', p.x + Math.cos(a) * 320, p.y + Math.sin(a) * 320, { awake: true }); }
+      C().spawnEnemy(R, f + 'frigate', p.x - 340, p.y, { awake: true });
+    }
+    if (p.prog >= C0.hold) {
+      p.done = true;
+      if (SA.Grid.add(R.cargo, cap)) msg('캡슐 회수 — 탈출해야 구조가 확정된다 (이속 -10%)', '#6ee7ff', 5);
+      else { spawnItem(R, cap, p.x, p.y, 30); msg('캡슐이 떨어졌다 — 칸을 비우고 주워라', '#ffd166', 4); }
+      SA.Audio.sfx('extract');
     }
   };
   const distressOutcome = (R, p) => {
@@ -402,8 +443,15 @@ SA.Raid = (() => {
     const R = SA.R, prof = SA.profile;
     if (!R || R.finished) return;
     R.finished = true;
-    const brought = ok ? [...R.cargo.items, ...R.secure.items] : R.secure.items.slice();
-    const lost = ok ? [] : R.cargo.items.slice();
+    const isCap = (it) => SA.ITEMS[it.id].kind === 'capsule';
+    const brought = (ok ? [...R.cargo.items, ...R.secure.items] : R.secure.items.slice()).filter(it => !isCap(it));
+    const lost = ok ? [] : R.cargo.items.filter(it => !isCap(it));
+    // 구조 캡슐: 탈출해야 확정. 격추되면 잃고 신호가 다음 출격에 다시 뜬다.
+    const rescuedMsgs = [];
+    if (ok) {
+      SA.Rescue.onEscape();
+      for (const it of [...R.cargo.items, ...R.secure.items]) if (isCap(it)) rescuedMsgs.push(SA.Rescue.complete(it.id.slice(4)));
+    }
     let overflow = 0;
     for (const it of brought) if (!SA.Grid.add(prof.stash, it.id)) { overflow += SA.ITEMS[it.id].val; }
     prof.credits += overflow;
@@ -431,7 +479,7 @@ SA.Raid = (() => {
     const cnt = (id) => brought.filter(it => it.id === id).length;
     if (ok) { SA.Quest.event('extract'); SA.Quest.event('blackbox', cnt('blackbox')); if (R.ravenKilled) SA.Quest.event('raven'); }
     SA.Quest.event('crystal', cnt('crystal'));
-    SA.Main.showResult({ ok, brought, lost, value, overflow, time: R.t, kills: R.kills, graze: R.graze, corr: R.corr, ravenKilled: R.ravenKilled, pilot: R.player.pilot });
+    SA.Main.showResult({ ok, brought, lost, value, overflow, time: R.t, kills: R.kills, graze: R.graze, corr: R.corr, ravenKilled: R.ravenKilled, pilot: R.player.pilot, rescued: rescuedMsgs, lostCapsule: !ok && !!R.rescueId && [...R.cargo.items, ...R.secure.items].some(isCap) });
   };
 
   const useItem = (it, from) => {

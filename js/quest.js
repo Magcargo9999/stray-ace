@@ -6,6 +6,10 @@ SA.Quest = (() => {
   };
   const label = () => {
     const { q, st } = cur(); if (!q) return '';
+    if (q.rescue) {
+      const n = SA.Rescue.bpCount(), need = SA.RESCUE.teoBp;
+      return n < need ? `일반 설계도 모으기 (${n}/${need}) — 모으면 정비사의 조난 신호가 잡힌다` : '정비사의 조난 신호 — 미니맵 표시로 가서 10초 버틴 뒤 탈출';
+    }
     return q.ev ? `${q.text} (${Math.min(st.p, q.need)}/${q.need})` : q.text;
   };
   const event = (ev, n = 1) => {
@@ -32,6 +36,52 @@ SA.Quest = (() => {
     if (bpMsg) setTimeout(() => SA.Hangar.toast(bpMsg, '#ffd166'), 1200);
     if (ticketMsg) setTimeout(() => SA.Hangar.toast(ticketMsg, '#ffd166'), 1200);
   };
-  const rewardText = () => { const { q } = cur(); return q && q.bp ? ` · 보상 설계도: ${SA.PARTS[q.bp].name}` : ''; };
-  return { event, label, rewardText };
+  const rewardText = () => { const { q } = cur(); return q && q.bp ? ` · 보상 설계도: ${SA.PARTS[q.bp].name}` : q && q.rescue ? ' · 보상: 테오 합류(강화 등급 제작 해금) + 트윈 펄스 설계도' : ''; };
+  return { event, label, rewardText, cur };
+})();
+
+// 조난 구조: 한 판 최대 1개의 신호. 누구를 구할지는 여기서 정한다.
+SA.Rescue = (() => {
+  const R = () => SA.RESCUE;
+  const prof = () => SA.profile;
+  const bpCount = () => prof().recipes.filter(r => SA.PARTS[r] && SA.PARTS[r].tier === '일반' && !SA.START_RECIPES.includes(r)).length;
+  const rescueIdx = () => SA.STORY.main.findIndex(q => q.rescue);
+  const teoOpen = () => { const p = prof(); p.mq = p.mq || { i: 0, p: 0 }; return !p.rescued.teo && p.mq.i >= rescueIdx() && bpCount() >= R().teoBp; };
+  const valid = (id) => id === 'teo' ? !prof().rescued.teo : id === 'deliv' ? !prof().rescued.deliv : !prof().pilots[id];
+  // 출격할 때 한 번 부른다. 못 구한 신호(pending)는 다음 출격에도 그대로 뜬다.
+  const plan = () => {
+    const p = prof(), r = p.resc, C = R();
+    if (r.pending && valid(r.pending)) return r.pending;
+    r.pending = null;
+    let id = null;
+    if (teoOpen()) id = 'teo';
+    else if (p.rescued.teo && !p.rescued.deliv) id = 'deliv';
+    else if (p.rescued.teo) {
+      const left = C.pilots.filter(valid);
+      if (left.length && r.escapes >= C.pilotEscapes) {
+        if (Math.random() < Math.min(1, C.chance0 + C.chanceUp * r.pity)) { id = left[Math.floor(Math.random() * left.length)]; r.pity = 0; }
+        else r.pity++;
+      }
+    }
+    r.pending = id; SA.Save.store(p);
+    return id;
+  };
+  const onEscape = () => { prof().resc.escapes++; };
+  // 캡슐을 들고 탈출했을 때 구조 확정. 안내 문장을 돌려준다.
+  const complete = (id) => {
+    const p = prof(), t = R().targets[id], r = p.resc;
+    r.pending = null; r.escapes = 0; r.pity = 0;
+    let msg = `${t.name} 구조 완료`;
+    if (id === 'teo') {
+      p.rescued.teo = true;
+      const dup = p.recipes.includes('twin');
+      if (dup) p.credits += SA.ITEMS.bp_twin.val; else p.recipes.push('twin');
+      msg += ` — 테오가 합류했다. 작업대에서 강화 등급 제작 가능, ${dup ? '트윈 펄스 설계도는 이미 알아서 ₵' + SA.ITEMS.bp_twin.val : '트윈 펄스 설계도 획득'}`;
+      SA.Quest.event('rescue');
+    } else if (id === 'deliv') { p.rescued.deliv = true; msg += ' — 상점 탭에서 재료 배달이 열렸다'; }
+    else { p.pilots[id] = { injury: 0 }; msg += ' — 파일럿으로 고를 수 있다'; }
+    SA.Save.store(p);
+    return msg;
+  };
+  return { plan, onEscape, complete, bpCount, teoOpen };
 })();

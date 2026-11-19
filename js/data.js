@@ -185,6 +185,24 @@ SA.PILOTS = {
   // 파일럿이 모두 부상일 때만 나가는 직접 출격 (기술 없음, 침식 3배)
   cmdr:  { name: '단장', title: '직접 출격', color: '#8f9bb8', quote: '전원 부상이다. 그래도 누군가는 떠야 한다.', skill: null, cd: 0, cost: 0, hidden: true, desc: '파일럿 기술 없음. 침식이 3배 빠르게 찬다.' },
 };
+// 조난 구조 (임시 수치): 구조해야 얻는 인물들. 캡슐은 2x2, 탈출해야 구조 확정
+SA.RESCUE = {
+  teoBp: 5,                 // 테오 신호가 열리는 일반 설계도(시작 제작법 제외) 수 — 임시
+  pilotEscapes: 3, chance0: 0.4, chanceUp: 0.2,   // 파일럿 신호: 직전 구조 후 탈출 3회부터 40%, 안 뜰 때마다 +20% — 임시
+  hold: 10, speedMul: 0.9,  // 구조 유지 시간(초), 캡슐 운반 중 이속
+  pilots: ['bruno', 'jet', 'silva'],
+  targets: {
+    teo:   { name: '정비사 테오', color: '#9fd4ff' },
+    deliv: { name: '배달 상인 도리', color: '#ffd166' },
+    bruno: { name: '브루노', color: '#ff8f3d' },
+    jet:   { name: '제트', color: '#6ec6ff' },
+    silva: { name: '실바', color: '#b3a1ff' },
+  },
+};
+for (const id in SA.RESCUE.targets) {
+  const t = SA.RESCUE.targets[id];
+  SA.ITEMS['cap_' + id] = { name: '구조 캡슐: ' + t.name, w: 2, h: 2, val: 0, kind: 'capsule', color: t.color, desc: '탈출해야 구조가 확정된다. 들고 있으면 이속 -10%. 잃으면 다음 출격에 신호가 다시 뜬다.' };
+}
 SA.CMDR_CORR = 3;
 SA.INJURY_RAIDS = 2;
 
@@ -206,8 +224,8 @@ SA.ENEMIES = {
   m_turret:  { name: '폐광 포대', faction: 'mine', ai: 'turret', hp: 95, r: 13, speed: 0, img: 'assets/m_turret.png', size: [26, 33], pivot: [0.5, 0.57],
                drops: [['scrap', .8], ['engine', .25], ['core', .3], ['prec', .2], ['bp:일반', .04]] },
   corrode: { name: '침식체', ai: 'corrode', hp: 34, r: 11, speed: 52, color: '#b98cff', img: 'assets/corrode.png', size: [18, 32], drops: [['crystal', .7]] },
-  hunter:  { name: '심연의 사냥꾼', ai: 'hunter', hp: 700, r: 28, speed: 70, color: '#8a5cff', boss: true, drops: [['crystal', 1], ['crystal', .6], ['ace', 1], ['bp:전설', .6], ['goldchip', .8]] },
-  raven:   { name: '네임드 용병 레이븐', ai: 'raven', img: 'assets/raven_hull.png', size: [30, 27], pivot: [0.5, 0.5], hp: 480, r: 12, speed: 150, color: '#ff4d6d', boss: true, drops: [['bp_raven', 1], ['bp_sensor', .35], ['ace', 1], ['ace', .5], ['bp:강화', 1], ['goldchip', 1], ['goldchip', .7], ['blackbox', 1], ['engine', .6]] },
+  hunter:  { name: '심연의 사냥꾼', ai: 'hunter', hp: 700, r: 28, speed: 70, color: '#8a5cff', boss: true, drops: [['crystal', 1], ['crystal', .6], ['ace', 1], ['ace', .4], ['bp:전설', .4], ['goldchip', .8]] },
+  raven:   { name: '네임드 용병 레이븐', ai: 'raven', img: 'assets/raven_hull.png', size: [30, 27], pivot: [0.5, 0.5], hp: 480, r: 12, speed: 150, color: '#ff4d6d', boss: true, drops: [['bp_raven', .5], ['bp_sensor', .3], ['ace', 1], ['ace', .4], ['bp:강화', .8], ['goldchip', 1], ['goldchip', .6], ['blackbox', .8], ['engine', .5]] },
 };
 
 // 침식 단계: at = 침식률 하한(%)

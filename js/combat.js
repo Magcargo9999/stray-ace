@@ -54,6 +54,7 @@ SA.Combat = (() => {
     const ml = Math.hypot(mx, my); if (ml) { mx /= ml; my /= ml; }
     if (ml) { P.lastMx = mx; P.lastMy = my; }
     let spd = P.speed * st.speed * (hasPas(P, 'engine2') ? 1.12 : 1) * (hasPas(P, 'raven') ? 1.15 : 1);
+    if (R.cargo && R.cargo.items.some(i => SA.ITEMS[i.id].kind === 'capsule')) spd *= SA.RESCUE.speedMul;   // 구조 캡슐 운반 중
     if (P.skillState === 'repair') spd *= 0.5;
     if (P.skillState === 'boost') spd *= 1.6;
     if (P.dumpT > 0) { P.dumpT -= dt; spd *= 1.8; }

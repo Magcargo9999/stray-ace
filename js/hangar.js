@@ -37,7 +37,7 @@ SA.Hangar = (() => {
     document.querySelectorAll('#hg-tabs button').forEach(b => b.classList.toggle('on', b.dataset.tab === tab));
     const body = $('#hg-body'); body.innerHTML = '';
     ({ sortie, stash, bench, shop, contracts, records })[tab](body);
-    $('#hg-line').textContent = SA.U.pick([...SA.STORY.broker, ...SA.STORY.mechanic]);
+    { const rs = P().rescued || {}; $('#hg-line').textContent = SA.U.pick([...SA.STORY.broker, ...(rs.teo ? SA.STORY.mechanic : SA.STORY.mechanic0), ...(rs.deliv ? SA.STORY.deliv : [])]); }
     $('#hg-quest').innerHTML = `<b>목표</b>${SA.Quest.label()}${SA.Quest.rewardText()}`;
   };
   const go = (t) => { tab = t; SA.Audio.sfx('click'); render(); };
@@ -70,7 +70,7 @@ SA.Hangar = (() => {
     const cur = SA.PILOTS[prof.pilot];
     col1.appendChild(h('div', 'small pskill', `<b>${cur.name}</b> — ${cur.desc}${cur.skill ? `<div class="dim">쿨타임 ${cur.cd}초 · Space</div>` : ''}`));
     const unhired = Object.keys(SA.PILOTS).filter(id => !prof.pilots[id] && !SA.PILOTS[id].hidden);
-    if (unhired.length) col1.appendChild(h('div', 'dim small', `고용 가능한 파일럿 ${unhired.length}명 — 상점`));
+    if (unhired.length) col1.appendChild(h('div', 'dim small', `조난 신호를 구조하면 합류할 파일럿 ${unhired.length}명`));
 
     col2.appendChild(h('h3', '', '기체'));
     const ships = h('div', 'ships');
@@ -274,10 +274,12 @@ SA.Hangar = (() => {
       const r = SA.RECIPES[rid], d = SA.PARTS[rid]; if (!r || !d) continue;
       const have = (k) => SA.Grid.count(prof.stash, k);
       const fromOk = !r.from || prof.parts.some(p => p.id === r.from);
-      const ok = fromOk && Object.keys(r.mats).every(k => have(k) >= r.mats[k]);
+      const locked = d.tier !== '일반' && !prof.rescued.teo;   // 정비사 테오를 구조해야 강화 등급 이상 제작 가능
+      const ok = !locked && fromOk && Object.keys(r.mats).every(k => have(k) >= r.mats[k]);
       const mats = Object.keys(r.mats).map(k => `<span class="${have(k) >= r.mats[k] ? 'ok' : 'bad'}">${SA.ITEMS[k].name} ${have(k)}/${r.mats[k]}</span>`).join(' · ');
       const row = h('div', 'recipe', `${pimg(d)}<b>${d.name}</b> <span class="dim">${d.tier} · ${{ main: '주무기', sub: '서브웨폰', act: '액티브', pas: '패시브' }[d.slot]}</span><div class="small">${d.desc}</div><div class="small">${r.from ? `<span class="${fromOk ? 'ok' : 'bad'}">${SA.PARTS[r.from].name} 1개</span> + ` : ''}${mats}</div>`);
-      const b = h('button', 'btn small' + (ok ? '' : ' dis'), '제작');
+      const b = h('button', 'btn small' + (ok ? '' : ' dis'), locked ? '잠김' : '제작');
+      if (locked) row.appendChild(h('div', 'small bad', '정비사 테오를 구조하면 제작할 수 있다'));
       b.onclick = () => craft(rid);
       row.appendChild(b); left.appendChild(row);
     }
@@ -302,6 +304,7 @@ SA.Hangar = (() => {
   const repair = (p) => { p.max = Math.max(40, p.max - 3); p.dur = p.max; };
   const craft = (rid) => {
     const prof = P(), r = SA.RECIPES[rid];
+    if (SA.PARTS[rid].tier !== '일반' && !prof.rescued.teo) { SA.Audio.sfx('deny'); toast('정비사 테오를 구조해야 강화 등급 이상을 만들 수 있다.', '#ffb3b3'); return; }
     if (r.from) {
       const src = prof.parts.filter(p => p.id === r.from).sort((a, b) => b.dur - a.dur)[0];
       if (!src) { SA.Audio.sfx('deny'); return; }
@@ -337,14 +340,8 @@ SA.Hangar = (() => {
       };
       c.appendChild(b); c1.appendChild(c);
     }
-    c2.appendChild(h('h3', '', '파일럿 고용'));
-    for (const id in SA.PILOTS) {
-      if (prof.pilots[id] || SA.PILOTS[id].hidden) continue;
-      const pl = SA.PILOTS[id], c = h('div', 'card', `<b>${pl.name}</b> <span class="dim">${pl.title}</span><div class="small">${pl.desc}</div>`);
-      const b = h('button', 'btn small', `고용 ₵${pl.cost}`);
-      b.onclick = () => { if (prof.credits < pl.cost) { toast('크레딧이 부족하다.', '#ffb3b3'); SA.Audio.sfx('deny'); return; } prof.credits -= pl.cost; prof.pilots[id] = { injury: 0 }; SA.Audio.sfx('buy'); save(); render(); };
-      c.appendChild(b); c2.appendChild(c);
-    }
+    c2.appendChild(h('h3', '', '파일럿'));
+    c2.appendChild(h('div', 'dim small', '파일럿은 이제 고용하지 않는다. 조난 신호를 구조하면 합류한다 (테오를 구한 뒤부터, 탈출을 거듭하면 신호가 뜬다).'));
     c2.appendChild(h('h3', '', '소모품'));
     for (const [id, price] of SA.SHOP.consumables) {
       const d = SA.ITEMS[id], c = h('div', 'sellrow', `<img src="${SA.Render.iconSrc(id)}" style="width:${d.w * 16}px;height:${d.h * 16}px"><span>${d.name}<br><span class="dim small">${d.desc}</span></span>`);
@@ -357,6 +354,10 @@ SA.Hangar = (() => {
       c.appendChild(b); c2.appendChild(c);
     }
     c2.appendChild(h('h3', '', '재료 배달'));
+    if (!prof.rescued.deliv) {
+      c2.appendChild(h('div', 'dim small', prof.rescued.teo ? '배달 상인 도리의 조난 신호를 구조하면 열린다. 다음 출격에 신호가 뜬다.' : '정비사 테오를 구조한 뒤에 도리의 조난 신호가 뜬다. 구조하면 열린다.'));
+      body.append(c1, c2); return;
+    }
     const D = SA.SHOP.delivery, dv = deliveryStock(), left = D.every - (Date.now() % D.every);
     c2.appendChild(h('div', 'dim small', `재고는 20분마다 바뀐다. 다음 교체까지 ${Math.floor(left / 60000)}분 ${Math.floor(left / 1000) % 60}초. 판매가의 ${D.mul}배.`));
     for (const st of dv.stock) {

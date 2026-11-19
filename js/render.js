@@ -236,6 +236,21 @@ SA.Render = (() => {
       ctx.beginPath(); ctx.arc(p.x, p.y, 10 + pulse * 40, 0, 6.29); ctx.stroke();
       ctx.fillStyle = '#ffd166'; ctx.fillRect(p.x - 3, p.y - 3, 6, 6);
       label(ctx, 'SOS', p.x, p.y - 12, '#ffd166', 7);
+    } else if (p.type === 'rescue') {
+      if (p.done) return;
+      const pulse = (t * 1.2) % 1, tg = SA.RESCUE.targets[p.target];
+      ctx.strokeStyle = `rgba(110,231,255,${1 - pulse})`; ctx.lineWidth = 1.5;
+      ctx.beginPath(); ctx.arc(p.x, p.y, 12 + pulse * 46, 0, 6.29); ctx.stroke();
+      ctx.fillStyle = '#12303a'; ctx.fillRect(p.x - 7, p.y - 7, 14, 14);
+      ctx.strokeStyle = '#6ee7ff'; ctx.lineWidth = 1.5; ctx.strokeRect(p.x - 7, p.y - 7, 14, 14);
+      ctx.fillStyle = tg.color; ctx.fillRect(p.x - 3, p.y - 3, 6, 6);
+      label(ctx, '구조 신호', p.x, p.y - 14, '#6ee7ff', 7);
+      const near = U.d2(p.x, p.y, R.player.x, R.player.y) < 52 * 52, need = SA.RESCUE.hold;
+      ctx.strokeStyle = near ? '#6ee7ff' : 'rgba(110,231,255,0.25)'; ctx.lineWidth = 1; ctx.setLineDash([3, 4]);
+      ctx.beginPath(); ctx.arc(p.x, p.y, 52, 0, 6.29); ctx.stroke(); ctx.setLineDash([]);
+      if (p.prog > 0) { ctx.strokeStyle = '#6ee7ff'; ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(p.x, p.y, 55, -Math.PI / 2, -Math.PI / 2 + Math.min(1, p.prog / need) * 6.283); ctx.stroke(); }
+      if (near && !p.started) label(ctx, '머물러서 구조 시작', p.x, p.y + 68, '#6ee7ff', 7);
+      else if (!near && p.started) label(ctx, '구조 중단 — 돌아와라', p.x, p.y + 68, '#ffb3b3', 7);
     } else if (p.type === 'turrets') {
       ctx.strokeStyle = 'rgba(255,90,110,0.25)'; ctx.lineWidth = 6; ctx.beginPath(); ctx.arc(p.x, p.y, 55, 0, 6.29); ctx.stroke();
     }
@@ -434,6 +449,11 @@ SA.Render = (() => {
       ctx.beginPath(); ctx.moveTo(12, 0); ctx.lineTo(-4, -9); ctx.lineTo(-4, 9); ctx.closePath(); ctx.fill(); ctx.restore();
       T(ctx, `탈출 ${Math.round(Math.sqrt(U.d2(x.x, x.y, P.x, P.y)) / 10)}m`, e.x - Math.cos(e.a) * 26, e.y - Math.sin(e.a) * 18 + 4, '#5dffb0', 12, 'center');
     }
+    for (const p of R.pois) if (p.type === 'rescue' && !p.done) {
+      const e = edge(p.x, p.y, 54); if (e.on) continue;
+      ctx.fillStyle = '#6ee7ff'; ctx.fillRect(e.x - 4, e.y - 4, 8, 8);
+      T(ctx, '구조', e.x - Math.cos(e.a) * 22, e.y - Math.sin(e.a) * 16 + 4, '#6ee7ff', 11, 'center');
+    }
     for (const p of R.pois) if (p.type === 'distress' && !p.done) {
       const e = edge(p.x, p.y, 54); if (e.on) continue;
       ctx.fillStyle = '#ffd166'; ctx.fillRect(e.x - 4, e.y - 4, 8, 8);
@@ -529,7 +549,7 @@ SA.Render = (() => {
     for (const p of R.pois) {
       if (!p.seen) continue;
       const px = mx + p.x * k, py = my + p.y * k;
-      ctx.fillStyle = p.done ? '#555' : { wreck: '#ffd166', container: '#ffd166', turrets: '#ff6b7a', patrol: '#ff6b7a', nest: '#ff4d6d', distress: Math.sin(R.t * 6) > 0 ? '#ffd166' : '#7a5a12' }[p.type];
+      ctx.fillStyle = p.done ? '#555' : { wreck: '#ffd166', container: '#ffd166', turrets: '#ff6b7a', patrol: '#ff6b7a', nest: '#ff4d6d', distress: Math.sin(R.t * 6) > 0 ? '#ffd166' : '#7a5a12', rescue: Math.sin(R.t * 6) > 0 ? '#6ee7ff' : '#1d5a66' }[p.type];
       ctx.fillRect(px - 2.5, py - 2.5, 5, 5);
     }
     for (const x of R.extracts) if (x.active) {
