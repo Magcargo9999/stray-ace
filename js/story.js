@@ -35,7 +35,7 @@ SA.STORY = {
       brief: '레이븐이 소행성대 중심에 둥지를 틀었어. 죽이지 말고 데려와. 할 얘기가 있거든.', reward: { credits: 1200, item: 'bp_lance' } },
     // 1막 후반 (레이븐을 붙잡은 뒤): 네임드 윙맨과 함께 출격. 윙맨·수송선이 격추되면 그 판은 실패 (수주는 유지)
     { id: 'w_kingdom', title: '호위: 왕국 수송선', giver: '중개인 오스', fac: 'neutral', key: true, type: 'wing', named: 'kingdom', goal: 'escort', need: 1, req: p => p.raven.done,
-      brief: '왕국 에이스 세라가 수송선을 끌고 소행성대를 지나. 같이 붙어서 탈출점까지 데려다줘. 수송선도 세라도 잃으면 안 돼.', reward: { credits: 1500, item: 'ace' } },
+      brief: '왕국 장군 세레나가 직접 수송선을 끌고 소행성대를 지나. 같이 붙어서 탈출점까지 데려다줘. 수송선도 장군도 잃으면 안 돼.', reward: { credits: 1500, item: 'ace' } },
     { id: 'w_empire', title: '사냥: 심연의 사냥꾼', giver: '중개인 오스', fac: 'neutral', key: true, type: 'wing', named: 'empire', goal: 'hunter', need: 1, req: p => p.raven.done,
       brief: '제국 에이스 볼크가 사냥꾼을 잡겠다고 난리야. 침식이 끝까지 차오를 때까지 같이 버텨서 그놈을 떨어뜨리고 나와.', reward: { credits: 1800, item: 'ace' } },
     { id: 'deliver1', title: '납품: 고철과 코어', giver: '왕국 보급관', fac: 'kingdom', type: 'deliver', mats: { scrap: 8, core: 2 },

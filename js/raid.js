@@ -443,7 +443,7 @@ SA.Raid = (() => {
     else msg('수송선 격추!', '#ff4d6d', 4);
     msg('의뢰 실패 — 이번 출격에서는 진행되지 않는다 (수주는 유지)', '#ffb3b3', 5);
   };
-  const convoyArrived = () => { const R = SA.R; if (R.wingFail) return; R.convoyDone = true; msg('수송선 도착 — 이제 살아서 탈출하면 의뢰 완료', '#8fb6ff', 5); SA.Audio.sfx('extract'); };
+  const convoyArrived = () => { const R = SA.R; if (R.wingFail) return; R.convoyDone = true; msg('수송선 도착 — 이제 살아서 탈출하면 의뢰 완료', '#8fb6ff', 5); SA.Audio.sfx('extract'); const W = R.wing && !R.wing.dead && SA.NAMED[R.wing.named]; if (W && W.arrive) msg(`${W.title} ${W.name}: "${W.arrive}"`, W.color, 7); };
   // 수송선을 노리는 습격 (제국 전투기)
   const convoyRaids = (R, dt) => {
     const cv = R.convoy; if (!cv || cv.dead || cv.arrived) return;

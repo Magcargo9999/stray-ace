@@ -212,10 +212,11 @@ SA.ITEMS.cap_raven = { name: '레이븐의 탈출 포드', w: 2, h: 2, val: 0, k
 SA.WRECK = { per: 0.9, last: 4, decay: 0.6, final: [['bp:강화', .1], ['goldchip', .3], ['bp:일반', .25], ['engine', .35], ['prec', 1]] };
 // 네임드 윙맨 (초안·임시 수치). 중립 의뢰로 함께 출격한다. 기체 그림은 진영 전투기 도트를 빌려 쓴다
 SA.NAMED = {
-  kingdom: { name: '세라', title: '왕국 근위 에이스', color: '#8fb6ff', sprite: 'k_fighter', hp: 160, regen: 4, speed: 175, range: 320,
+  kingdom: { name: '세레나', title: '왕국 장군', color: '#8fb6ff', sprite: 'k_fighter', hp: 160, regen: 4, speed: 175, range: 320,
              rate: 2.6, shots: 1, spread: 0.01, dmg: 12, spd: 760,
-             hello: '왕국 근위대 세라. 수송선이 먼저다. 당신 등은 내가 본다.', coverOn: '붙겠다. 대신 맞아 주겠다니, 고맙군.', coverOff: '흩어진다. 시야 넓게.',
-             down: '기체 손상… 이탈한다. 미안하다.' },
+             hello: '수송선이 먼저다. 내 뒤는 당신이 봐. …그 기동, 어디서 본 것 같은데.', coverOn: '붙겠다. 대신 맞아 주겠다니… 예전에도 그런 사람이 있었지.', coverOff: '흩어진다. 시야 넓게.',
+             arrive: '도착이다. 하나만 묻지. 당신에게 그 비행을 가르친 사람, 아직 살아 있나?',
+             down: '기체 손상… 이탈한다. 그 사람에게 전해. …아니, 됐다.' },
   empire:  { name: '볼크', title: '제국 돌격 에이스', color: '#ff7a6b', sprite: 'e_fighter', hp: 180, regen: 4, speed: 185, range: 260,
              rate: 8, shots: 2, spread: 0.12, dmg: 3.5, spd: 560,
              hello: '제국 돌격대 볼크다. 사냥꾼 머리는 내 거다. 넌 뒤만 받쳐.', coverOn: '좋아, 방패는 네가 해라!', coverOff: '흩어져! 각자 사냥이다.',
