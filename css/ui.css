@@ -117,3 +117,16 @@ h3 { margin: 6px 0 8px; font-size: 15px; color: #cfe3ff; } h4 { margin: 10px 0 6
 .card.fac-neutral { border-left: 4px solid #8f9bb8; }
 .ftag { display: inline-block; font-size: 11px; padding: 0 6px; border: 1px solid; margin-right: 4px; }
 .fac-kingdom .ftag { color: #8fb6ff; border-color: #6aa0ff; } .fac-empire .ftag { color: #ff8f9a; border-color: #ff5d6c; } .fac-neutral .ftag { color: #aab4cc; border-color: #5d6a88; }
+/* 의뢰 수주·호감도 */
+.card.taken { box-shadow: inset 0 0 0 1px #5dffb0; }
+.ftag.key { background: #ffd166; color: #1a1406; }
+.donebox { margin-top: 10px; }
+.donebox summary { cursor: pointer; padding: 6px 0; }
+.rep-kingdom { color: #7fb4ff; } .rep-empire { color: #ff6b7a; }
+.repbar { display: grid; grid-template-columns: 40px 1fr 36px; gap: 8px; align-items: center; margin: 6px 0; font-size: 13px; }
+.repbar .track { position: relative; height: 8px; background: #141a26; border-radius: 4px; overflow: hidden; }
+.repbar .track::after { content: ''; position: absolute; left: 50%; top: 0; bottom: 0; width: 1px; background: #3a4558; }
+.repbar i { position: absolute; top: 0; bottom: 0; }
+.rep-bg-kingdom { background: #7fb4ff; } .rep-bg-empire { background: #ff6b7a; }
+.repbar i.neg { opacity: .45; }
+.card .row { display: flex; gap: 6px; margin-top: 6px; }

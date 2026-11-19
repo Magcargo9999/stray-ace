@@ -203,6 +203,13 @@ for (const id in SA.RESCUE.targets) {
   const t = SA.RESCUE.targets[id];
   SA.ITEMS['cap_' + id] = { name: '구조 캡슐: ' + t.name, w: 2, h: 2, val: 0, kind: 'capsule', color: t.color, desc: '탈출해야 구조가 확정된다. 들고 있으면 이속 -10%. 잃으면 다음 출격에 신호가 다시 뜬다.' };
 }
+// 네임드 레이븐 (임시 수치): 둥지에서 체력 30%가 되면 도주 → 다음 출격부터 다른 위치에서 재대결 → 격추하면 탈출 포드를 들고 탈출해야 완료
+SA.RAVEN = { hp: 1500, fleeAt: 0.3, phase3At: 0.25, dodgeCd: [1.8, 1.5, 1.1],
+  fleeDrops: [['goldchip', 1], ['prec', .6], ['bp:강화', .3]] };
+SA.ITEMS.cap_raven = { name: '레이븐의 탈출 포드', w: 2, h: 2, val: 0, kind: 'capsule', color: '#ff4d6d', desc: '격추된 레이븐이 갇힌 탈출 포드. 들고 탈출해야 그를 붙잡는다. 들고 있으면 이속 -10%.' };
+SA.DEATH_PART_LOSS = 1;   // 격추 시 장착 부품 하나를 잃을 확률 (임시)
+// 진영 호감도 (임시): 왕국·제국 의뢰 완료 시 그 진영 +10, 반대 진영 -5. 중립 의뢰는 영향 없음. 동시 수주 최대 3개
+SA.REP = { gain: 10, loss: 5, maxActive: 3 };
 SA.CMDR_CORR = 3;
 SA.INJURY_RAIDS = 2;
 
@@ -223,9 +230,9 @@ SA.ENEMIES = {
                drops: [['scrap', .7], ['core', .3], ['prec', .15]] },
   m_turret:  { name: '폐광 포대', faction: 'mine', ai: 'turret', hp: 95, r: 13, speed: 0, img: 'assets/m_turret.png', size: [26, 33], pivot: [0.5, 0.57],
                drops: [['scrap', .8], ['engine', .25], ['core', .3], ['prec', .2], ['bp:일반', .04]] },
-  corrode: { name: '침식체', ai: 'corrode', hp: 34, r: 11, speed: 52, color: '#b98cff', img: 'assets/corrode.png', size: [18, 32], drops: [['crystal', .7]] },
-  hunter:  { name: '심연의 사냥꾼', ai: 'hunter', hp: 700, r: 28, speed: 70, color: '#8a5cff', boss: true, drops: [['crystal', 1], ['crystal', .6], ['ace', 1], ['ace', .4], ['bp:전설', .4], ['goldchip', .8]] },
-  raven:   { name: '네임드 용병 레이븐', ai: 'raven', img: 'assets/raven_hull.png', size: [30, 27], pivot: [0.5, 0.5], hp: 480, r: 12, speed: 150, color: '#ff4d6d', boss: true, drops: [['bp_raven', .5], ['bp_sensor', .3], ['ace', 1], ['ace', .4], ['bp:강화', .8], ['goldchip', 1], ['goldchip', .6], ['blackbox', .8], ['engine', .5]] },
+  corrode: { name: '침식체', ai: 'corrode', hp: 34, r: 11, speed: 52, color: '#b98cff', img: 'assets/corrode.png', size: [18, 32], drops: [['crystal', .35]] },
+  hunter:  { name: '심연의 사냥꾼', ai: 'hunter', hp: 700, r: 28, speed: 70, color: '#8a5cff', boss: true, drops: [['crystal', 1], ['crystal', .4], ['ace', .6], ['ace', .25], ['bp:전설', .3], ['goldchip', .8]] },
+  raven:   { name: '네임드 용병 레이븐', ai: 'raven', img: 'assets/raven_hull.png', size: [30, 27], pivot: [0.5, 0.5], hp: 1500, r: 12, speed: 150, color: '#ff4d6d', boss: true, drops: [['bp_raven', .5], ['bp_sensor', .3], ['ace', 1], ['ace', .4], ['bp:강화', .8], ['goldchip', 1], ['goldchip', .6], ['blackbox', .8], ['engine', .5]] },
 };
 
 // 침식 단계: at = 침식률 하한(%)
@@ -239,7 +246,7 @@ SA.CORROSION = [
 
 SA.SHOP = {
   consumables: [['canister', 150], ['repairkit', 120]],
-  delivery: { every: 20 * 60 * 1000, mul: 2.5, kinds: 4, pool: ['scrap', 'wire', 'core', 'engine', 'goldchip', 'prec'], rare: [['crystal', .3], ['ace', .12]] },
+  delivery: { every: 20 * 60 * 1000, mul: 2.5, kinds: 4, pool: ['scrap', 'wire', 'core', 'engine', 'goldchip', 'prec'], rare: [['crystal', .2], ['ace', .05]] },
 };
 
 SA.MAPS = {

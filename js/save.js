@@ -29,6 +29,9 @@ SA.Save = (() => {
       rescued: { teo: false, deliv: false },   // 조난 구조로 연 시설 (테오: 강화 제작, 도리: 배달 상점)
       resc: { escapes: 0, pity: 0, pending: null },   // 구조 신호 상태: 직전 구조 후 탈출 수, 불운 보정, 아직 못 구한 신호
       rescMig: true,
+      raven: { stage: 0, done: false },   // 0: 둥지 첫 대결 · 1: 도주 후 재대결 · done: 포드 들고 탈출
+      rep: { kingdom: 0, empire: 0, last: null },   // 진영 호감도
+      route: null,            // 1막 끝에서 정해지는 2막 진영 루트
     };
   };
 
@@ -49,6 +52,15 @@ SA.Save = (() => {
       if (p.mq && p.mq.i >= ri) p.mq.i++;   // 새로 끼워 넣은 구조 퀘스트 칸만큼 밀어 진행도를 지킨다
     }
     for (const it of p.stash.items.slice()) if (SA.ITEMS[it.id].kind === 'capsule') SA.Grid.remove(p.stash, it.uid);
+    // 레이븐 3단계·의뢰 수주 도입 전 세이브
+    p.raven = Object.assign({ stage: 0, done: false }, p.raven || {});
+    if (p.pilots.raven) { p.raven.done = true; p.raven.stage = 1; }
+    p.rep = Object.assign({ kingdom: 0, empire: 0, last: null }, p.rep || {});
+    for (const id in p.contracts) {
+      const c = p.contracts[id], d = SA.STORY.contracts.find(x => x.id === id);
+      if (!d) { delete p.contracts[id]; continue; }
+      if (c.accepted === undefined) { c.accepted = !c.done && c.progress > 0 && d.type !== 'raven'; if (d.type === 'raven' && !c.done) c.progress = 0; }
+    }
     return p;
   };
   const load = () => {

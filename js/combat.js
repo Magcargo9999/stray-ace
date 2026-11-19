@@ -338,7 +338,7 @@ SA.Combat = (() => {
   const spawnEnemy = (R, type, x, y, o = {}) => {
     const d = SA.ENEMIES[type] || o.def;
     const e = Object.assign({ type, x, y, vx: 0, vy: 0, hp: d.hp, maxHp: d.hp, r: d.r, t: U.rnd(0, 2), t2: 0, flash: 0,
-      dir: Math.random() < 0.5 ? 1 : -1, homeX: x, homeY: y, awake: false, a: 0, phase: 1, dead: false }, o);
+      dir: Math.random() < 0.5 ? 1 : -1, homeX: x, homeY: y, awake: false, a: 0, phase: 1, dead: false, boss: !!d.boss }, o);   // boss: 격추 처리·기절 감소에 쓴다
     R.enemies.push(e);
     return e;
   };
@@ -444,33 +444,98 @@ SA.Combat = (() => {
   };
 
   // 네임드 용병: 플레이어처럼 연사하고 회피기동한다
+  // 레이븐: 1페이즈 예측 사격 · 2페이즈(60%) 예측+직격 교차 + 원형탄 · 3페이즈(25%, 재대결만) 슬립스트림 돌진(잔상이 탄을 뿌림)
+  // 첫 대결(둥지)에서는 체력 30%에서 도주한다. 날아오는 탄은 옆으로 미끄러지듯 피한다(쿨타임).
   const updateRaven = (R, e, dt, dist, aP, alive) => {
+    const P = R.player, RV = SA.RAVEN;
     if (!e.awake) { if (dist < 340 || e.hp < e.maxHp) { e.awake = true; SA.Raid.bossEngaged(e); } else return; }
-    if (e.hp < e.maxHp * 0.5 && e.phase === 1) { e.phase = 2; SA.Raid.msg('레이븐: "제법이군. 이제 진짜다."', '#ff4d6d'); }
+    e.inv = Math.max(0, (e.inv || 0) - dt);
+    // 도주
+    if (e.fleeing) {
+      e.fleeT -= dt; e.inv = 1;
+      const a = U.ang(P.x, P.y, e.x, e.y);
+      e.vx += (Math.cos(a) * 340 - e.vx) * Math.min(1, 4 * dt); e.vy += (Math.sin(a) * 340 - e.vy) * Math.min(1, 4 * dt);
+      if (Math.random() < 0.5) R.after.push({ x: e.x, y: e.y, life: 0.25, enemy: true });
+      if (e.fleeT <= 0) { e.dead = true; SA.Raid.ravenFled(e); }
+      return;
+    }
+    if (!e.rematch && e.hp <= e.maxHp * RV.fleeAt) {
+      e.fleeing = true; e.fleeT = 2.2; e.inv = 1;
+      SA.Raid.msg('레이븐: "…오늘은 여기까지. 다음엔 제대로 해요, 대장."', '#ff4d6d', 5);
+      SA.Raid.ravenFlee(e);
+      return;
+    }
+    if (e.hp < e.maxHp * 0.6 && e.phase === 1) { e.phase = 2; SA.Raid.msg('레이븐: "제법이군. 이제 진짜다."', '#ff4d6d'); }
+    if (e.rematch && e.hp < e.maxHp * RV.phase3At && e.phase === 2) { e.phase = 3; e.slipT = 0.5; SA.Raid.msg('레이븐: "탄 사이엔 길이 있어요. 따라와 봐요."', '#ff4d6d', 4); SA.Audio.sfx('siren'); }
+
+    // 탄 회피: 맞을 궤도의 탄이 가까우면 옆으로 미끄러진다
+    e.dodgeCd = Math.max(0, (e.dodgeCd || 0) - dt);
+    if (!e.dodgeCd && !e.dashT) {
+      for (const b of R.pb) {
+        const rx = e.x - b.x, ry = e.y - b.y, v2 = b.vx * b.vx + b.vy * b.vy;
+        if (rx * rx + ry * ry > 130 * 130 || !v2) continue;
+        const tt = (rx * b.vx + ry * b.vy) / v2;          // 최근접 시각
+        if (tt < 0 || tt > 0.35) continue;
+        const cx = b.x + b.vx * tt - e.x, cy = b.y + b.vy * tt - e.y;
+        if (cx * cx + cy * cy > (e.r + 10) ** 2) continue;
+        const ba = Math.atan2(b.vy, b.vx), side = (cx * -Math.sin(ba) + cy * Math.cos(ba)) > 0 ? -1 : 1;
+        const pa = ba + side * Math.PI / 2;
+        e.vx = Math.cos(pa) * 340; e.vy = Math.sin(pa) * 340; e.roll = 0.17;
+        e.dodgeCd = RV.dodgeCd[e.phase - 1];
+        R.after.push({ x: e.x, y: e.y, life: 0.3, enemy: true });
+        break;
+      }
+    }
+
+    // 3페이즈: 슬립스트림 돌진 — 플레이어를 꿰뚫고 지나가며 잔상을 남기고, 잔상이 잠시 뒤 원형탄을 뿌린다
+    e.ghosts = e.ghosts || [];
+    for (const g of e.ghosts) { g.t -= dt; if (g.t <= 0 && !g.fired) { g.fired = true; if (alive) ring(R, g.x, g.y, 6, 70, g.off, { r: 3, col: '#ff7a9c' }); } }
+    e.ghosts = e.ghosts.filter(g => !g.fired);
+    if (e.phase === 3) {
+      if (e.dashT > 0) {
+        e.dashT -= dt; e.ghostT = (e.ghostT || 0) + dt;
+        if (e.ghostT > 0.07) { e.ghostT = 0; e.ghosts.push({ x: e.x, y: e.y, t: 0.55, off: Math.random() }); R.after.push({ x: e.x, y: e.y, life: 0.6, enemy: true }); }
+        return;
+      }
+      e.slipT -= dt;
+      if (e.slipT <= 0) {
+        e.slipT = 2.6;
+        const a = U.ang(e.x, e.y, P.x, P.y) + U.rnd(-0.25, 0.25);
+        e.dashT = 0.45; e.vx = Math.cos(a) * 470; e.vy = Math.sin(a) * 470; e.inv = 0.45;
+        SA.Audio.sfx('boost');
+        return;
+      }
+    }
+
+    // 궤도 비행
     const orbit = aP + Math.PI + e.dir * 0.9;
-    const tx = R.player.x + Math.cos(orbit + Math.PI) * 170, ty = R.player.y + Math.sin(orbit + Math.PI) * 170;
-    const sp = e.phase === 2 ? 175 : 150;
+    const tx = P.x + Math.cos(orbit + Math.PI) * 170, ty = P.y + Math.sin(orbit + Math.PI) * 170;
+    const sp = [150, 175, 190][e.phase - 1];
     if (e.roll > 0) { e.roll -= dt; }
     else {
       const a = U.ang(e.x, e.y, tx, ty);
       e.vx += (Math.cos(a) * sp - e.vx) * Math.min(1, 2.5 * dt); e.vy += (Math.sin(a) * sp - e.vy) * Math.min(1, 2.5 * dt);
     }
     e.t2 += dt;
-    if (e.t2 > 4.5) {            // 배럴 롤
+    if (e.t2 > 4.5) {            // 배럴 롤 (방향 전환)
       e.t2 = 0; e.roll = 0.35; e.dir *= -1;
       const pa = aP + Math.PI / 2 * e.dir;
       e.vx = Math.cos(pa) * 420; e.vy = Math.sin(pa) * 420; e.inv = 0.4;
       R.after.push({ x: e.x, y: e.y, life: 0.3, enemy: true });
     }
-    e.inv = Math.max(0, (e.inv || 0) - dt);
     if (!alive) return;
+    // 예측 사격: 플레이어의 이동을 앞질러 쏜다. 2페이즈부터 직격탄을 섞어 멈춰 있어도 맞는다
+    const BS = 185, tt = Math.min(1.2, dist / BS);
+    const la = U.ang(e.x, e.y, P.x + (P.vx || 0) * tt * 0.9, P.y + (P.vy || 0) * tt * 0.9);
     const cyc = e.t % 2.2;
     e.fireT = (e.fireT || 0) + dt;
-    if (cyc < 1.2 && e.fireT > (e.phase === 2 ? 0.11 : 0.14)) {
-      e.fireT = 0; eb(R, e.x, e.y, aP + U.rnd(-0.08, 0.08), 175, { r: 2.6, dmg: 9, col: '#ff4d6d' });
+    if (cyc < 1.2 && e.fireT > [0.13, 0.1, 0.12][e.phase - 1]) {
+      e.fireT = 0; e.shotN = (e.shotN || 0) + 1;
+      const a = e.phase >= 2 && e.shotN % 2 ? aP : la;
+      eb(R, e.x, e.y, a + U.rnd(-0.05, 0.05), BS, { r: 2.6, dmg: 9, col: '#ff4d6d' });
       SA.Audio.sfx('enemyShot');
     }
-    if (e.phase === 2) { e.ringT = (e.ringT || 0) + dt; if (e.ringT > 3) { e.ringT = 0; ring(R, e.x, e.y, 14, 85, Math.random(), { r: 4, col: '#ff7a9c' }); } }
+    if (e.phase >= 2) { e.ringT = (e.ringT || 0) + dt; if (e.ringT > 3) { e.ringT = 0; ring(R, e.x, e.y, 16, 85, Math.random(), { r: 4, col: '#ff7a9c' }); } }
   };
 
   const damageEnemy = (R, e, dmg) => {
@@ -484,7 +549,7 @@ SA.Combat = (() => {
     e.dead = true;
     if (e.crate) { SA.Audio.sfx('open'); fx(R, e.x, e.y, 10, '#ffd166', 60, 0.4); }
     else {
-      R.kills++;
+      R.kills++; R.killTypes = R.killTypes || {}; R.killTypes[e.type] = (R.killTypes[e.type] || 0) + 1;
       const big = e.r > 15 ? 2 : 1;
       SA.Audio.sfx(e.boss ? 'bigboom' : 'boom', big);
       fx(R, e.x, e.y, e.boss ? 60 : 16 * big, '#ffb347', e.boss ? 200 : 110, 0.6, 2);

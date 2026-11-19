@@ -26,15 +26,25 @@ SA.STORY = {
     jet: '[조난] 제트야, 연료가 바닥났어. 빨리 와 줘—느리면 곤란해.',
     silva: '[조난] ……실바. 위치는 보냈어. 늦으면 그 자리엔 이미 없을 거야.',
   },
+  // 의뢰: 게시판에서 수주해야 진행된다(동시 3개). 왕국·제국 의뢰는 진영 호감도를 바꾼다 — 1막이 끝날 때 호감도가 높은 진영의 2막 루트로 간다.
+  // type: extract(탈출) · deliver(납품) · kill(target 접두어의 적 격추 후 탈출) · raven(레이븐을 붙잡기, 수주 전에 했어도 인정)
   contracts: [
     { id: 'first', title: '첫 출격', giver: '중개인 오스', fac: 'neutral', type: 'extract', need: 1,
       brief: '아무 탈출점으로든 살아서 돌아와. 그거면 돼.', reward: { credits: 300, item: 'bp_scatter' } },
+    { id: 'raven1', title: '표적: 레이븐', giver: '중개인 오스', fac: 'neutral', key: true, type: 'raven', need: 1,
+      brief: '레이븐이 소행성대 중심에 둥지를 틀었어. 죽이지 말고 데려와. 할 얘기가 있거든.', reward: { credits: 1200, item: 'bp_lance' } },
     { id: 'deliver1', title: '납품: 고철과 코어', giver: '왕국 보급관', fac: 'kingdom', type: 'deliver', mats: { scrap: 8, core: 2 },
       brief: '전선 수리에 쓸 고철 8개, 코어 2개. 출처는 묻지 않겠다.', reward: { credits: 700 } },
+    { id: 'k_hunt', title: '소탕: 제국 초계대', giver: '왕국 보급관', fac: 'kingdom', type: 'kill', target: 'e_', need: 12,
+      brief: '소행성대의 제국 함선 12기. 격추하고 살아서 돌아와야 보고가 된다.', reward: { credits: 900 } },
+    { id: 'k_wire', title: '납품: 통신 부품', giver: '왕국 보급관', fac: 'kingdom', type: 'deliver', mats: { wire: 4, prec: 2 },
+      brief: '전선 다발 4개, 정밀 부품 2개. 왕국 규격이면 더 좋고.', reward: { credits: 800 } },
     { id: 'blackbox1', title: '블랙박스 회수', giver: '제국 보급관', fac: 'empire', type: 'deliver', mats: { blackbox: 1 },
       brief: '소행성대에 추락한 정찰선의 블랙박스. 해독하지 말고 그대로 가져와.', reward: { credits: 500, item: 'bp_shield' } },
-    { id: 'raven1', title: '표적: 레이븐', giver: '중개인 오스', fac: 'neutral', type: 'kill', target: 'raven', need: 1,
-      brief: '레이븐이 소행성대 중심에 둥지를 틀었어. 양쪽 다 그를 원하지 않아.', reward: { credits: 1200, item: 'bp_lance' } },
+    { id: 'e_hunt', title: '소탕: 왕국 초계대', giver: '제국 보급관', fac: 'empire', type: 'kill', target: 'k_', need: 12,
+      brief: '왕국 함선 12기. 숫자만 맞추면 돼. 살아서 돌아와야 셈에 넣는다.', reward: { credits: 900 } },
+    { id: 'e_engine', title: '납품: 엔진 부품', giver: '제국 보급관', fac: 'empire', type: 'deliver', mats: { engine: 2, core: 2 },
+      brief: '엔진 2기, 코어 2개. 각인은 긁어 오지 않아도 된다.', reward: { credits: 800 } },
   ],
   blackbox: [
     { title: '정찰선 KR-07 교신 기록', lines: [
@@ -57,18 +67,19 @@ SA.STORY = {
       line: '중개인 오스: "살아 돌아왔군. 이 바닥에선 그게 첫 번째 재능이야."' },
     { id: 'm2', text: '작업대에서 부품 1개 제작', ev: 'craft', need: 1, reward: 150, bp: 'missile',
       line: '정비병 미나: "손에 익은 부품이 제일 좋은 부품이죠. 단장님도 그랬잖아요."' },
-    { id: 'm3', text: '의뢰 게시판에서 의뢰 1개 완료', ev: 'contract', need: 1, reward: 200, bp: 'scatter',
+    { id: 'm3', text: '의뢰 게시판에서 의뢰를 수주하고 1개 완료', ev: 'contract', need: 1, reward: 200, bp: 'scatter',
       line: '중개인 오스: "양쪽 다 당신 이름을 묻기 시작했어. 좋은 징조는 아니야."' },
     // 정비사 테오 구조: 일반 설계도 5종(시작 제작법 제외)을 모으면 조난 신호가 열린다. 구조하고 탈출해야 완료
-    { id: 'mR', text: '조난 신호로 정비사 구조', ev: 'rescue', need: 1, reward: 400, rescue: true,
+    { id: 'mR', text: '조난 신호로 정비사 구조', ev: 'rescue', need: 1, reward: 400, rescue: true, check: p => p.rescued && p.rescued.teo,
       line: '정비사 테오: "…살았다. 고마워요, 단장님. 작업대, 이제 제대로 쓸 수 있어요."' },
     { id: 'm4', text: '추락한 정찰선에서 블랙박스를 가져오기', ev: 'blackbox', need: 1, reward: 300, bp: 'flamer',
       line: '정비병 미나: "왕국 정찰선이네요. 왕국 주파수… 단장님 옛날 부대 거 아닌가요?"' },
-    { id: 'm5', text: '폐광 중심의 네임드 레이븐을 격추하고 탈출', ev: 'raven', need: 1, reward: 500, onDone: 'ravenJoins',
+    // 레이븐: 둥지에서 몰아붙이면 도주 → 다른 곳에서 재대결 → 탈출 포드를 들고 탈출. 퀘스트 순서와 상관없이 해 두면 인정된다
+    { id: 'm5', text: '네임드 레이븐을 붙잡기', ev: 'raven', need: 1, reward: 500, raven: true, check: p => p.raven && p.raven.done,
       line: '레이븐: "…역시 당신이었군요, 대장. 이번엔 안 떠나는 거죠?"' },
     { id: 'm6', text: '침식 결정 3개 가져오기 (침식 2단계부터 침식체가 나온다)', ev: 'crystal', need: 3, reward: 600,
       line: '왕국 장군의 통신: "…오랜만이야. 그 결정, 어디서 났는지 직접 말해 줘야겠어."' },
-    { id: 'm7', text: '2막 「전선 궤도」 — 다음 업데이트에서 열린다', ev: null, need: 1, reward: 0, line: '' },
+    { id: 'm7', text: '2막 「전선 궤도」 — 다음 업데이트에서 열린다', ev: null, need: 1, reward: 0, line: '', actEnd: true },
   ],
   tips: [
     'Tab으로 화물칸을 열면 시간이 느려진다. 정리는 안전할 때.',

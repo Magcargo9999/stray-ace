@@ -6,7 +6,7 @@ SA.Raid = (() => {
     wreck: [['scrap', 1], ['scrap', .7], ['wire', .5], ['core', .5], ['engine', .25], ['debris', .22], ['goldchip', .15], ['prec', .15], ['bp:일반', .06]],
     crate: [['core', .4], ['repairkit', .35], ['canister', .3], ['goldchip', .2], ['wire', .5], ['prec', .3], ['bp:일반', .12], ['bp:강화', .04]],
     cache: [['core', 1], ['engine', .6], ['scrap', 1], ['prec', .8], ['prec', .4], ['bp:일반', .15], ['bp:강화', .12]],
-    nest:  [['goldchip', 1], ['engine', 1], ['debris', .7], ['canister', .6], ['prec', .6], ['bp:강화', .5]],
+    nest:  [['goldchip', .6], ['engine', 1], ['debris', .7], ['canister', .6], ['prec', .6], ['bp:강화', .5]],
     distress: [['repairkit', 1], ['canister', .8], ['goldchip', .8], ['scrap', 1], ['prec', .4], ['bp:강화', .25]],
   };
 
@@ -91,12 +91,20 @@ SA.Raid = (() => {
     const addPoi = (type, p, o = {}) => { const poi = Object.assign({ type, x: p.x, y: p.y, seen: false, done: false, prog: 0 }, o); R.pois.push(poi); keep.push({ x: p.x, y: p.y, r: o.clear || 90 }); return poi; };
     const S = C();
 
-    const joined = SA.profile && SA.profile.pilots.raven;
+    const rv = SA.profile.raven, joined = !!(SA.profile.pilots.raven || rv.done);
     // 레이븐이 합류한 뒤에는 그가 둥지에 없다 — 놓친 전용 설계도는 둥지 상자에서 (모르는 것만)
     const nestLoot = joined ? LOOT.nest.concat([['bp_raven', .2], ['bp_sensor', .25]].filter(([id]) => !SA.profile.recipes.includes(id.slice(3)))) : LOOT.nest;
-    const nest = addPoi('nest', ell(R, 0.06, U.rnd(0, 6.28)), { clear: 160, label: joined ? '버려진 둥지' : '레이븐 둥지' });
-    if (joined) { S.spawnEnemy(R, 'k_frigate', nest.x - 60, nest.y); S.spawnEnemy(R, 'e_frigate', nest.x + 60, nest.y); }
+    const empty = joined || rv.stage >= 1;
+    const nest = addPoi('nest', ell(R, 0.06, U.rnd(0, 6.28)), { clear: 160, label: joined ? '버려진 둥지' : empty ? '비어 있는 레이븐 둥지' : '레이븐 둥지' });
+    if (empty) { S.spawnEnemy(R, 'k_frigate', nest.x - 60, nest.y); S.spawnEnemy(R, 'e_frigate', nest.x + 60, nest.y); }
     else S.spawnEnemy(R, 'raven', nest.x, nest.y);
+    // 도주했던 레이븐: 매 출격 다른 곳에서 기다린다 (시작부터 미니맵에 표시)
+    if (!joined && rv.stage >= 1) {
+      const dp = place(0.38, 0.75, 650) || ell(R, 0.55, U.rnd(0, 6.28));
+      addPoi('duel', dp, { clear: 170, label: '레이븐의 신호', seen: true });
+      S.spawnEnemy(R, 'raven', dp.x, dp.y, { rematch: true });
+      R.ravenRematch = true;
+    }
     const rid = SA.Rescue.plan();
     if (rid) {
       const rp = place(0.3, 0.58, 700) || ell(R, 0.45, U.rnd(0, 6.28));
@@ -419,9 +427,22 @@ SA.Raid = (() => {
     if (e.type === 'raven') { msg('레이븐: "여긴 내 구역이야, 떠돌이."', '#ff4d6d', 4); SA.Audio.sfx('siren'); }
     SA.Audio.play('boss');
   };
+  const ravenFlee = (e) => {   // 도주 시작: 일부 전리품만 흘린다
+    for (const [id, p] of SA.RAVEN.fleeDrops) if (Math.random() < p) spawnItem(SA.R, id, e.x, e.y);
+    SA.Audio.sfx('boost');
+  };
+  const ravenFled = (e) => {
+    const R = SA.R; R.ravenFled = true; R.boss = null;
+    msg('레이븐 도주 — 다음 출격부터 다른 곳에서 다시 만난다', '#ffd166', 5);
+    SA.Audio.play('raid');
+  };
   const bossKilled = (e) => {
     const R = SA.R;
-    if (e.type === 'raven') { R.ravenKilled = true; msg('네임드 용병 레이븐 격추', '#ffd166', 5); }
+    if (e.type === 'raven') {
+      R.ravenKilled = true;
+      msg('레이븐 격추 — 탈출 포드를 화물칸(2×2)에 싣고 탈출하라', '#ffd166', 6);
+      spawnItem(R, 'cap_raven', e.x, e.y, 20);
+    }
     else msg('심연의 사냥꾼 격추', '#ffd166', 5);
     R.boss = null;
     SA.Audio.play('raid');
@@ -447,10 +468,28 @@ SA.Raid = (() => {
     const brought = (ok ? [...R.cargo.items, ...R.secure.items] : R.secure.items.slice()).filter(it => !isCap(it));
     const lost = ok ? [] : R.cargo.items.filter(it => !isCap(it));
     // 구조 캡슐: 탈출해야 확정. 격추되면 잃고 신호가 다음 출격에 다시 뜬다.
-    const rescuedMsgs = [];
+    const rescuedMsgs = [], caps = [...R.cargo.items, ...R.secure.items].filter(isCap);
+    if (R.ravenFled && prof.raven.stage < 1) prof.raven.stage = 1;
     if (ok) {
       SA.Rescue.onEscape();
-      for (const it of [...R.cargo.items, ...R.secure.items]) if (isCap(it)) rescuedMsgs.push(SA.Rescue.complete(it.id.slice(4)));
+      for (const it of caps) rescuedMsgs.push(it.id === 'cap_raven' ? SA.Quest.ravenCaught() : SA.Rescue.complete(it.id.slice(4)));
+    }
+    const lostCaps = ok ? [] : caps.map(it => SA.ITEMS[it.id].name);
+    // 격추되면 장착 부품 하나를 잃는다 (기본 펄스건과 마지막 남은 주무기는 제외)
+    let lostPart = null;
+    if (!ok) {
+      const P = R.player, mains = prof.parts.filter(p => SA.PARTS[p.id].slot === 'main');
+      const eq = [P.main, ...P.subs.map(s => s.part), ...P.acts.map(a => a && a.part), ...P.pas].filter(Boolean)
+        .filter(p => p.id !== 'pulse' && prof.parts.includes(p) && !(SA.PARTS[p.id].slot === 'main' && mains.length <= 1));
+      if (eq.length && Math.random() < SA.DEATH_PART_LOSS) {
+        const lp = U.pick(eq); lostPart = SA.PARTS[lp.id].name;
+        prof.parts = prof.parts.filter(p => p !== lp);
+        for (const s in prof.loadouts) {
+          const l = prof.loadouts[s];
+          if (l.main === lp.uid) l.main = null;
+          for (const k of ['sub', 'act', 'pas']) l[k] = (l[k] || []).map(u => u === lp.uid ? null : u);
+        }
+      }
     }
     let overflow = 0;
     for (const it of brought) if (!SA.Grid.add(prof.stash, it.id)) { overflow += SA.ITEMS[it.id].val; }
@@ -468,8 +507,7 @@ SA.Raid = (() => {
     // 의뢰 진행
     const cs = prof.contracts;
     const prog = (id, n = 1) => { cs[id] = cs[id] || { progress: 0, done: false }; if (!cs[id].done) cs[id].progress += n; };
-    if (ok) prog('first');
-    if (R.ravenKilled && ok) prog('raven1');
+    if (ok) SA.Contracts.onRaid(R);
     prof.stats.raids++; if (ok) prof.stats.extracts++; else prof.stats.deaths++;
     prof.stats.kills += R.kills;
     prof.stats.bestValue = Math.max(prof.stats.bestValue, ok ? value : 0);
@@ -477,9 +515,10 @@ SA.Raid = (() => {
     SA.Save.store(prof);
     // 메인퀘스트 (지금 목표에만 센다)
     const cnt = (id) => brought.filter(it => it.id === id).length;
-    if (ok) { SA.Quest.event('extract'); SA.Quest.event('blackbox', cnt('blackbox')); if (R.ravenKilled) SA.Quest.event('raven'); }
+    if (ok) { SA.Quest.event('extract'); SA.Quest.event('blackbox', cnt('blackbox')); }
     SA.Quest.event('crystal', cnt('crystal'));
-    SA.Main.showResult({ ok, brought, lost, value, overflow, time: R.t, kills: R.kills, graze: R.graze, corr: R.corr, ravenKilled: R.ravenKilled, pilot: R.player.pilot, rescued: rescuedMsgs, lostCapsule: !ok && !!R.rescueId && [...R.cargo.items, ...R.secure.items].some(isCap) });
+    SA.Quest.sync();
+    SA.Main.showResult({ ok, brought, lost, value, overflow, time: R.t, kills: R.kills, graze: R.graze, corr: R.corr, ravenKilled: R.ravenKilled, pilot: R.player.pilot, rescued: rescuedMsgs, lostCaps, lostPart, ravenFled: R.ravenFled });
   };
 
   const useItem = (it, from) => {
@@ -530,5 +569,5 @@ SA.Raid = (() => {
     return R.items.filter(it => !it.taken && U.d2(it.x, it.y, P.x, P.y) < r * r);
   };
 
-  return { start, update, msg, swapPlan, doSwap, dropLoot, spawnItem, playerDied, bossEngaged, bossKilled, finish, useItem, dropToSpace, nearbyGround, grazeBonus };
+  return { start, update, msg, swapPlan, doSwap, dropLoot, spawnItem, playerDied, bossEngaged, bossKilled, ravenFlee, ravenFled, finish, useItem, dropToSpace, nearbyGround, grazeBonus };
 })();

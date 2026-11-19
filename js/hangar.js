@@ -15,6 +15,7 @@ SA.Hangar = (() => {
     $('#hangar').style.display = 'flex';
     SA.Audio.play('hangar');
     autoRegister();
+    SA.Quest.sync();
     render();
   };
   const close = () => { $('#hangar').style.display = 'none'; SA.UI.hideTip(); };
@@ -386,36 +387,55 @@ SA.Hangar = (() => {
     return prof.deliv;
   };
 
-  // ── 의뢰 ──
+  // ── 의뢰 ── 수주(동시 3개) → 진행 → 보상. 받을 수 있는 것 위로, 완료는 접는다
   const contracts = (body) => {
-    const prof = P(), col = h('div', 'col wide');
-    col.appendChild(h('h3', '', '의뢰 게시판'));
-    for (const c of SA.STORY.contracts) {
-      const st = prof.contracts[c.id] || { progress: 0, done: false };
-      let prog = '', can = false;
-      if (c.type === 'deliver') {
-        prog = Object.keys(c.mats).map(k => { const n = SA.Grid.count(prof.stash, k); return `<span class="${n >= c.mats[k] ? 'ok' : 'bad'}">${SA.ITEMS[k].name} ${Math.min(n, c.mats[k])}/${c.mats[k]}</span>`; }).join(' · ');
-        can = Object.keys(c.mats).every(k => SA.Grid.count(prof.stash, k) >= c.mats[k]);
-      } else { prog = `${Math.min(st.progress, c.need)}/${c.need}`; can = st.progress >= c.need; }
+    const prof = P(), K = SA.Contracts, col = h('div', 'col wide'), side = h('div', 'col');
+    K.sync();
+    col.appendChild(h('h3', '', `의뢰 게시판 <span class="dim small">수주 ${K.active().length}/${SA.REP.maxActive}</span>`));
+    const rank = (c) => { const s = K.st(c.id); return s.done ? 4 : K.canClaim(c) ? 0 : s.accepted ? 1 : 2; };
+    const list = SA.STORY.contracts.slice().sort((a, b) => rank(a) - rank(b) || (b.key ? 1 : 0) - (a.key ? 1 : 0));
+    const RV = { kingdom: 'empire', empire: 'kingdom' };
+    const done = h('details', 'donebox'); let nDone = 0;
+    for (const c of list) {
+      const st = K.st(c.id), can = K.canClaim(c);
+      let prog = '';
+      if (c.type === 'deliver') prog = Object.keys(c.mats).map(k => { const n = SA.Grid.count(prof.stash, k); return `<span class="${n >= c.mats[k] ? 'ok' : 'bad'}">${SA.ITEMS[k].name} ${Math.min(n, c.mats[k])}/${c.mats[k]}</span>`; }).join(' · ');
+      else if (c.type === 'raven') prog = prof.raven.done ? '<span class="ok">레이븐을 붙잡았다</span>' : prof.raven.stage ? '도주한 레이븐과 재대결 → 탈출 포드 회수' : '둥지에서 레이븐을 몰아붙여라';
+      else prog = `${Math.min(st.progress, c.need)}/${c.need}${st.accepted ? '' : ' <span class="dim">(수주 후부터 센다)</span>'}`;
       const rw = `₵${c.reward.credits}${c.reward.item ? ' + ' + SA.ITEMS[c.reward.item].name : ''}`;
-      const FAC = { kingdom: '왕국', empire: '제국', neutral: '중립' };   // 진영별 색: 왕국 파랑 · 제국 빨강 · 중립 회색
-      const card = h('div', 'card fac-' + (c.fac || 'neutral') + (st.done ? ' off' : ''), `<span class="ftag">${FAC[c.fac || 'neutral']}</span> <b>${c.title}</b> <span class="dim">${c.giver}</span><div class="small">"${c.brief}"</div><div class="small">진행: ${prog} · 보상: ${rw}</div>`);
-      if (!st.done) {
+      const repTxt = RV[c.fac] ? ` · <span class="rep-${c.fac}">${K.FAC[c.fac]} +${SA.REP.gain}</span> <span class="rep-${RV[c.fac]}">${K.FAC[RV[c.fac]]} -${SA.REP.loss}</span>` : '';
+      const state = st.done ? '' : can ? '<span class="ok">보상 받기 가능</span>' : st.accepted ? '<span class="dim">진행 중</span>' : '';
+      const card = h('div', 'card fac-' + (c.fac || 'neutral') + (st.done ? ' off' : '') + (st.accepted && !st.done ? ' taken' : ''),
+        `<span class="ftag">${K.FAC[c.fac || 'neutral']}</span>${c.key ? ' <span class="ftag key">중요</span>' : ''} <b>${c.title}</b> <span class="dim">${c.giver}</span> ${state}<div class="small">"${c.brief}"</div><div class="small">진행: ${prog}</div><div class="small">보상: ${rw}${repTxt}</div>`);
+      if (st.done) { card.appendChild(h('div', 'ok small', '완료')); done.appendChild(card); nDone++; continue; }
+      const row = h('div', 'row');
+      if (!st.accepted) {
+        const b = h('button', 'btn small' + (K.active().length >= SA.REP.maxActive ? ' dis' : ''), '수주');
+        b.onclick = () => { const err = K.accept(c.id); if (err) { toast(err, '#ffb3b3'); SA.Audio.sfx('deny'); return; } SA.Audio.sfx('click'); render(); };
+        row.appendChild(b);
+      } else {
         const b = h('button', 'btn small' + (can ? '' : ' dis'), c.type === 'deliver' ? '납품' : '보상 받기');
         b.onclick = () => {
-          if (!can) { SA.Audio.sfx('deny'); return; }
-          if (c.type === 'deliver') SA.Grid.takeMats(prof.stash, c.mats);
-          prof.contracts[c.id] = Object.assign(st, { done: true });
-          prof.credits += c.reward.credits;
-          if (c.reward.item) SA.Grid.add(prof.stash, c.reward.item);
+          const rep = K.claim(c.id);
+          if (rep === null) { SA.Audio.sfx('deny'); return; }
           autoRegister();
-          toast(`의뢰 완료: ${c.title} — ${rw}`, '#5dffb0'); SA.Audio.sfx('extract'); SA.Quest.event('contract'); save(); render();
+          toast(`의뢰 완료: ${c.title} — ${rw}${rep}`, '#5dffb0'); SA.Audio.sfx('extract'); SA.Quest.event('contract'); save(); render();
         };
-        card.appendChild(b);
-      } else card.appendChild(h('div', 'ok small', '완료'));
-      col.appendChild(card);
+        const x = h('button', 'btn tiny', '포기');
+        x.onclick = () => { K.abandon(c.id); SA.Audio.sfx('click'); render(); };
+        row.append(b, x);
+      }
+      card.appendChild(row); col.appendChild(card);
     }
-    body.appendChild(col);
+    if (nDone) { done.insertBefore(h('summary', 'dim', `완료한 의뢰 ${nDone}건`), done.firstChild); col.appendChild(done); }
+    // 진영 호감도
+    side.appendChild(h('h3', '', '진영 호감도'));
+    const bar = (f) => { const v = prof.rep[f], w = Math.min(100, Math.abs(v)); return h('div', 'repbar', `<span class="rep-${f}">${K.FAC[f]}</span><span class="track"><i class="${v >= 0 ? 'pos' : 'neg'} rep-bg-${f}" style="width:${w / 2}%;${v >= 0 ? 'left:50%' : 'right:50%'}"></i></span><b>${v > 0 ? '+' : ''}${v}</b>`); };
+    side.append(bar('kingdom'), bar('empire'));
+    const ln = prof.route || K.lean();
+    side.appendChild(h('div', 'small', prof.route ? `2막 루트 확정: <b class="rep-${prof.route}">${K.FAC[prof.route]}</b>` : `지금 기울어진 쪽: ${ln ? `<b class="rep-${ln}">${K.FAC[ln]}</b>` : '<span class="dim">없음</span>'}`));
+    side.appendChild(h('div', 'dim small', `왕국·제국 의뢰를 끝내면 그 진영 +${SA.REP.gain}, 반대 진영 -${SA.REP.loss}. 중립(중개인 오스) 의뢰는 영향이 없다. 1막이 끝날 때 호감도가 높은 진영의 2막 루트로 간다.`));
+    body.append(col, side);
   };
 
   // ── 기록 ──

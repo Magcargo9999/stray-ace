@@ -449,6 +449,11 @@ SA.Render = (() => {
       ctx.beginPath(); ctx.moveTo(12, 0); ctx.lineTo(-4, -9); ctx.lineTo(-4, 9); ctx.closePath(); ctx.fill(); ctx.restore();
       T(ctx, `탈출 ${Math.round(Math.sqrt(U.d2(x.x, x.y, P.x, P.y)) / 10)}m`, e.x - Math.cos(e.a) * 26, e.y - Math.sin(e.a) * 18 + 4, '#5dffb0', 12, 'center');
     }
+    if (R.ravenRematch && R.boss === null) for (const p of R.pois) if (p.type === 'duel' && R.enemies.some(e => e.type === 'raven')) {
+      const e = edge(p.x, p.y, 54); if (e.on) continue;
+      ctx.fillStyle = '#ff4d6d'; ctx.fillRect(e.x - 4, e.y - 4, 8, 8);
+      T(ctx, '레이븐', e.x - Math.cos(e.a) * 26, e.y - Math.sin(e.a) * 16 + 4, '#ff4d6d', 11, 'center');
+    }
     for (const p of R.pois) if (p.type === 'rescue' && !p.done) {
       const e = edge(p.x, p.y, 54); if (e.on) continue;
       ctx.fillStyle = '#6ee7ff'; ctx.fillRect(e.x - 4, e.y - 4, 8, 8);
@@ -549,7 +554,7 @@ SA.Render = (() => {
     for (const p of R.pois) {
       if (!p.seen) continue;
       const px = mx + p.x * k, py = my + p.y * k;
-      ctx.fillStyle = p.done ? '#555' : { wreck: '#ffd166', container: '#ffd166', turrets: '#ff6b7a', patrol: '#ff6b7a', nest: '#ff4d6d', distress: Math.sin(R.t * 6) > 0 ? '#ffd166' : '#7a5a12', rescue: Math.sin(R.t * 6) > 0 ? '#6ee7ff' : '#1d5a66' }[p.type];
+      ctx.fillStyle = p.done ? '#555' : { wreck: '#ffd166', container: '#ffd166', turrets: '#ff6b7a', patrol: '#ff6b7a', nest: '#ff4d6d', distress: Math.sin(R.t * 6) > 0 ? '#ffd166' : '#7a5a12', rescue: Math.sin(R.t * 6) > 0 ? '#6ee7ff' : '#1d5a66', duel: '#ff4d6d' }[p.type];
       ctx.fillRect(px - 2.5, py - 2.5, 5, 5);
     }
     for (const x of R.extracts) if (x.active) {
