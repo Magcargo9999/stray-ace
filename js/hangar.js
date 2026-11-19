@@ -397,7 +397,8 @@ SA.Hangar = (() => {
         can = Object.keys(c.mats).every(k => SA.Grid.count(prof.stash, k) >= c.mats[k]);
       } else { prog = `${Math.min(st.progress, c.need)}/${c.need}`; can = st.progress >= c.need; }
       const rw = `₵${c.reward.credits}${c.reward.item ? ' + ' + SA.ITEMS[c.reward.item].name : ''}`;
-      const card = h('div', 'card' + (st.done ? ' off' : ''), `<b>${c.title}</b> <span class="dim">${c.giver}</span><div class="small">"${c.brief}"</div><div class="small">진행: ${prog} · 보상: ${rw}</div>`);
+      const FAC = { kingdom: '왕국', empire: '제국', neutral: '중립' };   // 진영별 색: 왕국 파랑 · 제국 빨강 · 중립 회색
+      const card = h('div', 'card fac-' + (c.fac || 'neutral') + (st.done ? ' off' : ''), `<span class="ftag">${FAC[c.fac || 'neutral']}</span> <b>${c.title}</b> <span class="dim">${c.giver}</span><div class="small">"${c.brief}"</div><div class="small">진행: ${prog} · 보상: ${rw}</div>`);
       if (!st.done) {
         const b = h('button', 'btn small' + (can ? '' : ' dis'), c.type === 'deliver' ? '납품' : '보상 받기');
         b.onclick = () => {

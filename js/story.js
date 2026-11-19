@@ -10,13 +10,13 @@ SA.STORY = {
     '정비사 테오: "제국 엔진에 왕국 전선이라... 요즘 함선은 다 짜깁기야."',
   ],
   contracts: [
-    { id: 'first', title: '첫 출격', giver: '중개인 오스', type: 'extract', need: 1,
+    { id: 'first', title: '첫 출격', giver: '중개인 오스', fac: 'neutral', type: 'extract', need: 1,
       brief: '아무 탈출점으로든 살아서 돌아와. 그거면 돼.', reward: { credits: 300, item: 'bp_scatter' } },
-    { id: 'deliver1', title: '납품: 고철과 코어', giver: '왕국 보급관', type: 'deliver', mats: { scrap: 8, core: 2 },
+    { id: 'deliver1', title: '납품: 고철과 코어', giver: '왕국 보급관', fac: 'kingdom', type: 'deliver', mats: { scrap: 8, core: 2 },
       brief: '전선 수리에 쓸 고철 8개, 코어 2개. 출처는 묻지 않겠다.', reward: { credits: 700 } },
-    { id: 'blackbox1', title: '블랙박스 회수', giver: '제국 보급관', type: 'deliver', mats: { blackbox: 1 },
+    { id: 'blackbox1', title: '블랙박스 회수', giver: '제국 보급관', fac: 'empire', type: 'deliver', mats: { blackbox: 1 },
       brief: '소행성대에 추락한 정찰선의 블랙박스. 해독하지 말고 그대로 가져와.', reward: { credits: 500, item: 'bp_shield' } },
-    { id: 'raven1', title: '표적: 레이븐', giver: '중개인 오스', type: 'kill', target: 'raven', need: 1,
+    { id: 'raven1', title: '표적: 레이븐', giver: '중개인 오스', fac: 'neutral', type: 'kill', target: 'raven', need: 1,
       brief: '레이븐이 소행성대 중심에 둥지를 틀었어. 양쪽 다 그를 원하지 않아.', reward: { credits: 1200, item: 'bp_lance' } },
   ],
   blackbox: [

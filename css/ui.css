@@ -110,3 +110,10 @@ h3 { margin: 6px 0 8px; font-size: 15px; color: #cfe3ff; } h4 { margin: 10px 0 6
 .portrait .x::before { transform: rotate(45deg); } .portrait .x::after { transform: rotate(-45deg); }
 .card.pilot.off .portrait { filter: grayscale(.8); }
 .pskill { margin-top: 6px; padding: 6px 8px; border-left: 2px solid #3a4a6b; }
+
+/* 의뢰 진영 색 */
+.card.fac-kingdom { border-left: 4px solid #6aa0ff; background: linear-gradient(90deg, #14284f, #0b1120 45%); }
+.card.fac-empire { border-left: 4px solid #ff5d6c; background: linear-gradient(90deg, #3d141c, #0b1120 45%); }
+.card.fac-neutral { border-left: 4px solid #8f9bb8; }
+.ftag { display: inline-block; font-size: 11px; padding: 0 6px; border: 1px solid; margin-right: 4px; }
+.fac-kingdom .ftag { color: #8fb6ff; border-color: #6aa0ff; } .fac-empire .ftag { color: #ff8f9a; border-color: #ff5d6c; } .fac-neutral .ftag { color: #aab4cc; border-color: #5d6a88; }
