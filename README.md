@@ -1,4 +1,4 @@
-# STRAY//ACE 프로토타입 v0.26
+# STRAY//ACE 프로토타입 v0.27
 
 바로 플레이: https://magcargo9999.github.io/stray-ace/
 

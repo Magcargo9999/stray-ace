@@ -18,7 +18,7 @@ SA.CFG = {
 
 // 화물 아이템. w,h = 격자 칸, val = 판매가
 SA.ITEMS = {
-  scrap:    { name: '고철', w: 1, h: 1, val: 20, kind: 'mat', color: '#8a8f98', desc: '어느 쪽 함선이었는지 알 수 없는 쇳조각. 녹이면 다 똑같다.' },
+  scrap:    { name: '고철', w: 1, h: 1, val: 20, kind: 'mat', img: 'assets/i_scrap.png', color: '#8a8f98', desc: '어느 쪽 함선이었는지 알 수 없는 쇳조각. 녹이면 다 똑같다.' },
   wire:     { name: '전선 다발', w: 2, h: 1, val: 45, kind: 'mat', color: '#c9a65b', desc: '왕국 규격 피복. 제국 함선에서 뜯어도 같은 규격이다.' },
   core:     { name: '코어', w: 1, h: 2, val: 90, kind: 'mat', color: '#5b9bd5', desc: '함선의 심장. 아직 따뜻하다.' },
   engine:   { name: '엔진', w: 2, h: 2, val: 160, kind: 'mat', color: '#d58a5b', desc: '제국 공방 각인이 긁혀 지워져 있다.' },
@@ -26,7 +26,7 @@ SA.ITEMS = {
   prec:     { name: '정밀 부품', w: 1, h: 1, val: 120, kind: 'mat', color: '#7fd3ff', desc: '군용 규격 베어링과 회로. 강화 부품에 들어간다.' },
   ace:      { name: '에이스 각인', w: 1, h: 1, val: 400, kind: 'mat', color: '#ff4d6d', desc: '이름 있는 자의 기체에서 뜯어낸 각인. 전설 부품에 들어간다.' },
   raven_ticket: { name: '레이븐 고용권', w: 2, h: 1, val: 0, kind: 'ticket', img: 'assets/raven_ticket.png', color: '#c49ac0', desc: '창고에서 사용하면 레이븐이 용병단에 합류한다.' },
-  crystal:  { name: '침식 결정', w: 1, h: 1, val: 220, kind: 'mat', color: '#b98cff', desc: '침식체가 남긴 결정. 만지면 손끝이 저린다.' },
+  crystal:  { name: '침식 결정', w: 1, h: 1, val: 220, kind: 'mat', img: 'assets/i_crystal.png', color: '#b98cff', desc: '침식체가 남긴 결정. 만지면 손끝이 저린다.' },
   debris:   { name: '대형 잔해', w: 2, h: 3, val: 300, kind: 'mat', color: '#9aa3ad', desc: '크고 무겁고 비싸다. 화물칸이 운다.' },
   blackbox: { name: '블랙박스', w: 1, h: 1, val: 150, kind: 'lore', color: '#ff8f3d', desc: '격추된 함선의 기록 장치. 팔거나, 격납고에서 해독하거나.' },
   canister: { name: '정화 캐니스터', w: 1, h: 2, val: 70, kind: 'use', color: '#7ff0e0', desc: '사용: 침식률 -25%.' },
