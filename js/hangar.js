@@ -38,7 +38,7 @@ SA.Hangar = (() => {
     const body = $('#hg-body'); body.innerHTML = '';
     ({ sortie, stash, bench, shop, contracts, records })[tab](body);
     $('#hg-line').textContent = SA.U.pick([...SA.STORY.broker, ...SA.STORY.mechanic]);
-    $('#hg-quest').innerHTML = `<b>목표</b>${SA.Quest.label()}`;
+    $('#hg-quest').innerHTML = `<b>목표</b>${SA.Quest.label()}${SA.Quest.rewardText()}`;
   };
   const go = (t) => { tab = t; SA.Audio.sfx('click'); render(); };
 

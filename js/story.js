@@ -36,13 +36,13 @@ SA.STORY = {
   ],
   // 메인퀘스트: '다음에 뭘 해야 하는지'만. 한 번에 하나, HUD 한 줄로 보인다.
   main: [
-    { id: 'm1', text: '폐광 소행성대에서 탈출점으로 귀환', ev: 'extract', need: 1, reward: 200,
+    { id: 'm1', text: '폐광 소행성대에서 탈출점으로 귀환', ev: 'extract', need: 1, reward: 200, bp: 'plating',
       line: '중개인 오스: "살아 돌아왔군. 이 바닥에선 그게 첫 번째 재능이야."' },
-    { id: 'm2', text: '작업대에서 부품 1개 제작', ev: 'craft', need: 1, reward: 150,
+    { id: 'm2', text: '작업대에서 부품 1개 제작', ev: 'craft', need: 1, reward: 150, bp: 'missile',
       line: '정비사 테오: "손에 익은 부품이 제일 좋은 부품이지. 단장님도 그랬잖아요."' },
-    { id: 'm3', text: '의뢰 게시판에서 의뢰 1개 완료', ev: 'contract', need: 1, reward: 200,
+    { id: 'm3', text: '의뢰 게시판에서 의뢰 1개 완료', ev: 'contract', need: 1, reward: 200, bp: 'scatter',
       line: '중개인 오스: "양쪽 다 당신 이름을 묻기 시작했어. 좋은 징조는 아니야."' },
-    { id: 'm4', text: '추락한 정찰선에서 블랙박스를 가져오기', ev: 'blackbox', need: 1, reward: 300,
+    { id: 'm4', text: '추락한 정찰선에서 블랙박스를 가져오기', ev: 'blackbox', need: 1, reward: 300, bp: 'flamer',
       line: '정비사 테오: "왕국 정찰선이네요. 왕국 주파수… 단장님 옛날 부대 거 아닌가요?"' },
     { id: 'm5', text: '폐광 중심의 네임드 레이븐을 격추하고 탈출', ev: 'raven', need: 1, reward: 500, onDone: 'ravenJoins',
       line: '레이븐: "…역시 당신이었군요, 대장. 이번엔 안 떠나는 거죠?"' },

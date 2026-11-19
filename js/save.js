@@ -35,7 +35,7 @@ SA.Save = (() => {
     for (const it of p.stash.items.slice()) if (!SA.ITEMS[it.id]) { p.credits += LEGACY[it.id] || 0; SA.Grid.remove(p.stash, it.uid); }
     p.parts = p.parts.filter(q => SA.PARTS[q.id]);
     p.recipes = p.recipes.filter(r => SA.RECIPES[r]);
-    for (const r of ['pulse', 'mg', 'emp', 'harpoon']) if (!p.recipes.includes(r)) p.recipes.push(r);
+    for (const r of ['pulse', 'mg']) if (!p.recipes.includes(r)) p.recipes.push(r);   // 기본 두 개는 항상 안다
     for (const id in p.bring) if (!SA.ITEMS[id]) delete p.bring[id];
     return p;
   };

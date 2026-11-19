@@ -145,7 +145,7 @@ SA.RECIPES = {
   raven:   { mats: { ace: 2, goldchip: 2, engine: 1 } },
   resonator:{ mats: { ace: 2, crystal: 3, prec: 2 } },
 };
-SA.START_RECIPES = ['pulse', 'mg', 'twin', 'plating', 'engine2', 'magnet', 'missile', 'emp', 'harpoon'];
+SA.START_RECIPES = ['pulse', 'mg', 'magnet'];   // 처음 아는 제작법은 이것뿐 (임시). 나머지는 초반 퀘스트 보상·설계도 드랍으로
 // 설계도 아이템은 부품마다 자동 생성. 등급별 풀에서 무작위로 떨어진다 (loot의 'bp:일반' 등)
 SA.BP_POOL = { 일반: [], 강화: [], 전설: [] };
 for (const id in SA.PARTS) {
