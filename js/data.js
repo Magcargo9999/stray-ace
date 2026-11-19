@@ -20,7 +20,7 @@ SA.CFG = {
 SA.ITEMS = {
   scrap:    { name: '고철', w: 1, h: 1, val: 20, kind: 'mat', img: 'assets/i_scrap.png', color: '#8a8f98', desc: '어느 쪽 함선이었는지 알 수 없는 쇳조각. 녹이면 다 똑같다.' },
   wire:     { name: '전선 다발', w: 2, h: 1, val: 45, kind: 'mat', color: '#c9a65b', desc: '왕국 규격 피복. 제국 함선에서 뜯어도 같은 규격이다.' },
-  core:     { name: '코어', w: 1, h: 2, val: 90, kind: 'mat', color: '#5b9bd5', desc: '함선의 심장. 아직 따뜻하다.' },
+  core:     { name: '코어', w: 1, h: 2, val: 90, kind: 'mat', img: 'assets/i_core.png', color: '#5b9bd5', desc: '함선의 심장. 아직 따뜻하다.' },
   engine:   { name: '엔진', w: 2, h: 2, val: 160, kind: 'mat', img: 'assets/i_engine.png', color: '#d58a5b', desc: '제국 공방 각인이 긁혀 지워져 있다.' },
   goldchip: { name: '금빛 회로', w: 1, h: 1, val: 180, kind: 'mat', color: '#ffd166', desc: '작고 비싸다. 용병들이 제일 먼저 챙기는 것.' },
   prec:     { name: '정밀 부품', w: 1, h: 1, val: 120, kind: 'mat', color: '#7fd3ff', desc: '군용 규격 베어링과 회로. 강화 부품에 들어간다.' },
@@ -30,7 +30,7 @@ SA.ITEMS = {
   debris:   { name: '대형 잔해', w: 2, h: 3, val: 300, kind: 'mat', color: '#9aa3ad', desc: '크고 무겁고 비싸다. 화물칸이 운다.' },
   blackbox: { name: '블랙박스', w: 1, h: 1, val: 150, kind: 'lore', img: 'assets/i_blackbox.png', color: '#ff8f3d', desc: '격추된 함선의 기록 장치. 팔거나, 격납고에서 해독하거나.' },
   canister: { name: '정화 캐니스터', w: 1, h: 2, val: 70, kind: 'use', img: 'assets/i_canister.png', color: '#7ff0e0', desc: '사용: 침식률 -25%.' },
-  repairkit:{ name: '수리킷', w: 1, h: 1, val: 60, kind: 'use', img: 'assets/i_repairkit.png', color: '#9df07f', desc: '사용: 체력 40 회복.' },
+  repairkit:{ name: '수리킷', w: 1, h: 1, val: 60, kind: 'use', img: 'assets/i_repairkit.png', color: '#9df07f', desc: '사용: 체력 40 회복. Tab 화물칸에서 장착 부품에 끌어다 놓으면 그 부품 내구도 +40.' },
   bp_raven:   { name: '설계도: 레이븐 추진기', w: 1, h: 1, val: 300, kind: 'bp', recipe: 'raven', color: '#ffd166', desc: '네임드 용병 레이븐의 추진기. 그는 이걸로 탄 사이를 미끄러졌다.' },
 };
 
@@ -207,9 +207,25 @@ for (const id in SA.RESCUE.targets) {
 SA.RAVEN = { hp: 1500, fleeAt: 0.3, phase3At: 0.25, dodgeCd: [1.8, 1.5, 1.1],
   fleeDrops: [['goldchip', 1], ['prec', .6], ['bp:강화', .3]] };
 SA.ITEMS.cap_raven = { name: '레이븐의 탈출 포드', w: 2, h: 2, val: 0, kind: 'capsule', color: '#ff4d6d', desc: '격추된 레이븐이 갇힌 탈출 포드. 들고 탈출해야 그를 붙잡는다. 들고 있으면 이속 -10%.' };
+// 난파선 (임시): 아이템 하나당 0.9초, 마지막 한 개는 4초. 벗어나면 진행 중 게이지가 초당 0.6씩 줄어든다.
+// 마지막 보상은 위에서부터 굴려 처음 당첨된 것 하나 (좋은 것 확률 높게)
+SA.WRECK = { per: 0.9, last: 4, decay: 0.6, final: [['bp:강화', .1], ['goldchip', .3], ['bp:일반', .25], ['engine', .35], ['prec', 1]] };
+// 네임드 윙맨 (초안·임시 수치). 중립 의뢰로 함께 출격한다. 기체 그림은 진영 전투기 도트를 빌려 쓴다
+SA.NAMED = {
+  kingdom: { name: '세라', title: '왕국 근위 에이스', color: '#8fb6ff', sprite: 'k_fighter', hp: 160, regen: 4, speed: 175, range: 320,
+             rate: 2.6, shots: 1, spread: 0.01, dmg: 12, spd: 760,
+             hello: '왕국 근위대 세라. 수송선이 먼저다. 당신 등은 내가 본다.', coverOn: '붙겠다. 대신 맞아 주겠다니, 고맙군.', coverOff: '흩어진다. 시야 넓게.',
+             down: '기체 손상… 이탈한다. 미안하다.' },
+  empire:  { name: '볼크', title: '제국 돌격 에이스', color: '#ff7a6b', sprite: 'e_fighter', hp: 180, regen: 4, speed: 185, range: 260,
+             rate: 8, shots: 2, spread: 0.12, dmg: 3.5, spd: 560,
+             hello: '제국 돌격대 볼크다. 사냥꾼 머리는 내 거다. 넌 뒤만 받쳐.', coverOn: '좋아, 방패는 네가 해라!', coverOff: '흩어져! 각자 사냥이다.',
+             down: '젠장, 엔진이… 먼저 빠진다!' },
+};
+SA.CONVOY = { hp: 420, r: 18, speed: 42, waveEvery: 20, waveN: 3 };   // 호위 수송선 (임시)
+SA.REPAIRKIT_DUR = 40;   // 수리킷을 부품에 쓰면 내구도 +40 (최대 내구도는 그대로)
 SA.DEATH_PART_LOSS = 1;   // 격추 시 장착 부품 하나를 잃을 확률 (임시)
 // 진영 호감도 (임시): 왕국·제국 의뢰 완료 시 그 진영 +10, 반대 진영 -5. 중립 의뢰는 영향 없음. 동시 수주 최대 3개
-SA.REP = { gain: 10, loss: 5, maxActive: 3 };
+SA.REP = { gain: 10, loss: 5, maxActive: 3, massacre: { free: 10, per: 5, max: 5 } };   // 한 판에 같은 진영 10기 초과부터 5기마다 -1, 최대 -5
 SA.CMDR_CORR = 3;
 SA.INJURY_RAIDS = 2;
 
@@ -230,19 +246,22 @@ SA.ENEMIES = {
                drops: [['scrap', .7], ['core', .3], ['prec', .15]] },
   m_turret:  { name: '폐광 포대', faction: 'mine', ai: 'turret', hp: 95, r: 13, speed: 0, img: 'assets/m_turret.png', size: [26, 33], pivot: [0.5, 0.57],
                drops: [['scrap', .8], ['engine', .25], ['core', .3], ['prec', .2], ['bp:일반', .04]] },
-  corrode: { name: '침식체', ai: 'corrode', hp: 34, r: 11, speed: 52, color: '#b98cff', img: 'assets/corrode.png', size: [18, 32], drops: [['crystal', .35]] },
-  hunter:  { name: '심연의 사냥꾼', ai: 'hunter', hp: 700, r: 28, speed: 70, color: '#8a5cff', boss: true, drops: [['crystal', 1], ['crystal', .4], ['ace', .6], ['ace', .25], ['bp:전설', .3], ['goldchip', .8]] },
+  corrode: { name: '침식체', ai: 'corrode', hp: 44, r: 11, speed: 80, color: '#b98cff', img: 'assets/corrode.png', size: [18, 32], drops: [['crystal', .3]] },
+  hunter:  { name: '심연의 사냥꾼', ai: 'hunter', img: 'assets/hunter_0.png', anim: { n: 6, fps: 8 }, size: [64, 81], hp: 700, r: 28, speed: 70, color: '#8a5cff', boss: true, drops: [['crystal', 1], ['crystal', .4], ['ace', .6], ['ace', .25], ['bp:전설', .3], ['goldchip', .8]] },
   raven:   { name: '네임드 용병 레이븐', ai: 'raven', img: 'assets/raven_hull.png', size: [30, 27], pivot: [0.5, 0.5], hp: 1500, r: 12, speed: 150, color: '#ff4d6d', boss: true, drops: [['bp_raven', .5], ['bp_sensor', .3], ['ace', 1], ['ace', .4], ['bp:강화', .8], ['goldchip', 1], ['goldchip', .6], ['blackbox', .8], ['engine', .5]] },
 };
 
 // 침식 단계: at = 침식률 하한(%)
 // 침식 진행 시간(일반): 안정 3:30 → 오염 2:30 → 침식 2:00 → 붕괴 1:30 (100%까지 약 9:30)
 SA.CORROSION = [
-  { at: 0,  name: '안정', fire: 1.0,  speed: 1.0,  rate: 30 / 210 },
-  { at: 30, name: '오염', fire: 0.9,  speed: 1.0,  rate: 30 / 150 },
-  { at: 60, name: '침식', fire: 0.8,  speed: 0.85, rate: 30 / 120, durDrain: true, spawnCorrode: true },
-  { at: 90, name: '붕괴', fire: 0.65, speed: 0.75, rate: 10 / 90, durDrain: true, spawnCorrode: true, hpDrain: 1, hunter: true },
+  // 붕괴(90%)까지 약 6분 (임시). 침식체 리젠은 SA.CORRODE_SPAWN에서 단계별로 따로 정한다
+  { at: 0,  name: '안정', fire: 1.0,  speed: 1.0,  rate: 30 / 158 },
+  { at: 30, name: '오염', fire: 0.9,  speed: 1.0,  rate: 30 / 112 },
+  { at: 60, name: '침식', fire: 0.8,  speed: 0.85, rate: 30 / 90, durDrain: true },
+  { at: 90, name: '붕괴', fire: 0.65, speed: 0.75, rate: 10 / 68, durDrain: true, hpDrain: 1, hunter: true },
 ];
+// 침식체 리젠 (왕국·제국 함선 리젠과 별개). every초마다 n기, 동시에 max기까지 (임시)
+SA.CORRODE_SPAWN = [null, { every: 18, n: 1, max: 3 }, { every: 10, n: 1, max: 6 }, { every: 6, n: 2, max: 10 }];
 
 SA.SHOP = {
   consumables: [['canister', 150], ['repairkit', 120]],

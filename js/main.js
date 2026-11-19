@@ -72,6 +72,7 @@ SA.Main = (() => {
       ${r.overflow ? `<div class="warn small">창고가 가득 차서 일부를 ₵${r.overflow}에 자동 판매했다.</div>` : ''}
       ${(r.rescued || []).map(m => `<div class="ok">${m}</div>`).join('')}
       ${(r.lostCaps || []).map(n => `<div class="warn small">${n}을(를) 잃었다. 다음 출격에 다시 기회가 온다.</div>`).join('')}
+      ${(r.repMsgs || []).map(m => `<div class="warn small">${m}</div>`).join('')}
       ${r.lostPart ? `<div class="bad">잃은 부품: ${r.lostPart} — 장착 칸이 비었다</div>` : ''}
       ${r.ravenFled ? '<div class="ok">레이븐이 도주했다 — 다음 출격부터 미니맵의 붉은 신호에서 재대결</div>' : ''}
       ${!r.ok ? '<div class="small dim">장착 부품 내구도 -40%. 작업대에서 수리할 수 있다.</div>' : ''}`;

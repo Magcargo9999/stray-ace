@@ -393,13 +393,14 @@ SA.Hangar = (() => {
     K.sync();
     col.appendChild(h('h3', '', `의뢰 게시판 <span class="dim small">수주 ${K.active().length}/${SA.REP.maxActive}</span>`));
     const rank = (c) => { const s = K.st(c.id); return s.done ? 4 : K.canClaim(c) ? 0 : s.accepted ? 1 : 2; };
-    const list = SA.STORY.contracts.slice().sort((a, b) => rank(a) - rank(b) || (b.key ? 1 : 0) - (a.key ? 1 : 0));
+    const list = SA.STORY.contracts.filter(K.open).sort((a, b) => rank(a) - rank(b) || (b.key ? 1 : 0) - (a.key ? 1 : 0));
     const RV = { kingdom: 'empire', empire: 'kingdom' };
     const done = h('details', 'donebox'); let nDone = 0;
     for (const c of list) {
       const st = K.st(c.id), can = K.canClaim(c);
       let prog = '';
       if (c.type === 'deliver') prog = Object.keys(c.mats).map(k => { const n = SA.Grid.count(prof.stash, k); return `<span class="${n >= c.mats[k] ? 'ok' : 'bad'}">${SA.ITEMS[k].name} ${Math.min(n, c.mats[k])}/${c.mats[k]}</span>`; }).join(' · ');
+      else if (c.type === 'wing') prog = st.progress >= 1 ? '<span class="ok">완료 — 보상을 받아라</span>' : `${SA.NAMED[c.named].name}와 함께 출격해 ${c.goal === 'escort' ? '수송선을 탈출점까지 호위' : '심연의 사냥꾼 격추'} 후 탈출 <span class="dim">(G: 엄호 · 윙맨이 격추되면 그 판은 실패)</span>`;
       else if (c.type === 'raven') prog = prof.raven.done ? '<span class="ok">레이븐을 붙잡았다</span>' : prof.raven.stage ? '도주한 레이븐과 재대결 → 탈출 포드 회수' : '둥지에서 레이븐을 몰아붙여라';
       else prog = `${Math.min(st.progress, c.need)}/${c.need}${st.accepted ? '' : ' <span class="dim">(수주 후부터 센다)</span>'}`;
       const rw = `₵${c.reward.credits}${c.reward.item ? ' + ' + SA.ITEMS[c.reward.item].name : ''}`;

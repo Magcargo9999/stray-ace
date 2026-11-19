@@ -82,6 +82,7 @@ SA.UI = (() => {
   };
   const startDrag = (e, d) => {
     hideTip(); closeMenu();
+    d.sx = e.clientX; d.sy = e.clientY;
     drag = d;
     const it = SA.ITEMS[d.id];
     const g = h('div', 'ghost');
@@ -131,8 +132,24 @@ SA.UI = (() => {
     const d = drag; drag = null;
     d.el.remove();
     document.querySelectorAll('.grid .preview').forEach(p => p.style.display = 'none');
+    // 주변 아이템: 끌지 않고 좌클릭만 하면 화물칸 빈자리로
+    if (d.src.kind === 'ground' && Math.hypot(e.clientX - d.sx, e.clientY - d.sy) < 5) {
+      if (SA.Grid.add(SA.R.cargo, d.id)) { d.src.item.taken = true; SA.Audio.sfx('pickup', 1); } else { SA.Audio.sfx('deny'); SA.Raid.msg('화물칸에 자리가 없다', '#ffb3b3', 2); }
+      refreshAll(); if (SA.R && SA.R.tabOpen) renderGround(); return;
+    }
     const t = targetAt(e.clientX, e.clientY, d);
     const srcGrid = d.src.kind === 'grid' ? views[d.src.name].grid : null;
+    // 수리킷을 장착 부품에 끌어다 놓으면 그 부품 내구도 +40 (최대 내구도는 그대로)
+    const pz = !t && document.elementFromPoint(e.clientX, e.clientY);
+    const pt = pz && pz.closest && pz.closest('[data-part]');
+    if (pt && d.id === 'repairkit' && srcGrid && SA.R) {
+      const P = SA.R.player, part = [P.main, ...P.subs.map(s => s.part), ...P.acts.map(a => a && a.part), ...P.pas].find(p => p && p.uid === pt.dataset.part);
+      if (part && part.dur < part.max) {
+        part.dur = Math.min(part.max, part.dur + SA.REPAIRKIT_DUR); SA.Grid.remove(srcGrid, d.src.it.uid);
+        SA.Audio.sfx('repair'); SA.Raid.msg(`수리킷 — ${SA.PARTS[part.id].name} 내구도 +${SA.REPAIRKIT_DUR}`, '#9df07f', 2.5);
+      } else SA.Audio.sfx('deny');
+      refreshAll(); renderStatus(); return;
+    }
     if (t) {
       const g = t.v.grid;
       if (d.src.kind === 'grid' && g === srcGrid) {
@@ -202,8 +219,7 @@ SA.UI = (() => {
       const img = h('img'); img.src = SA.Render.iconSrc(gi.id); img.style.width = d.w * 24 + 'px'; img.style.height = d.h * 24 + 'px';
       n.appendChild(img); n.appendChild(h('span', '', `${d.name}<br><span class="dim">${d.w}×${d.h} · ₵${d.val}</span>`));
       n.addEventListener('mousedown', (e) => { if (e.button !== 0) return; e.preventDefault(); startDrag(e, { id: gi.id, rot: 0, src: { kind: 'ground', item: gi }, offX: 0, offY: 0 }); });
-      n.addEventListener('dblclick', () => { if (SA.Grid.add(R.cargo, gi.id)) { gi.taken = true; SA.Audio.sfx('pickup', 1); refreshAll(); renderGround(); } else SA.Audio.sfx('deny'); });
-      n.addEventListener('mouseenter', (e) => showTip(e, gi.id, '<div class="keys">끌어서 화물칸에 놓기 · 더블클릭: 빈자리에 자동으로</div>'));
+      n.addEventListener('mouseenter', (e) => showTip(e, gi.id, '<div class="keys">좌클릭: 빈자리에 자동으로 · 끌어서 원하는 칸에 놓기</div>'));
       n.addEventListener('mouseleave', hideTip);
       box.appendChild(n);
     }
@@ -212,7 +228,7 @@ SA.UI = (() => {
     if (!p) return '';
     const d = SA.PARTS[p.id], r = p.dur / p.max, e = SA.Combat.eff(p);
     const col = r >= 0.5 ? '#5dffb0' : r > 0 ? '#ffd166' : '#ff4d6d';
-    return `<div class="part"><span>${d.name}</span><span class="bar"><i style="width:${r * 100}%;background:${col}"></i></span><span class="dim">${Math.round(p.dur)}/${Math.round(p.max)}${e < 1 ? ` · 성능 ${Math.round(e * 100)}%` : ''}</span></div>`;
+    return `<div class="part" data-part="${p.uid}"><span>${d.name}</span><span class="bar"><i style="width:${r * 100}%;background:${col}"></i></span><span class="dim">${Math.round(p.dur)}/${Math.round(p.max)}${e < 1 ? ` · 성능 ${Math.round(e * 100)}%` : ''}</span></div>`;
   };
   const renderStatus = () => {
     const R = SA.R; if (!R) return;
@@ -229,7 +245,7 @@ SA.UI = (() => {
       <h4>파일럿 — ${pl.name} (${pl.title})</h4><div class="dim small">${pl.desc}</div>
       <h4>장착 부품</h4>
       ${durBar(P.main)}${P.subs.map(s => durBar(s.part)).join('')}${P.acts.map(a => a && durBar(a.part)).join('')}${P.pas.map(durBar).join('')}
-      <div class="dim small">내구도 50% 아래부터 성능이 서서히 떨어진다.</div>`;
+      <div class="dim small">내구도 50% 아래부터 성능이 서서히 떨어진다. 수리킷을 부품에 끌어다 놓으면 내구도 +${SA.REPAIRKIT_DUR}.</div>`;
   };
 
   return { gridView, refreshAll, tabOpen, tabClose, showTip, showTipHtml, hideTip, h, CELL, views };

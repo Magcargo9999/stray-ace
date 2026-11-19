@@ -148,10 +148,21 @@ SA.Contracts = (() => {
       const s = st(c.id);
       if (c.type === 'extract') s.progress++;
       if (c.type === 'kill') for (const t in (R.killTypes || {})) if (t.startsWith(c.target)) s.progress += R.killTypes[t];
+      if (c.type === 'wing' && R.wingC === c.id && !R.wingFail && (c.goal === 'escort' ? R.convoyDone : R.hunterKilled)) s.progress = 1;
     }
+    // 진영 학살: 한 판에 같은 진영을 너무 많이 격추하면 그 진영 호감도 하락
+    const M = SA.REP.massacre, out = [];
+    for (const [f, pre] of [['kingdom', 'k_'], ['empire', 'e_']]) {
+      let n = 0; for (const t in (R.killTypes || {})) if (t.startsWith(pre)) n += R.killTypes[t];
+      if (n > M.free) { const pen = Math.min(M.max, Math.ceil((n - M.free) / M.per)); prof().rep[f] -= pen; out.push(`${FAC[f]} 함선 ${n}기 격추 — ${FAC[f]} 호감도 -${pen}`); }
+    }
+    return out;
   };
+  const open = (c) => !c.req || c.req(prof());   // 조건이 안 된 의뢰는 게시판에 안 보인다
+  // 이번 출격에 함께 갈 윙맨 의뢰 (수주한 것 중 먼저 것 하나)
+  const wingActive = () => active().find(c => c.type === 'wing') || null;
   const sync = () => { for (const c of active()) if (c.type === 'raven' && prof().raven.done) st(c.id).progress = 1; };
   // 지금 기울어진 진영 (동점이면 마지막으로 의뢰를 끝낸 진영, 아무것도 안 했으면 null)
   const lean = () => { const r = prof().rep; return r.kingdom > r.empire ? 'kingdom' : r.empire > r.kingdom ? 'empire' : (r.last || null); };
-  return { FAC, st, def, active, canClaim, accept, abandon, claim, onRaid, sync, lean };
+  return { FAC, open, wingActive, st, def, active, canClaim, accept, abandon, claim, onRaid, sync, lean };
 })();

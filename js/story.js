@@ -33,6 +33,11 @@ SA.STORY = {
       brief: '아무 탈출점으로든 살아서 돌아와. 그거면 돼.', reward: { credits: 300, item: 'bp_scatter' } },
     { id: 'raven1', title: '표적: 레이븐', giver: '중개인 오스', fac: 'neutral', key: true, type: 'raven', need: 1,
       brief: '레이븐이 소행성대 중심에 둥지를 틀었어. 죽이지 말고 데려와. 할 얘기가 있거든.', reward: { credits: 1200, item: 'bp_lance' } },
+    // 1막 후반 (레이븐을 붙잡은 뒤): 네임드 윙맨과 함께 출격. 윙맨·수송선이 격추되면 그 판은 실패 (수주는 유지)
+    { id: 'w_kingdom', title: '호위: 왕국 수송선', giver: '중개인 오스', fac: 'neutral', key: true, type: 'wing', named: 'kingdom', goal: 'escort', need: 1, req: p => p.raven.done,
+      brief: '왕국 에이스 세라가 수송선을 끌고 소행성대를 지나. 같이 붙어서 탈출점까지 데려다줘. 수송선도 세라도 잃으면 안 돼.', reward: { credits: 1500, item: 'ace' } },
+    { id: 'w_empire', title: '사냥: 심연의 사냥꾼', giver: '중개인 오스', fac: 'neutral', key: true, type: 'wing', named: 'empire', goal: 'hunter', need: 1, req: p => p.raven.done,
+      brief: '제국 에이스 볼크가 사냥꾼을 잡겠다고 난리야. 침식이 끝까지 차오를 때까지 같이 버텨서 그놈을 떨어뜨리고 나와.', reward: { credits: 1800, item: 'ace' } },
     { id: 'deliver1', title: '납품: 고철과 코어', giver: '왕국 보급관', fac: 'kingdom', type: 'deliver', mats: { scrap: 8, core: 2 },
       brief: '전선 수리에 쓸 고철 8개, 코어 2개. 출처는 묻지 않겠다.', reward: { credits: 700 } },
     { id: 'k_hunt', title: '소탕: 제국 초계대', giver: '왕국 보급관', fac: 'kingdom', type: 'kill', target: 'e_', need: 12,
@@ -77,7 +82,7 @@ SA.STORY = {
     // 레이븐: 둥지에서 몰아붙이면 도주 → 다른 곳에서 재대결 → 탈출 포드를 들고 탈출. 퀘스트 순서와 상관없이 해 두면 인정된다
     { id: 'm5', text: '네임드 레이븐을 붙잡기', ev: 'raven', need: 1, reward: 500, raven: true, check: p => p.raven && p.raven.done,
       line: '레이븐: "…역시 당신이었군요, 대장. 이번엔 안 떠나는 거죠?"' },
-    { id: 'm6', text: '침식 결정 3개 가져오기 (침식 2단계부터 침식체가 나온다)', ev: 'crystal', need: 3, reward: 600,
+    { id: 'm6', text: '침식 결정 3개 가져오기 (침식 1단계부터 침식체가 나온다)', ev: 'crystal', need: 3, reward: 600,
       line: '왕국 장군의 통신: "…오랜만이야. 그 결정, 어디서 났는지 직접 말해 줘야겠어."' },
     { id: 'm7', text: '2막 「전선 궤도」 — 다음 업데이트에서 열린다', ev: null, need: 1, reward: 0, line: '', actEnd: true },
   ],

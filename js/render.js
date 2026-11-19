@@ -18,7 +18,8 @@ SA.Render = (() => {
   };
   const load = (done) => {
     const list = [['hex', 'assets/hex_hull.png'], ['hexTurret', 'assets/hex_turret.png'], ['swift', 'assets/swift_hull.png'], ['bastion', 'assets/bastion_hull.png'], ['arsenal', 'assets/arsenal_hull.png'], ['flame', 'assets/engine_flame.png'], ['ast_rock', 'assets/m_rock.png'], ['ast_planet', 'assets/m_planetoid.png'], ['ast_shard', 'assets/m_shard.png']];
-    for (const id in SA.ENEMIES) if (SA.ENEMIES[id].img) list.push(['en_' + id, SA.ENEMIES[id].img]);
+    for (const id in SA.ENEMIES) { const d = SA.ENEMIES[id]; if (!d.img) continue; list.push(['en_' + id, d.img]);
+      if (d.anim) for (let k = 1; k < d.anim.n; k++) list.push(['en_' + id + '_' + k, d.img.replace(/_0\.png$/, '_' + k + '.png')]); }   // 애니메이션 프레임 xxx_0..n-1.png
     for (const id in SA.ITEMS) if (SA.ITEMS[id].img) list.push(['it_' + id, SA.ITEMS[id].img]);
     let left = list.length;
     for (const [k, src] of list) {
@@ -32,7 +33,8 @@ SA.Render = (() => {
       const s = SA.SHIPS[id];
       if (IMG[id]) pre[id] = shrink(IMG[id], s.size[0] * Z, s.size[1] * Z);
     }
-    for (const id in SA.ENEMIES) { const d = SA.ENEMIES[id]; if (d.img && IMG['en_' + id]) pre['en_' + id] = shrink(IMG['en_' + id], d.size[0] * Z, d.size[1] * Z); }
+    for (const id in SA.ENEMIES) { const d = SA.ENEMIES[id]; if (d.img && IMG['en_' + id]) pre['en_' + id] = shrink(IMG['en_' + id], d.size[0] * Z, d.size[1] * Z);
+      if (d.anim) for (let k = 1; k < d.anim.n; k++) if (IMG['en_' + id + '_' + k]) pre['en_' + id + '_' + k] = shrink(IMG['en_' + id + '_' + k], d.size[0] * Z, d.size[1] * Z); }
     // 엄폐물: 크기 단계별로 미리 축소 (작은 원본은 그대로 확대)
     for (const k of ['rock', 'shard']) if (IMG['ast_' + k]) {
       const im = IMG['ast_' + k]; pre['ast_' + k] = [24, 48, 96].map(d => { const s = d * Z / Math.max(im.width, im.height); return shrink(im, im.width * s, im.height * s); });
@@ -163,6 +165,7 @@ SA.Render = (() => {
     }
     // 적
     for (const e of R.enemies) if (vis(e.x, e.y, e.r + 10)) drawEnemy(ctx, R, e);
+    for (const a of R.allies || []) if (!a.dead && vis(a.x, a.y, a.r + 20)) drawAlly(ctx, R, a);
     // 플레이어 탄
     for (const b of R.pb) {
       if (!vis(b.x, b.y, 6)) continue;
@@ -254,8 +257,17 @@ SA.Render = (() => {
     } else if (p.type === 'turrets') {
       ctx.strokeStyle = 'rgba(255,90,110,0.25)'; ctx.lineWidth = 6; ctx.beginPath(); ctx.arc(p.x, p.y, 55, 0, 6.29); ctx.stroke();
     }
-    if ((p.type === 'wreck' || p.type === 'distress') && !p.done) {
-      const need = p.type === 'wreck' ? 2.5 : 3;
+    if (p.type === 'wreck' && !p.done) {   // 난파선: 진행 중 게이지 + 남은 자원 칸
+      const final = p.loot && !p.loot.length, need = !p.loot ? SA.WRECK.per : final ? SA.WRECK.last : SA.WRECK.per, cur = p.cur || 0;
+      const near = U.d2(p.x, p.y, R.player.x, R.player.y) < 46 * 46;
+      ctx.strokeStyle = near ? '#ffd166' : 'rgba(255,209,102,0.25)'; ctx.lineWidth = 1; ctx.setLineDash([3, 4]);
+      ctx.beginPath(); ctx.arc(p.x, p.y, 46, 0, 6.29); ctx.stroke(); ctx.setLineDash([]);
+      if (cur > 0) { ctx.strokeStyle = final ? '#ff9de2' : '#ffd166'; ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(p.x, p.y, 49, -Math.PI / 2, -Math.PI / 2 + Math.min(1, cur / need) * 6.283); ctx.stroke(); }
+      if (p.loot) { const left = p.loot.length + 1; for (let i = 0; i < p.total; i++) { ctx.fillStyle = i < left ? (i === 0 && final ? '#ff9de2' : '#ffd166') : '#3a3424'; ctx.fillRect(p.x - p.total * 4 + i * 8, p.y + 54, 6, 3); } }
+      if (near && !cur) label(ctx, p.loot ? (final ? '마지막: 오래 머물면 좋은 것이 나온다' : '머물러서 뒤지기') : '머물러서 뒤지기', p.x, p.y + 66, '#ffd166', 7);
+    }
+    if (p.type === 'distress' && !p.done) {
+      const need = 3;
       const near = U.d2(p.x, p.y, R.player.x, R.player.y) < 46 * 46;
       ctx.strokeStyle = near ? '#ffd166' : 'rgba(255,209,102,0.25)'; ctx.lineWidth = 1; ctx.setLineDash([3, 4]);
       ctx.beginPath(); ctx.arc(p.x, p.y, 46, 0, 6.29); ctx.stroke(); ctx.setLineDash([]);
@@ -282,9 +294,27 @@ SA.Render = (() => {
   };
   const shipPoly = (ctx, pts) => { ctx.beginPath(); pts.forEach(([a, b], i) => i ? ctx.lineTo(a, b) : ctx.moveTo(a, b)); ctx.closePath(); };
 
+  // 아군: 네임드 윙맨(진영 전투기 도트 + 이름) · 호위 수송선(왕국 프리깃 도트를 크게)
+  const drawAlly = (ctx, R, a) => {
+    const isW = a.kind === 'wing', N = isW ? SA.NAMED[a.named] : null;
+    const id = isW ? N.sprite : 'k_frigate', D = SA.ENEMIES[id], spr = pre['en_' + id], k = isW ? 1 : 1.5;
+    const w = D.size[0] * k, h = D.size[1] * k;
+    ctx.save(); ctx.translate(a.x, a.y); ctx.rotate((a.face || 0) + Math.PI / 2);
+    if (a.flash > 0) ctx.filter = 'brightness(2.6)';
+    ctx.imageSmoothingEnabled = true;
+    if (spr) ctx.drawImage(spr, -w / 2, -h / 2, w, h);
+    ctx.restore();
+    const col = isW ? N.color : '#8fb6ff';
+    ctx.strokeStyle = col; ctx.globalAlpha = 0.5; ctx.lineWidth = 1; ctx.beginPath(); ctx.arc(a.x, a.y, a.r + 6, 0, 6.29); ctx.stroke(); ctx.globalAlpha = 1;
+    if (isW && a.cover) { ctx.strokeStyle = '#5dffb0'; ctx.setLineDash([2, 3]); ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(R.player.x, R.player.y); ctx.stroke(); ctx.setLineDash([]); }
+    label(ctx, isW ? N.name : (a.waiting ? '수송선 (대기 중)' : '수송선'), a.x, a.y - a.r - 14, col, 6);
+    ctx.fillStyle = '#10202e'; ctx.fillRect(a.x - 14, a.y - a.r - 9, 28, 3); ctx.fillStyle = col; ctx.fillRect(a.x - 14, a.y - a.r - 9, 28 * a.hp / a.maxHp, 3);
+  };
   const drawEnemy = (ctx, R, e) => {
     const P = R.player, a = U.ang(e.x, e.y, P.x, P.y), fl = e.flash > 0;
-    const D = SA.ENEMIES[e.type], spr = D && pre['en_' + e.type];
+    const D = SA.ENEMIES[e.type];
+    let spr = D && pre['en_' + e.type];
+    if (spr && D.anim) { const k = Math.floor(R.t * D.anim.fps + e.homeX) % D.anim.n; spr = (k && pre['en_' + e.type + '_' + k]) || spr; }   // 프레임 애니메이션
     if (spr) {   // 도트 적기: 기수가 위를 향한 그림을 진행 방향으로 돌린다
       const w = D.size[0], h = D.size[1], pv = D.pivot || [0.5, 0.5];
       ctx.save(); ctx.translate(e.x, e.y); ctx.rotate((D.ai === 'turret' ? e.a : e.face) + Math.PI / 2);
@@ -296,7 +326,7 @@ SA.Render = (() => {
       ctx.restore();
       if (e.stun > 0) label(ctx, '기절', e.x, e.y - e.r - 12, '#8fd3ff', 6);
       if (e.type === 'raven') { label(ctx, 'RAVEN', e.x, e.y - 20, '#ff4d6d', 6); return; }
-      if (e.hp < e.maxHp) { ctx.fillStyle = '#300'; ctx.fillRect(e.x - 10, e.y - e.r - 8, 20, 2); ctx.fillStyle = D.faction === 'kingdom' ? '#8fb6ff' : '#ff6b6b'; ctx.fillRect(e.x - 10, e.y - e.r - 8, 20 * e.hp / e.maxHp, 2); }
+      if (!e.boss && e.hp < e.maxHp) { ctx.fillStyle = '#300'; ctx.fillRect(e.x - 10, e.y - e.r - 8, 20, 2); ctx.fillStyle = D.faction === 'kingdom' ? '#8fb6ff' : '#ff6b6b'; ctx.fillRect(e.x - 10, e.y - e.r - 8, 20 * e.hp / e.maxHp, 2); }
       return;
     }
     const C = (c) => fl ? '#ffffff' : c;
@@ -485,6 +515,18 @@ SA.Render = (() => {
       T(ctx, SA.ENEMIES[b.type].name, W / 2, by - 6, '#ff8fa3', 14, 'center');
       bar(ctx, bx, by, bw, 8, b.hp / b.maxHp, b.type === 'raven' ? '#ff4d6d' : '#8a5cff');
     }
+    // 윙맨·수송선 상태 (왼쪽, 목표 줄 아래)
+    if (R.allies && R.allies.length) {
+      let y = 56;
+      for (const a of R.allies) {
+        const isW = a.kind === 'wing', N = isW && SA.NAMED[a.named], col = isW ? N.color : '#8fb6ff';
+        T(ctx, a.dead ? `${isW ? N.name : '수송선'} — 격추` : isW ? `${N.name}${a.cover ? ' · 엄호 중' : ''}` : `수송선${a.arrived ? ' · 도착' : a.waiting ? ' · 대기 (가까이 와라)' : ''}`, 24, y, a.dead ? '#777' : col, 12);
+        if (!a.dead) bar(ctx, 24, y + 6, 160, 5, a.hp / a.maxHp, col);
+        y += 26;
+      }
+      if (R.wing && !R.wing.dead) T(ctx, `G: 엄호 ${R.wing.cover ? '끄기' : '켜기'} (받는 피해 절반을 대신 맞는다)`, 24, y, '#9aa7bd', 11);
+      if (R.wingFail) T(ctx, '의뢰 실패 — 이번 판은 진행되지 않는다', 24, y + 18, '#ffb3b3', 11);
+    }
     // 메시지
     R.msgs.forEach((m, i) => { ctx.globalAlpha = Math.min(1, m.life); T(ctx, m.text, W / 2, 140 + i * 24, m.col, 16, 'center'); });
     ctx.globalAlpha = 1;
@@ -560,6 +602,7 @@ SA.Render = (() => {
     for (const x of R.extracts) if (x.active) {
       ctx.strokeStyle = '#5dffb0'; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.arc(mx + x.x * k, my + x.y * k, 5, 0, 6.29); ctx.stroke();
     }
+    for (const a of R.allies || []) if (!a.dead) { ctx.fillStyle = a.kind === 'wing' ? SA.NAMED[a.named].color : '#8fb6ff'; ctx.fillRect(mx + a.x * k - 2, my + a.y * k - 2, 4, 4); }
     if (R.boss && !R.boss.dead) { ctx.fillStyle = '#ff4d6d'; ctx.beginPath(); ctx.arc(mx + R.boss.x * k, my + R.boss.y * k, 3, 0, 6.29); ctx.fill(); }
     const P = R.player;
     ctx.strokeStyle = 'rgba(255,255,255,0.35)'; ctx.strokeRect(mx + (R.cam.x - 320) * k, my + (R.cam.y - 180) * k, 640 * k, 360 * k);

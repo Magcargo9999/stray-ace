@@ -58,6 +58,9 @@ SA.Raid = (() => {
     R.cam.x = R.player.x; R.cam.y = R.player.y;
     msg(`${m.name} 진입 — 탈출점 ${R.extracts.filter(e => e.active).length}곳 활성`, '#7ff0b0');
     if (!prof.seenTips) msg('WASD 이동 · 좌클릭 사격 · Q/E 장비 · Space 파일럿 기술 · Tab 화물칸', '#cfe3ff', 7);
+    R.allies = [];
+    const wc = SA.Contracts.wingActive();
+    if (wc) setupWing(R, wc);
     SA.Audio.play('raid');
     return R;
   };
@@ -205,6 +208,7 @@ SA.Raid = (() => {
     if (SA.Input.hit('KeyF') && !R.tabOpen && R.state === 'play') doSwap();
     S.updatePlayer(R, dt, rdt);
     S.updateEnemies(R, dt);
+    S.updateAllies(R, dt);
     S.updateBullets(R, dt);
     S.updateExtra(R, dt);
     updateItems(R, dt);
@@ -212,6 +216,7 @@ SA.Raid = (() => {
     updateCorrosion(R, dt);
     updateExtraction(R, dt);
     ambientSpawns(R, dt);
+    convoyRaids(R, dt);
 
     for (const f of R.fx) { f.x += f.vx * dt; f.y += f.vy * dt; f.vx *= 0.94; f.vy *= 0.94; f.life -= dt; }
     R.fx = R.fx.filter(f => f.life > 0);
@@ -275,20 +280,15 @@ SA.Raid = (() => {
       if (!p.seen && d < 380) { p.seen = true; if (p.type !== 'distress') C().text(R, p.x, p.y - 40, p.label, '#cfe3ff'); }
       if (p.done || P.dead) continue;
       if (p.type === 'rescue') { updateRescue(R, p, d, dt); continue; }
-      if (p.type === 'wreck' || p.type === 'distress') {
-        const need = p.type === 'wreck' ? 2.5 : 3;
+      if (p.type === 'wreck') { updateWreck(R, p, d, dt); continue; }
+      if (p.type === 'distress') {
+        const need = 3;
         if (d < 46) {
           p.prog += dt;
           SA.Audio.sfx('salvage', p.prog / need);
           if (p.prog >= need) {
             p.done = true;
-            if (p.type === 'wreck') {
-              const tbl = LOOT.wreck; let n = 0;
-              for (const [id, pr] of tbl) if (Math.random() < pr * (1 + grazeBonus()) * pity(id)) { spawnItem(R, id, p.x, p.y, 110); n++; }
-              if (n < 2) spawnItem(R, 'scrap', p.x, p.y, 110);
-              if (p.blackbox) { spawnItem(R, 'blackbox', p.x, p.y, 110); msg('블랙박스 발견', '#ff8f3d'); }
-              SA.Audio.sfx('open');
-            } else distressOutcome(R, p);
+            distressOutcome(R, p);
           }
         }
       }
@@ -306,6 +306,36 @@ SA.Raid = (() => {
         msg('조난 신호 포착 — 미니맵 확인', '#ffd166', 5);
         SA.Audio.sfx('beep');
       }
+    }
+  };
+  // ── 난파선: 자원 게이지가 줄면서 아이템이 하나씩 튀어나온다. 벗어나면 진행 중인 게이지가 줄어든다.
+  // 마지막 하나는 오래 걸리는 대신 좋은 아이템 확률이 높다.
+  const wreckNeed = (p) => p.loot.length ? SA.WRECK.per : SA.WRECK.last;
+  const updateWreck = (R, p, d, dt) => {
+    const W = SA.WRECK;
+    if (!p.loot) {
+      p.loot = [];
+      for (const [id, pr] of LOOT.wreck) if (Math.random() < pr * (1 + grazeBonus()) * pity(id)) p.loot.push(id);
+      while (p.loot.length < 2) p.loot.push('scrap');
+      if (p.blackbox) p.loot.unshift('blackbox');
+      p.total = p.loot.length + 1; p.cur = 0;
+    }
+    if (d < 46) { p.cur += dt; SA.Audio.sfx('salvage', p.cur / wreckNeed(p)); }
+    else if (p.cur > 0) p.cur = Math.max(0, p.cur - dt * W.decay);
+    if (p.cur < wreckNeed(p)) return;
+    p.cur = 0;
+    if (p.loot.length) {
+      const id = p.loot.shift();
+      spawnItem(R, id, p.x, p.y, 100);
+      if (id === 'blackbox') msg('블랙박스 발견', '#ff8f3d');
+      SA.Audio.sfx('open');
+    } else {
+      let got = null;
+      for (const [id, pr] of W.final) if (Math.random() < pr * pity(id)) { got = id; break; }
+      spawnItem(R, got || 'prec', p.x, p.y, 100);
+      p.done = true;
+      msg('난파선 바닥까지 뒤졌다', '#ffd166', 2.5);
+      SA.Audio.sfx('extract');
     }
   };
   // ── 조난 구조: 반경 안에 10초 머물면 캡슐 회수 (벗어나면 일시정지). 도중 적 2파. 탈출해야 확정.
@@ -363,7 +393,7 @@ SA.Raid = (() => {
     if (ns !== R.stage) {
       if (ns > R.stage) {
         const s = SA.CORROSION[ns];
-        const eff = ns === 1 ? '연사 -10%' : ns === 2 ? '연사 -20% · 이속 -15% · 침식체 출현' : '연사 -35% · 이속 -25% · 체력 감소 · 사냥꾼 출현';
+        const eff = ns === 1 ? '연사 -10% · 침식체 출현' : ns === 2 ? '연사 -20% · 이속 -15% · 침식체 증가' : '연사 -35% · 이속 -25% · 체력 감소 · 사냥꾼 출현';
         msg(`침식 ${ns}단계 [${s.name}] — ${eff}`, '#b98cff', 5);
         SA.Audio.sfx('stage');
       }
@@ -374,12 +404,13 @@ SA.Raid = (() => {
     if (P.dead) return;
     if (s.durDrain) [P.main, ...P.subs.map(x => x.part), ...P.pas].forEach(p => C().wear(p, 0.05 * dt));
     if (s.hpDrain && R.state === 'play') { P.hp -= s.hpDrain * dt; if (P.hp <= 0) { P.hp = 0; playerDied(); } }
-    if (s.spawnCorrode) {
+    const cs = SA.CORRODE_SPAWN[R.stage];
+    if (cs) {
       R.corrT += dt;
-      if (R.corrT > (R.stage === 3 ? 8 : 14)) {
+      if (R.corrT > cs.every) {
         R.corrT = 0;
         const near = R.enemies.filter(e => e.type === 'corrode').length;
-        if (near < 8) for (let i = 0; i < (R.stage === 3 ? 2 : 1); i++) spawnNear(R, 'corrode', 380);
+        for (let i = 0; i < cs.n && near + i < cs.max; i++) spawnNear(R, 'corrode', 380);
       }
     }
     if (s.hunter && !R.hunterSpawned) {
@@ -388,6 +419,41 @@ SA.Raid = (() => {
       msg('심연의 사냥꾼이 다가온다 — 나가라', '#8a5cff', 6);
       SA.Audio.sfx('siren');
       bossEngaged(h);
+    }
+  };
+  // ── 네임드 윙맨 의뢰 ──
+  const setupWing = (R, c) => {
+    const N = SA.NAMED[c.named], P = R.player;
+    R.wing = { kind: 'wing', named: c.named, x: P.x - 30, y: P.y + 30, vx: 0, vy: 0, r: 7, hp: N.hp, maxHp: N.hp, regen: N.regen, cd: 0, cover: false, face: P.aim };
+    R.allies.push(R.wing);
+    R.wingC = c.id; R.wingGoal = c.goal; R.wingFail = false;
+    msg(`${N.title} ${N.name}: "${N.hello}"`, N.color, 6);
+    if (c.goal === 'escort') {
+      const to = R.extracts.filter(x => x.active).sort((a, b) => U.d2(b.x, b.y, P.x, P.y) - U.d2(a.x, a.y, P.x, P.y))[0];
+      const V = SA.CONVOY;
+      R.convoy = { kind: 'convoy', x: P.x + 50, y: P.y, vx: 0, vy: 0, r: V.r, hp: V.hp, maxHp: V.hp, regen: 0, to, face: U.ang(P.x, P.y, to.x, to.y) };
+      R.allies.push(R.convoy); R.convoyT = 0;
+      msg('의뢰: 수송선을 가장 먼 탈출점까지 호위한 뒤 탈출 · G: 윙맨 엄호', '#8fb6ff', 6);
+    } else msg('의뢰: 볼크와 함께 심연의 사냥꾼(침식 3단계)을 격추하고 탈출 · G: 윙맨 엄호', '#ff7a6b', 6);
+  };
+  const allyDown = (a) => {
+    const R = SA.R; if (R.wingFail) return;
+    R.wingFail = true;
+    if (a.kind === 'wing') { const N = SA.NAMED[a.named]; msg(`${N.name}: "${N.down}"`, N.color, 4); }
+    else msg('수송선 격추!', '#ff4d6d', 4);
+    msg('의뢰 실패 — 이번 출격에서는 진행되지 않는다 (수주는 유지)', '#ffb3b3', 5);
+  };
+  const convoyArrived = () => { const R = SA.R; if (R.wingFail) return; R.convoyDone = true; msg('수송선 도착 — 이제 살아서 탈출하면 의뢰 완료', '#8fb6ff', 5); SA.Audio.sfx('extract'); };
+  // 수송선을 노리는 습격 (제국 전투기)
+  const convoyRaids = (R, dt) => {
+    const cv = R.convoy; if (!cv || cv.dead || cv.arrived) return;
+    R.convoyT += dt;
+    if (R.convoyT < SA.CONVOY.waveEvery) return;
+    R.convoyT = 0;
+    msg('수송선 습격!', '#ff6b7a', 3);
+    for (let i = 0; i < SA.CONVOY.waveN; i++) {
+      const a = Math.random() * 6.28;
+      C().spawnEnemy(R, 'e_fighter', cv.x + Math.cos(a) * 380, cv.y + Math.sin(a) * 380, { awake: true, tgt: cv });
     }
   };
   const spawnNear = (R, type, dist) => {
@@ -404,7 +470,7 @@ SA.Raid = (() => {
     R.spawnT = 0;
     const P = R.player;
     const near = R.enemies.filter(e => (SA.ENEMIES[e.type] || {}).ai === 'fighter' && U.d2(e.x, e.y, P.x, P.y) < 600 * 600).length;
-    if (near < 2) { const f = F(); spawnNear(R, f + 'fighter', 420); spawnNear(R, f + 'fighter', 440); }
+    if (near < 2) { const f = F(); const a = spawnNear(R, f + 'fighter', 420); spawnNear(R, f + 'fighter', 440); if (R.wing && !R.wing.dead && Math.random() < 0.5) a.tgt = R.wing; }   // 윙맨이 있으면 하나는 윙맨을 노린다
   };
 
   const updateExtraction = (R, dt) => {
@@ -443,7 +509,7 @@ SA.Raid = (() => {
       msg('레이븐 격추 — 탈출 포드를 화물칸(2×2)에 싣고 탈출하라', '#ffd166', 6);
       spawnItem(R, 'cap_raven', e.x, e.y, 20);
     }
-    else msg('심연의 사냥꾼 격추', '#ffd166', 5);
+    else { R.hunterKilled = true; msg('심연의 사냥꾼 격추', '#ffd166', 5); }
     R.boss = null;
     SA.Audio.play('raid');
   };
@@ -507,7 +573,7 @@ SA.Raid = (() => {
     // 의뢰 진행
     const cs = prof.contracts;
     const prog = (id, n = 1) => { cs[id] = cs[id] || { progress: 0, done: false }; if (!cs[id].done) cs[id].progress += n; };
-    if (ok) SA.Contracts.onRaid(R);
+    const repMsgs = ok ? SA.Contracts.onRaid(R) : [];
     prof.stats.raids++; if (ok) prof.stats.extracts++; else prof.stats.deaths++;
     prof.stats.kills += R.kills;
     prof.stats.bestValue = Math.max(prof.stats.bestValue, ok ? value : 0);
@@ -518,7 +584,7 @@ SA.Raid = (() => {
     if (ok) { SA.Quest.event('extract'); SA.Quest.event('blackbox', cnt('blackbox')); }
     SA.Quest.event('crystal', cnt('crystal'));
     SA.Quest.sync();
-    SA.Main.showResult({ ok, brought, lost, value, overflow, time: R.t, kills: R.kills, graze: R.graze, corr: R.corr, ravenKilled: R.ravenKilled, pilot: R.player.pilot, rescued: rescuedMsgs, lostCaps, lostPart, ravenFled: R.ravenFled });
+    SA.Main.showResult({ ok, brought, lost, value, overflow, time: R.t, kills: R.kills, graze: R.graze, corr: R.corr, ravenKilled: R.ravenKilled, pilot: R.player.pilot, rescued: rescuedMsgs, lostCaps, lostPart, ravenFled: R.ravenFled, repMsgs });
   };
 
   const useItem = (it, from) => {
@@ -569,5 +635,5 @@ SA.Raid = (() => {
     return R.items.filter(it => !it.taken && U.d2(it.x, it.y, P.x, P.y) < r * r);
   };
 
-  return { start, update, msg, swapPlan, doSwap, dropLoot, spawnItem, playerDied, bossEngaged, bossKilled, ravenFlee, ravenFled, finish, useItem, dropToSpace, nearbyGround, grazeBonus };
+  return { start, update, msg, swapPlan, doSwap, dropLoot, spawnItem, playerDied, bossEngaged, bossKilled, ravenFlee, ravenFled, allyDown, convoyArrived, finish, useItem, dropToSpace, nearbyGround, grazeBonus };
 })();

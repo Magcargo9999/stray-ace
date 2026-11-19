@@ -116,6 +116,7 @@ SA.Combat = (() => {
       const id = s.part.id, d = SA.PARTS[id];
       if (id === 'drone') { s.orb += dt * 2.2; s.x = P.x + Math.cos(s.orb) * 22; s.y = P.y + Math.sin(s.orb) * 22; }
       else { s.x = P.x + s.ox; s.y = P.y + s.oy; }
+      if (R.tabOpen) continue;   // 화물칸(Tab)을 여는 동안 서브웨폰은 멈춘다
       s.cd -= dt; s.boost = Math.max(0, (s.boost || 0) - dt);
       const rate = d.rate * st.fire * e * (s.boost > 0 ? 2.5 : 1);
       if (id === 'mine') {                 // 지나간 자리에 지뢰
@@ -357,14 +358,16 @@ SA.Combat = (() => {
     for (const e of R.enemies) {
       if (e.dead) continue;
       e.flash = Math.max(0, e.flash - dt);
-      const dist = Math.sqrt(U.d2(e.x, e.y, P.x, P.y));
-      if (dist > 900 && !e.boss) continue;           // 멀면 잠든다
+      let dist = Math.sqrt(U.d2(e.x, e.y, P.x, P.y));
+      if (dist > 900 && !e.boss && !e.tgt) continue;           // 멀면 잠든다
       e.face = e.face === undefined ? Math.atan2(R.player.y - e.y, R.player.x - e.x) : e.face;
       if (e.crate) continue;
       if (e.pullT > 0) { e.pullT -= dt; e.x += (e.pullX - e.x) * Math.min(1, 14 * dt); e.y += (e.pullY - e.y) * Math.min(1, 14 * dt); }
       if (e.stun > 0) { e.stun -= dt; e.vx *= 0.9; e.vy *= 0.9; e.x += e.vx * dt; e.y += e.vy * dt; pushOutAsteroids(R, e, e.r); continue; }
       e.t += dt;
-      const aP = U.ang(e.x, e.y, P.x, P.y);
+      const T = e.tgt && !e.tgt.dead ? e.tgt : P;   // 수송선·윙맨을 노리는 적은 그쪽을 조준한다
+      const aP = U.ang(e.x, e.y, T.x, T.y);
+      if (T !== P) dist = Math.sqrt(U.d2(e.x, e.y, T.x, T.y));
       const alive = !P.dead && R.state === 'play';
       const D = SA.ENEMIES[e.type] || {}, emp = D.faction === 'empire';
       switch (D.ai) {
@@ -419,8 +422,12 @@ SA.Combat = (() => {
           break;
         }
         case 'corrode': {
-          e.vx += (Math.cos(aP) * 52 - e.vx) * Math.min(1, 2 * dt); e.vy += (Math.sin(aP) * 52 - e.vy) * Math.min(1, 2 * dt);
-          if (e.t > 3.2 && dist < 220 && alive) { e.t = 0; ring(R, e.x, e.y, 8, 58, Math.random(), { r: 4, col: '#c9a2ff' }); }
+          const D0 = SA.ENEMIES.corrode;
+          e.lungeCd = (e.lungeCd || U.rnd(1, 3)) - dt;
+          if (e.lungeT > 0) e.lungeT -= dt;   // 돌진 중에는 방향 유지
+          else if (e.lungeCd <= 0 && dist < 150 && alive) { e.lungeCd = 3.5; e.lungeT = 0.35; e.vx = Math.cos(aP) * 230; e.vy = Math.sin(aP) * 230; }
+          else { e.vx += (Math.cos(aP) * D0.speed - e.vx) * Math.min(1, 2 * dt); e.vy += (Math.sin(aP) * D0.speed - e.vy) * Math.min(1, 2 * dt); }
+          if (e.t > 2.4 && dist < 240 && alive) { e.t = 0; ring(R, e.x, e.y, 8, 62, Math.random(), { r: 4, col: '#c9a2ff' }); }
           if (dist < e.r + 6) hurtPlayer(R, 14);
           break;
         }
@@ -590,6 +597,7 @@ SA.Combat = (() => {
         pb(R, b.x, b.y, a, 320, 8, { col: '#ffd0f0', w: 2, life: 1.5 }); continue;
       }
       if (insideAsteroid(R, b.x, b.y)) { if (Math.random() < 0.3) fx(R, b.x, b.y, 1, b.col, 20, 0.2, 1); continue; }
+      if (R.allies && R.allies.length) { let hit = false; for (const a of R.allies) if (!a.dead && U.d2(b.x, b.y, a.x, a.y) < (b.r + a.r) ** 2) { hurtAlly(R, a, b.dmg); hit = true; break; } if (hit) continue; }
       if (!P.dead && R.state === 'play') {
         const dx = b.x - P.x, dy = b.y - P.y, dd = dx * dx + dy * dy;
         if (dd < (b.r + hitR) ** 2 && P.invuln <= 0) { hurtPlayer(R, b.dmg); continue; }
@@ -651,6 +659,50 @@ SA.Combat = (() => {
     SA.Audio.sfx('boom'); R.shake = Math.max(R.shake, 3);
   };
   // 궤도 폭격·중력 우물·번개·광선 수명
+  // ── 아군: 네임드 윙맨 · 호위 수송선 ──
+  // 윙맨이 맞으면 엄호(G) 중일 때 절반을 플레이어가 대신 맞는다
+  const hurtAlly = (R, a, dmg) => {
+    if (a.dead) return;
+    if (a.kind === 'wing' && a.cover && Math.sqrt(U.d2(a.x, a.y, R.player.x, R.player.y)) < 60) { hurtPlayer(R, dmg * 0.5); dmg *= 0.5; }
+    a.hp -= dmg; a.flash = 0.08; a.calm = 0;
+    if (a.hp <= 0) { a.hp = 0; a.dead = true; fx(R, a.x, a.y, 30, '#ffb347', 140, 0.6, 2); SA.Audio.sfx('bigboom'); SA.Raid.allyDown(a); }
+  };
+  const updateAllies = (R, dt) => {
+    if (!R.allies) return;
+    const P = R.player;
+    for (const a of R.allies) {
+      if (a.dead) continue;
+      a.flash = Math.max(0, (a.flash || 0) - dt);
+      a.calm = (a.calm || 0) + dt;
+      if (a.calm > 4) a.hp = Math.min(a.maxHp, a.hp + a.regen * dt);   // 4초 동안 안 맞으면 천천히 회복
+      if (a.kind === 'wing') {
+        const N = SA.NAMED[a.named];
+        if (SA.Input.hit('KeyG') && !R.tabOpen) { a.cover = !a.cover; SA.Raid.msg(a.cover ? `${N.name}: "${N.coverOn}" — 엄호: 받는 피해 절반을 내가 대신 맞는다` : `${N.name}: "${N.coverOff}"`, N.color, 3); }
+        const back = P.aim + Math.PI, side = back + (a.cover ? 0 : 0.7);
+        const off = a.cover ? 18 : 46;
+        const tx = P.x + Math.cos(side) * off, ty = P.y + Math.sin(side) * off;
+        const dx = tx - a.x, dy = ty - a.y, dd = Math.hypot(dx, dy), sp = Math.min(N.speed * (dd > 200 ? 1.6 : 1), dd * 6);
+        a.vx += ((dd ? dx / dd : 0) * sp - a.vx) * Math.min(1, 5 * dt); a.vy += ((dd ? dy / dd : 0) * sp - a.vy) * Math.min(1, 5 * dt);
+        a.x += a.vx * dt; a.y += a.vy * dt;
+        const t = nearestEnemy(R, a.x, a.y, N.range);
+        a.face = t ? U.ang(a.x, a.y, t.x, t.y) : P.aim;
+        a.cd -= dt;
+        if (t && a.cd <= 0 && R.state === 'play') {
+          a.cd = 1 / N.rate;
+          for (let k = 0; k < N.shots; k++) pb(R, a.x, a.y, a.face + U.rnd(-N.spread, N.spread), N.spd, N.dmg, { col: N.color, w: 2, life: 0.9 });
+        }
+      } else if (a.kind === 'convoy') {
+        // 플레이어가 너무 멀면 기다린다. 소행성은 밀어낸다
+        if (a.arrived) continue;
+        const far = U.d2(a.x, a.y, P.x, P.y) > 420 * 420;
+        const ang = U.ang(a.x, a.y, a.to.x, a.to.y), sp = far ? 0 : SA.CONVOY.speed;
+        a.vx += (Math.cos(ang) * sp - a.vx) * Math.min(1, 2 * dt); a.vy += (Math.sin(ang) * sp - a.vy) * Math.min(1, 2 * dt);
+        a.x += a.vx * dt; a.y += a.vy * dt; a.face = ang; a.waiting = far;
+        pushOutAsteroids(R, a, a.r);
+        if (U.d2(a.x, a.y, a.to.x, a.to.y) < 60 * 60) { a.arrived = true; a.vx = a.vy = 0; SA.Raid.convoyArrived(a); }
+      }
+    }
+  };
   const updateExtra = (R, dt) => {
     for (const s of R.strikes) { s.t -= dt; if (s.t <= 0 && !s.done) { s.done = true; boom(R, { x: s.x, y: s.y, aoe: s.r, dmg: s.dmg }); R.eb = R.eb.filter(b => U.d2(b.x, b.y, s.x, s.y) > s.r * s.r); } }
     R.strikes = R.strikes.filter(s => s.t > -0.2);
@@ -664,5 +716,5 @@ SA.Combat = (() => {
     for (const b of R.beams) b.life -= dt; R.beams = R.beams.filter(b => b.life > 0);
   };
 
-  return { updateExtra, stun, hitEnemy, eff, wear, eb, ring, fan, fx, text, updatePlayer, updateEnemies, updateBullets, spawnEnemy, hurtPlayer, damageEnemy, insideAsteroid, hasPas };
+  return { updateAllies, hurtAlly, updateExtra, stun, hitEnemy, eff, wear, eb, ring, fan, fx, text, updatePlayer, updateEnemies, updateBullets, spawnEnemy, hurtPlayer, damageEnemy, insideAsteroid, hasPas };
 })();
