@@ -96,13 +96,13 @@ SA.Combat = (() => {
       const d = SA.PARTS[main.id];
       const rate = d.rate * (hasPas(P, 'cooler') ? 1.15 : 1) * (hasPas(P, 'resonator') ? 1 : st.fire) * me;
       P.fireCd = 1 / rate;
-      const tx = P.x + Math.cos(P.aim) * 8, ty = P.y + Math.sin(P.aim) * 8;
+      const tx = P.x + Math.cos(P.aim) * 8, ty = P.y + Math.sin(P.aim) * 8, sn = hasPas(P, 'sensor');   // 조준 센서: 집탄 ↑ (퍼짐 ×0.4), 탄속 +10%
       for (let i = 0; i < d.shots; i++) {
-        let a = P.aim + U.rnd(-d.spread, d.spread);
+        let a = P.aim + U.rnd(-d.spread, d.spread) * (sn ? 0.4 : 1);
         let ox = 0, oy = 0;
         if (main.id === 'twin') { const s = i ? 1 : -1; ox = Math.cos(P.aim + Math.PI / 2) * 3 * s; oy = Math.sin(P.aim + Math.PI / 2) * 3 * s; a = P.aim; }
         const beam = d.pierce >= 3;
-        pb(R, tx + ox, ty + oy, a, d.spd * U.rnd(0.92, 1.05), d.dmg, { pierce: d.pierce, life: d.life || 1.1, main: true, frag: d.frag, close: d.close, erase: d.erase,
+        pb(R, tx + ox, ty + oy, a, d.spd * (sn ? 1.1 : 1) * U.rnd(0.92, 1.05), d.dmg, { pierce: d.pierce, life: d.life || 1.1, main: true, frag: d.frag, close: d.close, erase: d.erase,
           col: d.erase ? '#ffe9a8' : beam ? '#9ff' : main.id === 'glass' ? '#ffd0f0' : '#bfe9ff', w: d.pierce >= 99 ? 3 : beam ? 2.4 : main.id === 'glass' ? 2.4 : 1.6 });
       }
       wear(main, 0.004);

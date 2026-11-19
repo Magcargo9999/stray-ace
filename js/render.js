@@ -19,6 +19,7 @@ SA.Render = (() => {
   const load = (done) => {
     const list = [['hex', 'assets/hex_hull.png'], ['hexTurret', 'assets/hex_turret.png'], ['swift', 'assets/swift_hull.png'], ['bastion', 'assets/bastion_hull.png'], ['arsenal', 'assets/arsenal_hull.png'], ['flame', 'assets/engine_flame.png'], ['ast_rock', 'assets/m_rock.png'], ['ast_planet', 'assets/m_planetoid.png'], ['ast_shard', 'assets/m_shard.png']];
     for (const id in SA.ENEMIES) if (SA.ENEMIES[id].img) list.push(['en_' + id, SA.ENEMIES[id].img]);
+    for (const id in SA.ITEMS) if (SA.ITEMS[id].img) list.push(['it_' + id, SA.ITEMS[id].img]);
     let left = list.length;
     for (const [k, src] of list) {
       const im = new Image();
@@ -42,9 +43,14 @@ SA.Render = (() => {
   const iconCache = {};
   const icon = (id) => {
     if (iconCache[id]) return iconCache[id];
-    const d = SA.ITEMS[id], c = document.createElement('canvas');
-    c.width = d.w * 16; c.height = d.h * 16;
+    const d = SA.ITEMS[id], c = document.createElement('canvas'), im = d.img && IMG['it_' + id], q = im ? 48 : 16;   // 도트 원본이 있으면 칸당 48px로 크게
+    c.width = d.w * q; c.height = d.h * q;
     const x = c.getContext('2d');
+    if (im) {   // 칸 안에 비율 유지로 맞춘다 (색·모양은 그대로, 크기만)
+      const s = Math.min(c.width / im.width, c.height / im.height) * 0.94, w = Math.round(im.width * s), hh = Math.round(im.height * s);
+      x.imageSmoothingEnabled = true; x.drawImage(shrink(im, w, hh), (c.width - w) >> 1, (c.height - hh) >> 1);
+      iconCache[id] = c; return c;
+    }
     const p = (col, a, b, w = 1, h = 1) => { x.fillStyle = col; x.fillRect(a, b, w, h); };
     const W = c.width, H = c.height, k = d.color;
     const ol = '#0d1018';
@@ -269,6 +275,7 @@ SA.Render = (() => {
       ctx.save(); ctx.translate(e.x, e.y); ctx.rotate((D.ai === 'turret' ? e.a : e.face) + Math.PI / 2);
       if (fl) ctx.filter = 'brightness(2.6)';
       if (e.inv > 0) ctx.globalAlpha = 0.5;
+      if (e.type === 'corrode') { const pu = 1 + 0.05 * Math.sin(R.t * 5 + e.homeX); ctx.scale(pu, pu); }   // 침식체는 숨 쉬듯 맥동
       ctx.imageSmoothingEnabled = true;
       ctx.drawImage(spr, -w * pv[0], -h * pv[1], w, h);
       ctx.restore();
@@ -505,11 +512,11 @@ SA.Render = (() => {
 
     // 조준선
     if (!R.tabOpen && !R.paused) {
-      const m = SA.Input.mouse;
-      ctx.strokeStyle = '#e6f7ff'; ctx.lineWidth = 2;
-      ctx.beginPath(); ctx.arc(m.x, m.y, 9, 0, 6.29); ctx.stroke();
-      ctx.fillStyle = '#e6f7ff'; ctx.fillRect(m.x - 1, m.y - 1, 2, 2);
-      for (const [a, b] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) ctx.fillRect(m.x + a * 12 - (b ? 1 : 0) - (a < 0 ? 4 : 0), m.y + b * 12 - (a ? 1 : 0) - (b < 0 ? 4 : 0), a ? 4 : 2, b ? 4 : 2);
+      const m = SA.Input.mouse, sn = SA.Combat.hasPas(R.player, 'sensor'), cr = sn ? 6 : 9, ct = sn ? 9 : 12, cc = sn ? '#ff4d6d' : '#e6f7ff';   // 조준 센서: 붉고 좁은 조준선
+      ctx.strokeStyle = cc; ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.arc(m.x, m.y, cr, 0, 6.29); ctx.stroke();
+      ctx.fillStyle = cc; ctx.fillRect(m.x - 1, m.y - 1, 2, 2);
+      for (const [a, b] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) ctx.fillRect(m.x + a * ct - (b ? 1 : 0) - (a < 0 ? 4 : 0), m.y + b * ct - (a ? 1 : 0) - (b < 0 ? 4 : 0), a ? 4 : 2, b ? 4 : 2);
     }
   };
 

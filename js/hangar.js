@@ -151,9 +151,10 @@ SA.Hangar = (() => {
     else { x.fillStyle = '#3b4050'; x.beginPath(); x.moveTo(36, 12); x.lineTo(60, 46); x.lineTo(36, 56); x.lineTo(12, 46); x.closePath(); x.fill(); x.fillStyle = '#ffb347'; x.fillRect(34, 24, 4, 4); }
     return c;
   };
+  const pimg = (d) => d.img ? `<img src="${d.img}" style="height:34px;float:left;margin:0 8px 0 0">` : '';   // 도트 원본이 있는 부품은 그림을 같이 보여준다
   const partTip = (e, p) => {
     const d = SA.PARTS[p.id];
-    SA.UI.showTipHtml(e, `<b>${d.name}</b> <span class="dim">${d.tier}</span><br><span class="desc">${d.desc}</span><br>내구도 ${Math.round(p.dur)} / ${Math.round(p.max)} · 성능 ${Math.round(SA.Combat.eff(p) * 100)}%`);
+    SA.UI.showTipHtml(e, `${pimg(d)}<b>${d.name}</b> <span class="dim">${d.tier}</span><br><span class="desc">${d.desc}</span><br>내구도 ${Math.round(p.dur)} / ${Math.round(p.max)} · 성능 ${Math.round(SA.Combat.eff(p) * 100)}%`);
   };
   const pickPart = (e, kind, idx) => {
     const prof = P(), lo = prof.loadouts[prof.ship], sh = SA.SHIPS[prof.ship];
@@ -171,7 +172,7 @@ SA.Hangar = (() => {
     };
     if (!opts.length) m.appendChild(h('div', 'dim small pad', '장착할 수 있는 부품이 없다. 작업대에서 제작하자.'));
     for (const p of opts) {
-      const d = SA.PARTS[p.id], b = h('button', '', `${d.name} <span class="dim">${d.tier} · ${Math.round(p.dur)}/${Math.round(p.max)}</span><div class="small dim">${d.desc}</div>`);
+      const d = SA.PARTS[p.id], b = h('button', '', `${pimg(d)}${d.name} <span class="dim">${d.tier} · ${Math.round(p.dur)}/${Math.round(p.max)}</span><div class="small dim">${d.desc}</div>`);
       b.onclick = () => set(p.uid); m.appendChild(b);
     }
     const cur = kind === 'main' ? lo.main : lo[kind][idx];
@@ -206,7 +207,9 @@ SA.Hangar = (() => {
     const g = h('div'); left.appendChild(g);
     SA.UI.gridView('stash', g, prof.stash, {
       menu: (it, grid) => {
-        const d = SA.ITEMS[it.id], a = [[`판매 ₵${d.val}`, () => { SA.Grid.remove(grid, it.uid); prof.credits += d.val; SA.Audio.sfx('buy'); save(); render(); }]];
+        const d = SA.ITEMS[it.id];
+        if (d.kind === 'ticket') return [['고용하기', () => hireRaven(it, grid)]];
+        const a = [[`판매 ₵${d.val}`, () => { SA.Grid.remove(grid, it.uid); prof.credits += d.val; SA.Audio.sfx('buy'); save(); render(); }]];
         if (it.id === 'blackbox') a.unshift(['해독 (기록 열람)', () => decode(it)]);
         if (d.kind === 'bp' && prof.recipes.includes(d.recipe)) a.push(['(이미 아는 설계도 — 판매)', () => {}]);
         return a;
@@ -223,6 +226,11 @@ SA.Hangar = (() => {
     for (const id of ids) {
       const d = SA.ITEMS[id], need = neededFor(id);
       const r = h('div', 'sellrow');
+      if (d.kind === 'ticket') {   // 고용권은 팔지 않고 쓴다
+        r.innerHTML = `<img src="${SA.Render.iconSrc(id)}" style="width:${d.w * 16}px;height:${d.h * 16}px"><span>${d.name}<br><span class="dim small">${d.desc}</span></span>`;
+        const hb = h('button', 'btn small', '고용하기'); hb.onclick = () => hireRaven(prof.stash.items.find(x => x.id === id), prof.stash);
+        r.appendChild(hb); right.appendChild(r); continue;
+      }
       r.innerHTML = `<img src="${SA.Render.iconSrc(id)}" style="width:${d.w * 16}px;height:${d.h * 16}px"><span>${d.name} ×${groups[id]}<br><span class="dim small">${d.kind === 'use' ? '출격 준비에서 골라 가져간다' : need ? `제작·의뢰에 ${need}개 필요` : '쓸 곳 없음'}</span></span>`;
       const b1 = h('button', 'btn small', `1개 ₵${d.val}`), b2 = h('button', 'btn small', `전부 ₵${d.val * groups[id]}`);
       b1.onclick = () => sell(id, 1); b2.onclick = () => sell(id, groups[id]);
@@ -236,6 +244,12 @@ SA.Hangar = (() => {
     for (const r of P().recipes) { const m = (SA.RECIPES[r] || {}).mats || {}; n = Math.max(n, m[id] || 0); }
     for (const c of SA.STORY.contracts) if (c.mats && !(P().contracts[c.id] || {}).done) n = Math.max(n, c.mats[id] || 0);
     return n;
+  };
+  const hireRaven = (it, grid) => {
+    const prof = P();
+    if (prof.pilots.raven) { SA.Audio.sfx('deny'); toast('레이븐은 이미 용병단에 있다.', '#ffb3b3'); return; }
+    SA.Grid.remove(grid, it.uid); prof.pilots.raven = { injury: 0 };
+    SA.Audio.sfx('buy'); toast('레이븐이 용병단에 합류했다 — 파일럿으로 고를 수 있다', '#ffd166'); save(); render();
   };
   const sell = (id, n) => {
     const prof = P();
@@ -262,7 +276,7 @@ SA.Hangar = (() => {
       const fromOk = !r.from || prof.parts.some(p => p.id === r.from);
       const ok = fromOk && Object.keys(r.mats).every(k => have(k) >= r.mats[k]);
       const mats = Object.keys(r.mats).map(k => `<span class="${have(k) >= r.mats[k] ? 'ok' : 'bad'}">${SA.ITEMS[k].name} ${have(k)}/${r.mats[k]}</span>`).join(' · ');
-      const row = h('div', 'recipe', `<b>${d.name}</b> <span class="dim">${d.tier} · ${{ main: '주무기', sub: '서브웨폰', act: '액티브', pas: '패시브' }[d.slot]}</span><div class="small">${d.desc}</div><div class="small">${r.from ? `<span class="${fromOk ? 'ok' : 'bad'}">${SA.PARTS[r.from].name} 1개</span> + ` : ''}${mats}</div>`);
+      const row = h('div', 'recipe', `${pimg(d)}<b>${d.name}</b> <span class="dim">${d.tier} · ${{ main: '주무기', sub: '서브웨폰', act: '액티브', pas: '패시브' }[d.slot]}</span><div class="small">${d.desc}</div><div class="small">${r.from ? `<span class="${fromOk ? 'ok' : 'bad'}">${SA.PARTS[r.from].name} 1개</span> + ` : ''}${mats}</div>`);
       const b = h('button', 'btn small' + (ok ? '' : ' dis'), '제작');
       b.onclick = () => craft(rid);
       row.appendChild(b); left.appendChild(row);

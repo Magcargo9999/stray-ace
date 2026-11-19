@@ -25,6 +25,7 @@ SA.ITEMS = {
   goldchip: { name: '금빛 회로', w: 1, h: 1, val: 180, kind: 'mat', color: '#ffd166', desc: '작고 비싸다. 용병들이 제일 먼저 챙기는 것.' },
   prec:     { name: '정밀 부품', w: 1, h: 1, val: 120, kind: 'mat', color: '#7fd3ff', desc: '군용 규격 베어링과 회로. 강화 부품에 들어간다.' },
   ace:      { name: '에이스 각인', w: 1, h: 1, val: 400, kind: 'mat', color: '#ff4d6d', desc: '이름 있는 자의 기체에서 뜯어낸 각인. 전설 부품에 들어간다.' },
+  raven_ticket: { name: '레이븐 고용권', w: 2, h: 1, val: 0, kind: 'ticket', img: 'assets/raven_ticket.png', color: '#c49ac0', desc: '창고에서 사용하면 레이븐이 용병단에 합류한다.' },
   crystal:  { name: '침식 결정', w: 1, h: 1, val: 220, kind: 'mat', color: '#b98cff', desc: '침식체가 남긴 결정. 만지면 손끝이 저린다.' },
   debris:   { name: '대형 잔해', w: 2, h: 3, val: 300, kind: 'mat', color: '#9aa3ad', desc: '크고 무겁고 비싸다. 화물칸이 운다.' },
   blackbox: { name: '블랙박스', w: 1, h: 1, val: 150, kind: 'lore', color: '#ff8f3d', desc: '격추된 함선의 기록 장치. 팔거나, 격납고에서 해독하거나.' },
@@ -71,6 +72,7 @@ SA.PARTS = {
   convert: { name: '탄 변환기', slot: 'act', tier: '강화', val: 500, cd: 18, desc: '주변 적 탄을 고철(많으면 금빛 회로)로 바꾼다.' },
   timestop:{ name: '탄막 정지', slot: 'act', tier: '전설', val: 1400, cd: 25, desc: '주변 적 탄이 2.5초 멈췄다가 느리게 움직인다.' },
   // 패시브
+  sensor:  { name: '조준 센서', slot: 'pas', tier: '강화', val: 520, img: 'assets/sensor.png', desc: '탄 퍼짐 60% 감소, 주무기 탄속 +10%. 조준선이 붉고 좁아진다. 레이븐이 가끔 설계도를 떨군다.' },
   magnet:  { name: '자력 수집기', slot: 'pas', tier: '일반', val: 120, desc: '아이템 흡수 거리 2배.' },
   cooler:  { name: '냉각기', slot: 'pas', tier: '일반', val: 160, desc: '주무기 연사 +15%.' },
   plating: { name: '차폐 장갑', slot: 'pas', tier: '일반', val: 160, desc: '침식 상승 속도 -20%.' },
@@ -126,6 +128,7 @@ SA.RECIPES = {
   convert: { mats: { goldchip: 1, scrap: 4, prec: 1 } },
   timestop:{ mats: { ace: 3, crystal: 2, prec: 3 } },
   magnet:  { mats: { scrap: 4, core: 1 } },
+  sensor:  { mats: { prec: 3, core: 2, wire: 2 } },
   cooler:  { mats: { wire: 2, scrap: 3 } },
   plating: { mats: { scrap: 8 } },
   engine2: { mats: { engine: 1 } },
@@ -152,8 +155,9 @@ for (const id in SA.PARTS) {
   if (SA.START_RECIPES.includes(id)) continue;
   const d = SA.PARTS[id];
   if (!SA.ITEMS['bp_' + id]) SA.ITEMS['bp_' + id] = { name: '설계도: ' + d.name, w: 1, h: 1, val: { 일반: 100, 강화: 200, 전설: 400 }[d.tier], kind: 'bp', recipe: id, color: '#e6edf3', desc: '격납고에서 영구 해금된다. 이미 알면 판매.' };
-  if (id !== 'raven') SA.BP_POOL[d.tier].push(id);
+  if (id !== 'raven' && id !== 'sensor') SA.BP_POOL[d.tier].push(id);   // 레이븐 전용 설계도는 일반 드랍 풀에서 뺀다
 }
+SA.ITEMS.bp_sensor.img = 'assets/bp_sensor.png';   // 도트 설계도 카드
 
 // 기체. mount = 포탑/판정점 (도트 좌표, 0~1 비율)
 SA.SHIPS = {
@@ -201,9 +205,9 @@ SA.ENEMIES = {
                drops: [['scrap', .7], ['core', .3], ['prec', .15]] },
   m_turret:  { name: '폐광 포대', faction: 'mine', ai: 'turret', hp: 95, r: 13, speed: 0, img: 'assets/m_turret.png', size: [26, 33], pivot: [0.5, 0.57],
                drops: [['scrap', .8], ['engine', .25], ['core', .3], ['prec', .2], ['bp:일반', .04]] },
-  corrode: { name: '침식체', ai: 'corrode', hp: 34, r: 11, speed: 52, color: '#b98cff', drops: [['crystal', .7]] },
+  corrode: { name: '침식체', ai: 'corrode', hp: 34, r: 11, speed: 52, color: '#b98cff', img: 'assets/corrode.png', size: [18, 32], drops: [['crystal', .7]] },
   hunter:  { name: '심연의 사냥꾼', ai: 'hunter', hp: 700, r: 28, speed: 70, color: '#8a5cff', boss: true, drops: [['crystal', 1], ['crystal', .6], ['ace', 1], ['bp:전설', .6], ['goldchip', .8]] },
-  raven:   { name: '네임드 용병 레이븐', ai: 'raven', img: 'assets/raven_hull.png', size: [30, 27], pivot: [0.5, 0.5], hp: 480, r: 12, speed: 150, color: '#ff4d6d', boss: true, drops: [['bp_raven', 1], ['ace', 1], ['ace', .5], ['bp:강화', 1], ['goldchip', 1], ['goldchip', .7], ['blackbox', 1], ['engine', .6]] },
+  raven:   { name: '네임드 용병 레이븐', ai: 'raven', img: 'assets/raven_hull.png', size: [30, 27], pivot: [0.5, 0.5], hp: 480, r: 12, speed: 150, color: '#ff4d6d', boss: true, drops: [['bp_raven', 1], ['bp_sensor', .35], ['ace', 1], ['ace', .5], ['bp:강화', 1], ['goldchip', 1], ['goldchip', .7], ['blackbox', 1], ['engine', .6]] },
 };
 
 // 침식 단계: at = 침식률 하한(%)
