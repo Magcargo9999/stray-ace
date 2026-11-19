@@ -5,7 +5,7 @@ SA.Save = (() => {
   const newPart = (id) => ({ uid: 'p' + Date.now().toString(36) + (partSeq++), id, dur: 100, max: 100 });
 
   const fresh = () => {
-    const parts = ['pulse', 'mg', 'mg', 'missile', 'purge', 'magnet'].map(newPart);
+    const parts = ['pulse', 'mg', 'purge', 'magnet'].map(newPart);   // 시작 지급은 이것뿐, 나머지는 제작
     const by = (id, n = 0) => parts.filter(p => p.id === id)[n].uid;
     return {
       credits: 200,
@@ -13,7 +13,7 @@ SA.Save = (() => {
       ships: ['hex'],
       parts,
       loadouts: {
-        hex: { main: by('pulse'), sub: [by('mg'), by('mg', 1)], act: [by('missile'), by('purge')], pas: [by('magnet')] },
+        hex: { main: by('pulse'), sub: [by('mg')], act: [by('purge')], pas: [by('magnet')] },
       },
       pilots: { kai: { injury: 0 }, mina: { injury: 0 } },
       pilot: 'kai', ship: 'hex',
@@ -23,8 +23,8 @@ SA.Save = (() => {
       stats: { raids: 0, extracts: 0, deaths: 0, kills: 0, bestValue: 0 },
       settings: { music: 0.5, sfx: 0.7 },
       seenTips: false,
-      bpMiss: 0,
-      deliv: { slot: -1, stock: [] },   // 배달 상점 재고 (20분마다 교체)              // 새 설계도 없이 출격한 횟수 (불운 보정)
+      bpMiss: 0,              // 새 설계도 없이 출격한 횟수 (불운 보정)
+      deliv: { slot: -1, stock: [] },   // 배달 상점 재고 (20분마다 교체)
       bring: {},              // 이번 출격에 가져갈 소모품 개수
     };
   };
