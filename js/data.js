@@ -270,6 +270,10 @@ SA.CORROSION = [
   { at: 60, name: '침식', fire: 0.8,  speed: 0.85, rate: 30 / 90, durDrain: true },
   { at: 90, name: '붕괴', fire: 0.65, speed: 0.75, rate: 10 / 68, durDrain: true, hpDrain: 1, hunter: true },
 ];
+// 함선 리스폰 (임시): 왕국·제국 함선을 격추하면 delay초 뒤 그만큼의 '리스폰 점수'가 쌓이고, 점수로 편대를 화면 밖에서 부른다.
+// 주변(near 이내) 위협 점수 합이 침식 단계별 상한(budget)을 넘으면 미룬다. 위협: 전투기 1, 프리깃 3, 침식체 1, 사냥꾼 4
+SA.RESPAWN = { delay: [25, 35], near: 700, budget: [5, 6, 6, 7], threat: { fighter: 1, frigate: 3, turret: 1, corrode: 1, hunter: 4 },
+  squads: [[0.6, ['fighter', 'fighter']], [0.25, ['fighter', 'fighter', 'fighter']], [0.15, ['frigate', 'fighter']]], dual: 0.2, dist: [430, 470] };
 // 침식체 리젠 (왕국·제국 함선 리젠과 별개). every초마다 n기, 동시에 max기까지 (임시)
 SA.CORRODE_SPAWN = [null, { every: 18, n: 1, max: 3 }, { every: 10, n: 1, max: 5 }, { every: 6, n: 2, max: 8 }];
 

@@ -457,7 +457,7 @@ SA.Raid = (() => {
     msg('수송선 습격!', '#ff6b7a', 3);
     for (let i = 0; i < SA.CONVOY.waveN; i++) {
       const a = Math.random() * 6.28;
-      C().spawnEnemy(R, 'e_fighter', cv.x + Math.cos(a) * 380, cv.y + Math.sin(a) * 380, { awake: true, tgt: cv });
+      C().spawnEnemy(R, 'e_fighter', cv.x + Math.cos(a) * 380, cv.y + Math.sin(a) * 380, { awake: true, tgt: cv, noRespawn: true });
     }
   };
   const spawnNear = (R, type, dist) => {
@@ -468,13 +468,58 @@ SA.Raid = (() => {
     }
     return C().spawnEnemy(R, type, P.x + dist, P.y, { awake: true });
   };
+  // ── 함선 리스폰 ──
+  // 격추된 왕국·제국 함선은 25~35초 뒤 리스폰 점수가 되고, 점수가 모이면 화면 밖에서 편대로 들어온다 (위협 점수 상한 안에서만)
+  const threatOf = (e) => { const RS = SA.RESPAWN, D = SA.ENEMIES[e.type] || {}; return e.type === 'hunter' ? RS.threat.hunter : e.type === 'corrode' ? RS.threat.corrode : RS.threat[D.ai] || 0; };
+  const queueRespawn = (e) => {
+    const R = SA.R, D = SA.ENEMIES[e.type] || {};
+    if (!R || e.noRespawn || e.boss || (D.faction !== 'kingdom' && D.faction !== 'empire')) return;
+    const pts = D.ai === 'frigate' ? 3 : 1;   // 포대도 1점 (포대 자체는 다시 세우지 않고 함선으로 돌아온다)
+    (R.respawnQ = R.respawnQ || []).push({ t: U.rnd(SA.RESPAWN.delay[0], SA.RESPAWN.delay[1]), pts });
+  };
+  const nearThreat = (R) => {
+    const P = R.player, n2 = SA.RESPAWN.near ** 2; let s = 0;
+    for (const e of R.enemies) if (!e.dead && !e.crate && U.d2(e.x, e.y, P.x, P.y) < n2) s += threatOf(e);
+    return s;
+  };
+  const spawnSquad = (R, kinds) => {
+    const P = R.player, RS = SA.RESPAWN, f = F();
+    let cx = 0, cy = 0;
+    for (let k = 0; k < 20; k++) {
+      const a = Math.random() * 6.28, d = U.rnd(RS.dist[0], RS.dist[1]);
+      cx = P.x + Math.cos(a) * d; cy = P.y + Math.sin(a) * d;
+      if (!C().insideAsteroid(R, cx, cy)) break;
+    }
+    const out = [];
+    kinds.forEach((k, i) => {
+      let x = cx, y = cy;
+      if (i) for (let j = 0; j < 8; j++) { x = cx + U.rnd(-45, 45); y = cy + U.rnd(-45, 45); if (!C().insideAsteroid(R, x, y)) break; }
+      out.push(C().spawnEnemy(R, f + k, x, y, { awake: true }));
+    });
+    if (R.wing && !R.wing.dead && Math.random() < 0.5) out[out.length - 1].tgt = R.wing;   // 윙맨이 있으면 하나는 윙맨을 노린다
+    return out;
+  };
+  const squadCost = (kinds) => kinds.reduce((s, k) => s + SA.RESPAWN.threat[k], 0);
   const ambientSpawns = (R, dt) => {
+    const RS = SA.RESPAWN;
+    R.respawnPts = R.respawnPts || 0;
+    if (R.respawnQ) { for (const q of R.respawnQ) { q.t -= dt; if (q.t <= 0) R.respawnPts += q.pts; } R.respawnQ = R.respawnQ.filter(q => q.t > 0); }
     R.spawnT += dt;
-    if (R.spawnT < 22 || R.t < 40) return;
+    if (R.spawnT < 2) return;            // 2초마다 판단
     R.spawnT = 0;
-    const P = R.player;
-    const near = R.enemies.filter(e => (SA.ENEMIES[e.type] || {}).ai === 'fighter' && U.d2(e.x, e.y, P.x, P.y) < 600 * 600).length;
-    if (near < 2) { const f = F(); const a = spawnNear(R, f + 'fighter', 420); spawnNear(R, f + 'fighter', 440); if (R.wing && !R.wing.dead && Math.random() < 0.5) a.tgt = R.wing; }   // 윙맨이 있으면 하나는 윙맨을 노린다
+    if (R.state !== 'play' || R.t < 40) return;
+    const room = RS.budget[R.stage] - nearThreat(R);
+    // 바닥값: 리스폰 점수가 없어도 주변이 텅 비면(위협 2 미만) 전투기 2기를 부른다 — 22초 간격
+    R.idleT = (R.idleT || 0) + 2;
+    if (R.respawnPts <= 0) { if (room > RS.budget[R.stage] - 2 && R.idleT >= 22) { R.idleT = 0; spawnSquad(R, ['fighter', 'fighter']); } return; }
+    const roll = Math.random(); let acc = 0, kinds = RS.squads[0][1];
+    for (const [p, k] of RS.squads) { acc += p; if (roll < acc) { kinds = k; break; } }
+    if (squadCost(kinds) > room) kinds = ['fighter', 'fighter'];
+    if (squadCost(kinds) > room) return;   // 상한에 걸리면 미룬다
+    R.respawnPts -= squadCost(kinds); R.idleT = 0;
+    spawnSquad(R, kinds);
+    // 가끔 반대 진영 편대도 같이 들어온다
+    if (Math.random() < RS.dual && R.respawnPts >= 2 && room - squadCost(kinds) >= 2) { R.respawnPts -= 2; spawnSquad(R, ['fighter', 'fighter']); }
   };
 
   const updateExtraction = (R, dt) => {
@@ -639,5 +684,5 @@ SA.Raid = (() => {
     return R.items.filter(it => !it.taken && U.d2(it.x, it.y, P.x, P.y) < r * r);
   };
 
-  return { start, update, msg, swapPlan, doSwap, dropLoot, spawnItem, playerDied, bossEngaged, bossKilled, ravenFlee, ravenFled, allyDown, convoyArrived, finish, useItem, dropToSpace, nearbyGround, grazeBonus, grazeDmg };
+  return { start, update, msg, swapPlan, doSwap, dropLoot, spawnItem, playerDied, bossEngaged, bossKilled, ravenFlee, ravenFled, allyDown, convoyArrived, finish, useItem, dropToSpace, nearbyGround, grazeBonus, grazeDmg, queueRespawn };
 })();

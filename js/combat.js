@@ -623,6 +623,7 @@ SA.Combat = (() => {
       R.rings.push({ x: e.x, y: e.y, r: 4, max: e.r * 2.5, life: 0.3, col: '#ffcf8a' });
       R.shake = Math.max(R.shake, e.boss ? 12 : 2 * big);
       if (e.boss) SA.Raid.bossKilled(e);
+      SA.Raid.queueRespawn(e);
     }
     SA.Raid.dropLoot(e);
   };
