@@ -257,7 +257,7 @@ SA.ENEMIES = {
   m_turret:  { name: '폐광 포대', faction: 'mine', ai: 'turret', hp: 95, r: 13, speed: 0, img: 'assets/m_turret.png', size: [26, 33], pivot: [0.5, 0.57],
                drops: [['scrap', .8], ['engine', .25], ['core', .3], ['prec', .2], ['bp:일반', .04]] },
   corrode: { name: '침식체', ai: 'corrode', hp: 110, r: 11, speed: 80, color: '#b98cff', img: 'assets/corrode.png', size: [18, 32], drops: [['crystal', .4]] },
-  hunter:  { name: '심연의 사냥꾼', ai: 'hunter', img: 'assets/hunter_0.png', anim: { n: 6, fps: 8 }, size: [64, 81], hp: 700, r: 28, speed: 70, color: '#8a5cff', boss: true, drops: [['crystal', 1], ['crystal', .4], ['ace', .6], ['ace', .25], ['bp:전설', .3], ['goldchip', .8]] },
+  hunter:  { name: '심연의 사냥꾼', ai: 'hunter', img: 'assets/hunter_0.png', anim: { n: 6, fps: 8 }, size: [64, 81], hp: 1400, r: 28, speed: 90, color: '#8a5cff', boss: true, drops: [['crystal', 1], ['crystal', 1], ['crystal', .5], ['ace', 1], ['ace', .4], ['bp:전설', .6], ['goldchip', 1], ['goldchip', .5]] },
   raven:   { name: '네임드 용병 레이븐', ai: 'raven', img: 'assets/raven_hull.png', size: [30, 27], pivot: [0.5, 0.5], hp: 1500, r: 12, speed: 150, color: '#ff4d6d', boss: true, drops: [['bp_raven', .5], ['bp_sensor', .3], ['ace', 1], ['ace', .4], ['bp:강화', .8], ['goldchip', 1], ['goldchip', .6], ['blackbox', .8], ['engine', .5]] },
 };
 
@@ -267,13 +267,17 @@ SA.CORROSION = [
   // 붕괴(90%)까지 약 6분 (임시). 침식체 리젠은 SA.CORRODE_SPAWN에서 단계별로 따로 정한다
   { at: 0,  name: '안정', fire: 1.0,  speed: 1.0,  rate: 30 / 158 },
   { at: 30, name: '오염', fire: 0.9,  speed: 1.0,  rate: 30 / 112 },
-  { at: 60, name: '침식', fire: 0.8,  speed: 0.85, rate: 30 / 90, durDrain: true },
+  { at: 60, name: '침식', fire: 0.8,  speed: 0.85, rate: 30 / 90, durDrain: true, hunterWake: true },
   { at: 90, name: '붕괴', fire: 0.65, speed: 0.75, rate: 10 / 68, durDrain: true, hpDrain: 1, hunter: true },
 ];
 // 함선 리스폰 (임시): 왕국·제국 함선을 격추하면 delay초 뒤 그만큼의 '리스폰 점수'가 쌓이고, 점수로 편대를 화면 밖에서 부른다.
 // 주변(near 이내) 위협 점수 합이 침식 단계별 상한(budget)을 넘으면 미룬다. 위협: 전투기 1, 프리깃 3, 침식체 1, 사냥꾼 4
 SA.RESPAWN = { delay: [25, 35], near: 700, budget: [5, 6, 6, 7], threat: { fighter: 1, frigate: 3, turret: 1, corrode: 1, hunter: 4 },
   squads: [[0.6, ['fighter', 'fighter']], [0.25, ['fighter', 'fighter', 'fighter']], [0.15, ['frigate', 'fighter']]], dual: 0.2, dist: [430, 470] };
+// 심연의 사냥꾼 (임시): 침식 2단계에 멀리서 깨어나 천천히 다가오고(stalk), 붕괴 단계·근접(wake)·피격 시 추격한다.
+// 지나간 자리에 침식 장판을 남긴다: 밟으면 초당 체력 -pool.dps, 침식 +pool.corr%. 체력 50%에서 광폭화
+SA.HUNTER = { spawnDist: [900, 1150], stalk: 30, hunt: 90, rage: 110, rageAt: 0.5, wake: 320,
+  pool: { every: 0.45, r: 24, rRage: 32, life: 12, dps: 8, corr: 0.5 } };
 // 침식체 리젠 (왕국·제국 함선 리젠과 별개). every초마다 n기, 동시에 max기까지 (임시)
 SA.CORRODE_SPAWN = [null, { every: 18, n: 1, max: 3 }, { every: 10, n: 1, max: 5 }, { every: 6, n: 2, max: 8 }];
 

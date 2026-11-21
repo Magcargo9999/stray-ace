@@ -491,12 +491,20 @@ SA.Combat = (() => {
           break;
         }
         case 'hunter': {
-          e.vx += (Math.cos(aP) * 70 - e.vx) * Math.min(1, dt); e.vy += (Math.sin(aP) * 70 - e.vy) * Math.min(1, dt);
-          const c = e.t % 9;
+          const HC = SA.HUNTER;
+          if (!e.hunt && (dist < HC.wake || e.hp < e.maxHp)) SA.Raid.hunterWake(R, e);
+          if (!e.rage && e.hp < e.maxHp * HC.rageAt) { e.rage = true; SA.Raid.msg('사냥꾼이 광폭해졌다', '#c9a2ff', 3); SA.Audio.sfx('siren'); fx(R, e.x, e.y, 40, '#b98cff', 160, 0.6, 2); }
+          const spd = !e.hunt ? HC.stalk : e.rage ? HC.rage : HC.hunt;
+          e.vx += (Math.cos(aP) * spd - e.vx) * Math.min(1, dt); e.vy += (Math.sin(aP) * spd - e.vy) * Math.min(1, dt);
+          // 침식 장판: 지나간 자리에 남긴다
+          e.poolT = (e.poolT || 0) - dt;
+          if (e.poolT <= 0) { e.poolT = HC.pool.every; (R.pools = R.pools || []).push({ x: e.x, y: e.y, r: e.rage ? HC.pool.rRage : HC.pool.r, t: HC.pool.life, max: HC.pool.life }); }
+          if (!e.hunt || !alive) break;    // 다가오는 동안은 쏘지 않는다
+          const k9 = e.rage ? 0.7 : 1, c = e.t % (9 * k9);
           e.t2 += dt;
-          if (c < 3) { if (e.t2 > 0.55) { e.t2 = 0; fan(R, e.x, e.y, aP, 5, 0.7, 120, { r: 5, dmg: 14, col: '#a37bff' }); } }
-          else if (c < 6) { if (e.t2 > 0.9) { e.t2 = 0; e.a += 0.3; ring(R, e.x, e.y, 24, 70, e.a, { r: 4, col: '#c9a2ff' }); } }
-          else if (e.t2 > 0.09) { e.t2 = 0; e.a += 0.19; for (let k = 0; k < 3; k++) eb(R, e.x, e.y, e.a + k * Math.PI * 2 / 3, 95, { r: 3.5, col: '#c9a2ff' }); }
+          if (c < 3 * k9) { if (e.t2 > 0.55 * k9) { e.t2 = 0; fan(R, e.x, e.y, aP, e.rage ? 7 : 5, 0.8, 120, { r: 5, dmg: 14, col: '#a37bff' }); } }
+          else if (c < 6 * k9) { if (e.t2 > 0.9 * k9) { e.t2 = 0; e.a += 0.3; ring(R, e.x, e.y, e.rage ? 32 : 24, 70, e.a, { r: 4, col: '#c9a2ff' }); } }
+          else if (e.t2 > 0.09) { e.t2 = 0; e.a += 0.19; const n = e.rage ? 4 : 3; for (let k = 0; k < n; k++) eb(R, e.x, e.y, e.a + k * Math.PI * 2 / n, 95, { r: 3.5, col: '#c9a2ff' }); }
           if (dist < e.r + 5) hurtPlayer(R, 20);
           break;
         }
@@ -848,6 +856,17 @@ SA.Combat = (() => {
     }
   };
   const updateExtra = (R, dt) => {
+    if (R.pools && R.pools.length) {     // 침식 장판
+      const P = R.player, PC = SA.HUNTER.pool; let inPool = false;
+      for (const p of R.pools) { p.t -= dt; if (p.t > 0 && U.d2(p.x, p.y, P.x, P.y) < p.r * p.r) inPool = true; }
+      R.pools = R.pools.filter(p => p.t > 0);
+      if (inPool && !P.dead && R.state === 'play' && P.skillState !== 'slip') {
+        P.hp -= PC.dps * dt; R.corr = Math.min(100, R.corr + PC.corr * dt); R.inPool = 0.2;
+        if (Math.random() < 0.3) fx(R, P.x + U.rnd(-8, 8), P.y + U.rnd(-8, 8), 1, '#b98cff', 30, 0.4, 1);
+        if (P.hp <= 0) { P.hp = 0; SA.Raid.playerDied(); }
+      }
+      R.inPool = Math.max(0, (R.inPool || 0) - dt);
+    }
     for (const s of R.strikes) { s.t -= dt; if (s.t <= 0 && !s.done) { s.done = true; boom(R, { x: s.x, y: s.y, aoe: s.r, dmg: s.dmg }); R.eb = R.eb.filter(b => U.d2(b.x, b.y, s.x, s.y) > s.r * s.r); } }
     R.strikes = R.strikes.filter(s => s.t > -0.2);
     for (const w of R.wells) {

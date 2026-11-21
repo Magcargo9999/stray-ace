@@ -164,6 +164,12 @@ SA.Render = (() => {
       ctx.drawImage(icon(it.id), it.x - w / 2, it.y - h / 2 + bob, w, h);
     }
     // 적
+    for (const p of R.pools || []) if (vis(p.x, p.y, p.r)) {   // 침식 장판
+      const a = Math.min(1, p.t / 2) * Math.min(1, (p.max - p.t) * 3);
+      ctx.globalAlpha = 0.22 * a; ctx.fillStyle = '#8a5cff'; ctx.beginPath(); ctx.arc(p.x, p.y, p.r, 0, 6.29); ctx.fill();
+      ctx.globalAlpha = 0.35 * a; ctx.strokeStyle = '#c9a2ff'; ctx.lineWidth = 1; ctx.beginPath(); ctx.arc(p.x, p.y, p.r * (0.9 + 0.1 * Math.sin(R.t * 4 + p.x)), 0, 6.29); ctx.stroke();
+      ctx.globalAlpha = 1;
+    }
     for (const e of R.enemies) if (vis(e.x, e.y, e.r + 10)) drawEnemy(ctx, R, e);
     for (const a of R.allies || []) if (!a.dead && vis(a.x, a.y, a.r + 20)) drawAlly(ctx, R, a);
     // 플레이어 탄
@@ -607,6 +613,7 @@ SA.Render = (() => {
       ctx.strokeStyle = '#5dffb0'; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.arc(mx + x.x * k, my + x.y * k, 5, 0, 6.29); ctx.stroke();
     }
     for (const a of R.allies || []) if (!a.dead) { ctx.fillStyle = a.kind === 'wing' ? SA.NAMED[a.named].color : '#8fb6ff'; ctx.fillRect(mx + a.x * k - 2, my + a.y * k - 2, 4, 4); }
+    if (R.hunter && !R.hunter.dead) { ctx.fillStyle = Math.sin(R.t * 5) > -0.3 ? '#b98cff' : '#5a3a99'; ctx.beginPath(); ctx.arc(mx + R.hunter.x * k, my + R.hunter.y * k, 3.5, 0, 6.29); ctx.fill(); }
     if (R.boss && !R.boss.dead) { ctx.fillStyle = '#ff4d6d'; ctx.beginPath(); ctx.arc(mx + R.boss.x * k, my + R.boss.y * k, 3, 0, 6.29); ctx.fill(); }
     const P = R.player;
     ctx.strokeStyle = 'rgba(255,255,255,0.35)'; ctx.strokeRect(mx + (R.cam.x - 320) * k, my + (R.cam.y - 180) * k, 640 * k, 360 * k);

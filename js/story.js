@@ -37,7 +37,7 @@ SA.STORY = {
     { id: 'w_kingdom', title: '호위: 왕국 수송선', giver: '중개인 오스', fac: 'neutral', key: true, type: 'wing', named: 'kingdom', goal: 'escort', need: 1, req: p => p.raven.done,
       brief: '왕국 장군 세레나가 직접 수송선을 끌고 소행성대를 지나. 같이 붙어서 탈출점까지 데려다줘. 수송선도 장군도 잃으면 안 돼.', reward: { credits: 1500, item: 'ace' } },
     { id: 'w_empire', title: '사냥: 심연의 사냥꾼', giver: '중개인 오스', fac: 'neutral', key: true, type: 'wing', named: 'empire', goal: 'hunter', need: 1, req: p => p.raven.done,
-      brief: '제국 에이스 볼크가 사냥꾼을 잡겠다고 난리야. 침식이 끝까지 차오를 때까지 같이 버텨서 그놈을 떨어뜨리고 나와.', reward: { credits: 1800, item: 'ace' } },
+      brief: '제국 에이스 볼크가 사냥꾼을 잡겠다고 난리야. 침식이 짙어지면 그놈이 깨어나. 같이 그놈을 떨어뜨리고 나와.', reward: { credits: 1800, item: 'ace' } },
     { id: 'deliver1', title: '납품: 고철과 코어', giver: '왕국 보급관', fac: 'kingdom', type: 'deliver', mats: { scrap: 8, core: 2 },
       brief: '전선 수리에 쓸 고철 8개, 코어 2개. 출처는 묻지 않겠다.', reward: { credits: 700 } },
     { id: 'k_hunt', title: '소탕: 제국 초계대', giver: '왕국 보급관', fac: 'kingdom', type: 'kill', target: 'e_', need: 12,

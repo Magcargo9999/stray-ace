@@ -397,7 +397,7 @@ SA.Raid = (() => {
     if (ns !== R.stage) {
       if (ns > R.stage) {
         const s = SA.CORROSION[ns];
-        const eff = ns === 1 ? '연사 -10% · 침식체 출현' : ns === 2 ? '연사 -20% · 이속 -15% · 침식체 증가' : '연사 -35% · 이속 -25% · 체력 감소 · 사냥꾼 출현';
+        const eff = ns === 1 ? '연사 -10% · 침식체 출현' : ns === 2 ? '연사 -20% · 이속 -15% · 침식체 증가 · 사냥꾼 깨어남' : '연사 -35% · 이속 -25% · 체력 감소 · 사냥꾼 추격';
         msg(`침식 ${ns}단계 [${s.name}] — ${eff}`, '#b98cff', 5);
         SA.Audio.sfx('stage');
       }
@@ -417,13 +417,19 @@ SA.Raid = (() => {
         for (let i = 0; i < cs.n && near + i < cs.max; i++) spawnNear(R, 'corrode', 380);
       }
     }
-    if (s.hunter && !R.hunterSpawned) {
+    if ((s.hunterWake || s.hunter) && !R.hunterSpawned) {   // 침식 단계: 멀리서 깨어난다
       R.hunterSpawned = true;
-      const h = spawnNear(R, 'hunter', 460);
-      msg('심연의 사냥꾼이 다가온다 — 나가라', '#8a5cff', 6);
+      const HC = SA.HUNTER;
+      let h = null;
+      for (let k = 0; k < 30 && !h; k++) {
+        const a = Math.random() * 6.28, d = U.rnd(HC.spawnDist[0], HC.spawnDist[1]), x = P.x + Math.cos(a) * d, y = P.y + Math.sin(a) * d;
+        if (x > 60 && y > 60 && x < R.map.w - 60 && y < R.map.h - 60 && !C().insideAsteroid(R, x, y)) h = C().spawnEnemy(R, 'hunter', x, y, { awake: true });
+      }
+      R.hunter = h || spawnNear(R, 'hunter', 900);
+      msg('심연의 사냥꾼이 깨어났다 — 지도의 보라색 점. 장판을 밟지 마라', '#8a5cff', 6);
       SA.Audio.sfx('siren');
-      bossEngaged(h);
     }
+    if (s.hunter && R.hunter && !R.hunter.dead && !R.hunter.hunt) hunterWake(R, R.hunter);
   };
   // ── 네임드 윙맨 의뢰 ──
   const setupWing = (R, c) => {
@@ -438,7 +444,7 @@ SA.Raid = (() => {
       R.convoy = { kind: 'convoy', x: P.x + 50, y: P.y, vx: 0, vy: 0, r: V.r, hp: V.hp, maxHp: V.hp, regen: 0, to, face: U.ang(P.x, P.y, to.x, to.y) };
       R.allies.push(R.convoy); R.convoyT = 0;
       msg('의뢰: 수송선을 가장 먼 탈출점까지 호위한 뒤 탈출 · G: 윙맨 엄호', '#8fb6ff', 6);
-    } else msg('의뢰: 볼크와 함께 심연의 사냥꾼(침식 3단계)을 격추하고 탈출 · G: 윙맨 엄호', '#ff7a6b', 6);
+    } else msg('의뢰: 볼크와 함께 심연의 사냥꾼(침식 2단계에 깨어남)을 격추하고 탈출 · G: 윙맨 엄호', '#ff7a6b', 6);
   };
   const allyDown = (a) => {
     const R = SA.R; if (R.wingFail) return;
@@ -537,6 +543,11 @@ SA.Raid = (() => {
     }
   };
 
+  const hunterWake = (R, e) => {   // 추격 시작 (붕괴 단계·근접·피격)
+    if (e.hunt) return; e.hunt = true;
+    msg('심연의 사냥꾼이 사냥을 시작했다 — 싸우거나, 나가라', '#8a5cff', 5);
+    SA.Audio.sfx('siren'); bossEngaged(e);
+  };
   const bossEngaged = (e) => {
     const R = SA.R; R.boss = e; R.bossEngaged = true;
     if (e.type === 'raven') { msg('레이븐: "여긴 내 구역이야, 떠돌이."', '#ff4d6d', 4); SA.Audio.sfx('siren'); }
@@ -684,5 +695,5 @@ SA.Raid = (() => {
     return R.items.filter(it => !it.taken && U.d2(it.x, it.y, P.x, P.y) < r * r);
   };
 
-  return { start, update, msg, swapPlan, doSwap, dropLoot, spawnItem, playerDied, bossEngaged, bossKilled, ravenFlee, ravenFled, allyDown, convoyArrived, finish, useItem, dropToSpace, nearbyGround, grazeBonus, grazeDmg, queueRespawn };
+  return { start, update, msg, swapPlan, doSwap, dropLoot, spawnItem, playerDied, bossEngaged, bossKilled, ravenFlee, ravenFled, allyDown, convoyArrived, finish, useItem, dropToSpace, nearbyGround, grazeBonus, grazeDmg, queueRespawn, hunterWake };
 })();
