@@ -15,7 +15,7 @@ SA.Main = (() => {
     SA.profile = SA.Save.load();
     SA.Input.attach(cv);
     document.querySelectorAll('#hg-tabs button').forEach(b => b.onclick = () => SA.Hangar.go(b.dataset.tab));
-    $('#title-start').onclick = () => { SA.Audio.init(); $('#title').style.display = 'none'; scene = 'hangar'; SA.Hangar.open(); };
+    $('#title-start').onclick = () => { SA.Audio.init(); $('#title').style.display = 'none'; scene = 'hangar'; SA.Hangar.open(); if (!SA.profile.deathModeSet) pickDeathMode(); };
     $('#title-reset').onclick = twice($('#title-reset'), () => { SA.profile = SA.Save.reset(); SA.Hangar.toast('초기화했다.'); });
     $('#hg-settings').onclick = () => openSettings(false);
     $('#result-go').onclick = () => { $('#result').style.display = 'none'; scene = 'hangar'; SA.R = null; SA.Hangar.open(); };
@@ -36,9 +36,44 @@ SA.Main = (() => {
 
   const startRaid = () => {
     scene = 'raid';
+    document.querySelectorAll('.ctx').forEach(x => x.remove()); SA.UI.hideTip();
     SA.Raid.start(SA.profile);
   };
 
+  // 사망 처리 방식 고르기 (처음 한 번 + 설정에서 언제든)
+  const modeButtons = (cur) => Object.entries(SA.DEATH_MODES).map(([k, m]) => `<button class="btn modebtn${cur === k ? ' on' : ''}" data-mode="${k}"><b>${m.name}</b><div class="small dim">${m.desc}</div></button>`).join('');
+  const pickDeathMode = () => {
+    const w = $('#settings'); w.style.display = 'flex';
+    w.querySelector('.inner').innerHTML = `<h2>격추되면 무엇을 잃을까</h2><div class="dim small">언제든 설정에서 바꿀 수 있다. 보안 칸은 어느 방식이든 남는다.</div><div class="modes">${modeButtons(SA.profile.deathMode || 'normal')}</div>`;
+    w.querySelectorAll('[data-mode]').forEach(b => b.onclick = () => { SA.profile.deathMode = b.dataset.mode; SA.profile.deathModeSet = true; SA.Save.store(SA.profile); w.style.display = 'none'; SA.Hangar.toast(`사망 처리: ${SA.DEATH_MODES[b.dataset.mode].name}`); });
+  };
+  // ── 연습장 ──
+  const startRange = () => {
+    scene = 'raid'; document.querySelectorAll('.ctx').forEach(x => x.remove()); SA.UI.hideTip();
+    $('#hangar').style.display = 'none';
+    SA.Raid.start(SA.profile, { range: true });
+    const pnl = document.createElement('div'); pnl.id = 'rangepanel';
+    const types = [['k_fighter', '전투기'], ['e_frigate', '프리깃'], ['k_turret', '포대'], ['corrode', '침식체'], ['hunter', '사냥꾼'], ['raven', '레이븐']];
+    const modes = [['still', '가만히'], ['move', '움직임'], ['fight', '반격']];
+    const draw = () => {
+      const R = SA.R; if (!R) return;
+      pnl.innerHTML = `<b>연습장</b><div class="small dim">허수아비 부르기</div>${types.map(([t, n]) => `<button class="btn tiny" data-t="${t}">${n}</button>`).join('')}
+        <div class="small dim">행동</div>${modes.map(([m, n]) => `<button class="btn tiny${R.dummyMode === m ? ' on' : ''}" data-m="${m}">${n}</button>`).join('')}
+        <div class="small dim">설정</div><button class="btn tiny${R.rangeGod ? ' on' : ''}" data-god>피해 무효</button><button class="btn tiny" data-clear>모두 치우기</button>
+        <button class="btn small" data-out>격납고로</button>`;
+      pnl.querySelectorAll('[data-t]').forEach(b => b.onclick = () => { SA.Raid.spawnDummy(b.dataset.t); });
+      pnl.querySelectorAll('[data-m]').forEach(b => b.onclick = () => { R.dummyMode = b.dataset.m; for (const e of R.enemies) if (e.dummy) e.dummy = R.dummyMode; draw(); });
+      pnl.querySelector('[data-god]').onclick = () => { R.rangeGod = !R.rangeGod; draw(); };
+      pnl.querySelector('[data-clear]').onclick = () => { R.enemies.forEach(e => e.dead = true); R.eb = []; R.boss = null; };
+      pnl.querySelector('[data-out]').onclick = () => leaveRange();
+      pnl.querySelectorAll('button').forEach(b => b.addEventListener('mouseup', () => b.blur()));
+    };
+    draw(); document.body.appendChild(pnl);
+  };
+  const leaveRange = () => {
+    const p = $('#rangepanel'); if (p) p.remove();
+    SA.UI.tabClose(); SA.R = null; scene = 'hangar'; SA.Hangar.open();
+  };
   const openSettings = (inRaid) => {
     const s = SA.profile.settings, w = $('#settings');
     w.style.display = 'flex';
@@ -46,13 +81,15 @@ SA.Main = (() => {
       <h2>${inRaid ? '일시정지' : '설정'}</h2>
       <label>배경음악 <input type="range" min="0" max="1" step="0.05" value="${s.music}" id="set-music"></label>
       <label>효과음 <input type="range" min="0" max="1" step="0.05" value="${s.sfx}" id="set-sfx"></label>
-      <div class="small dim keys-help">WASD 이동 · 마우스 조준 · 좌클릭 주무기 · Q/E 액티브 · Space 파일럿 기술<br>Tab 화물칸(시간 30%) · R 회전 · F 싼 것 버리고 줍기 · Esc 일시정지</div>
+      <div class="small"><b>격추 시 잃는 것</b> <span class="dim">(바로 적용)</span></div><div class="modes">${modeButtons(SA.profile.deathMode || 'normal')}</div>
+      <div class="small dim keys-help">WASD 이동 · 마우스 조준 · 좌클릭 주무기 · Q/E 액티브 · Space 파일럿 기술<br>휠 주무기 교체 · 우클릭 조준 · Shift 저속 이동 · R 동력원 교체 · X 길게 비상탈출<br>Tab 화물칸(시간 30%, 화물칸 안에서 R 회전) · F 싼 것 버리고 줍기 · Esc 일시정지</div>
       <button class="btn" id="set-close">${inRaid ? '계속하기' : '닫기'}</button>
       ${inRaid ? '<button class="btn danger" id="set-abandon">출격 포기 (격추로 처리)</button>' : '<button class="btn danger" id="set-reset">저장 데이터 초기화</button>'}`;
     $('#set-music').oninput = (e) => { s.music = +e.target.value; SA.Audio.setVolumes(); SA.Save.store(SA.profile); };
     $('#set-sfx').oninput = (e) => { s.sfx = +e.target.value; SA.Audio.setVolumes(); SA.Audio.sfx('pickup', 2); SA.Save.store(SA.profile); };
+    w.querySelectorAll('[data-mode]').forEach(b => b.onclick = () => { SA.profile.deathMode = b.dataset.mode; SA.profile.deathModeSet = true; SA.Save.store(SA.profile); w.querySelectorAll('[data-mode]').forEach(x => x.classList.toggle('on', x === b)); });
     $('#set-close').onclick = () => { w.style.display = 'none'; if (SA.R) SA.R.paused = false; };
-    if (inRaid) $('#set-abandon').onclick = () => { w.style.display = 'none'; SA.R.paused = false; SA.R.player.hp = 0; SA.Raid.playerDied(); };
+    if (inRaid) $('#set-abandon').onclick = () => { w.style.display = 'none'; SA.R.paused = false; if (SA.R.range) { leaveRange(); return; } SA.R.player.hp = 0; SA.Raid.playerDied(); };
     else $('#set-reset').onclick = twice($('#set-reset'), () => { SA.profile = SA.Save.reset(); w.style.display = 'none'; SA.Hangar.render(); });
     if (inRaid && SA.R) SA.R.paused = true;
   };
@@ -65,7 +102,7 @@ SA.Main = (() => {
     const pl = SA.PILOTS[r.pilot];
     w.querySelector('.inner').innerHTML = `
       <h1 class="${r.ok ? 'ok' : 'bad'}">${r.ok ? '탈출 성공' : '격추'}</h1>
-      <div class="dim">${r.ok ? '살아서 돌아왔다. 화물은 전부 창고로.' : `화물을 잃었다. 보안 칸만 살아남았다. ${r.pilot === 'cmdr' ? '단장은 무사히 기체를 버리고 탈출했다.' : `${pl.name}은(는) ${SA.INJURY_RAIDS}회 출격 동안 쉬어야 한다.`}${SA.profile.pilot !== r.pilot ? ` 다음 출격은 ${SA.PILOTS[SA.profile.pilot].name}이(가) 나간다.` : ''}`}</div>
+      <div class="dim">${r.ok ? (r.emergency ? '비상탈출 — 화물칸을 버리고 보안 칸과 장착 부품만 들고 빠져나왔다.' : '살아서 돌아왔다. 화물은 전부 창고로.') : `화물을 잃었다. 보안 칸만 살아남았다. ${r.pilot === 'cmdr' ? '단장은 무사히 기체를 버리고 탈출했다.' : `${pl.name}은(는) ${SA.INJURY_RAIDS}회 출격 동안 쉬어야 한다.`}${SA.profile.pilot !== r.pilot ? ` 다음 출격은 ${SA.PILOTS[SA.profile.pilot].name}이(가) 나간다.` : ''}`}</div>
       <div class="stats"><span>시간 <b>${Math.floor(r.time / 60)}:${String(Math.floor(r.time % 60)).padStart(2, '0')}</b></span><span>격추 <b>${r.kills}</b></span><span>스침 <b>${r.graze}</b></span><span>침식 <b>${Math.floor(r.corr)}%</b></span></div>
       <h3>가져온 것 <span class="ok">₵${r.value}</span></h3><div class="icons">${list(r.brought)}</div>
       ${r.lost.length ? `<h3>잃은 것</h3><div class="icons lost">${list(r.lost)}</div>` : ''}
@@ -75,7 +112,14 @@ SA.Main = (() => {
       ${(r.repMsgs || []).map(m => `<div class="warn small">${m}</div>`).join('')}
       ${r.lostPart ? `<div class="bad">잃은 부품: ${r.lostPart} — 장착 칸이 비었다</div>` : ''}
       ${r.ravenFled ? '<div class="ok">레이븐이 도주했다 — 다음 출격부터 미니맵의 붉은 신호에서 재대결</div>' : ''}
-      ${!r.ok ? '<div class="small dim">장착 부품 내구도 -40%. 작업대에서 수리할 수 있다.</div>' : ''}`;
+      ${r.lostAll && r.lostAll.length ? `<div class="bad">${r.mode === 'recover' ? '그 자리에 떨어뜨린 부품' : '잃은 부품'}: ${r.lostAll.join(', ')}</div>` : ''}
+      ${!r.ok && r.mode === 'recover' ? '<div class="warn small">회수 모드 — 다음 출격 맵 어딘가에 잔해 신호가 뜬다. 찾아서 들고 탈출하면 되찾는다 (한 번뿐).</div>' : ''}
+      ${!r.ok && r.mode === 'normal' ? '<div class="small dim">장착 부품 내구도 -40%. 작업대에서 수리할 수 있다.</div>' : ''}
+      ${!r.ok && r.mode === 'easy' ? '<div class="small dim">쉬움 모드 — 장착 부품은 무사하다.</div>' : ''}
+      ${r.recovered ? `<div class="ok">${r.recovered}</div>` : ''}
+      ${r.decoded ? `<div class="ok">${r.decoded}</div>` : ''}
+      ${r.partsIn && r.partsIn.length ? `<div class="ok">부품함에 넣었다: ${r.partsIn.join(', ')}</div>` : ''}
+      ${r.giftPulse ? '<div class="warn small">주무기가 남지 않아 용병단이 펄스건(내구도 60)을 지급했다.</div>' : ''}`;
   };
 
   const loop = (t) => {
@@ -86,8 +130,9 @@ SA.Main = (() => {
       if (I.hit('Escape')) { if (R.tabOpen) SA.UI.tabClose(); else if (!R.paused) openSettings(true); }
       if (I.hit('Tab') && !R.paused) { if (R.tabOpen) SA.UI.tabClose(); else SA.UI.tabOpen(); }
       // 마우스 → 월드 좌표
-      R.mouseWorld.x = R.cam.x + (I.mouse.x - cv.width / 2) / SA.CFG.ZOOM;
-      R.mouseWorld.y = R.cam.y + (I.mouse.y - cv.height / 2) / SA.CFG.ZOOM;
+      const zw = R.zoom || SA.CFG.ZOOM;   // 시야 배율 반영
+      R.mouseWorld.x = R.cam.x + (I.mouse.x - cv.width / 2) / zw;
+      R.mouseWorld.y = R.cam.y + (I.mouse.y - cv.height / 2) / zw;
       SA.Raid.update(rdt);
       if (SA.R) SA.Render.draw(ctx, SA.R);
     } else if (scene !== 'raid') {
@@ -101,5 +146,5 @@ SA.Main = (() => {
   };
 
   addEventListener('load', boot);
-  return { startRaid, showResult, openSettings };
+  return { startRaid, startRange, leaveRange, showResult, openSettings };
 })();

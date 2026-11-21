@@ -19,18 +19,33 @@ SA.CFG = {
 // 화물 아이템. w,h = 격자 칸, val = 판매가
 SA.ITEMS = {
   scrap:    { name: '고철', w: 1, h: 1, val: 20, kind: 'mat', img: 'assets/i_scrap.png', color: '#8a8f98', desc: '어느 쪽 함선이었는지 알 수 없는 쇳조각. 녹이면 다 똑같다.' },
-  wire:     { name: '전선 다발', w: 2, h: 1, val: 45, kind: 'mat', color: '#c9a65b', desc: '왕국 규격 피복. 제국 함선에서 뜯어도 같은 규격이다.' },
+  wire:     { name: '전선 다발', w: 2, h: 1, val: 45, kind: 'mat', img: 'assets/i_wire.png', color: '#c9a65b', desc: '왕국 규격 피복. 제국 함선에서 뜯어도 같은 규격이다.' },
   core:     { name: '코어', w: 1, h: 2, val: 90, kind: 'mat', img: 'assets/i_core.png', color: '#5b9bd5', desc: '함선의 심장. 아직 따뜻하다.' },
   engine:   { name: '엔진', w: 2, h: 2, val: 160, kind: 'mat', img: 'assets/i_engine.png', color: '#d58a5b', desc: '제국 공방 각인이 긁혀 지워져 있다.' },
-  goldchip: { name: '금빛 회로', w: 1, h: 1, val: 180, kind: 'mat', color: '#ffd166', desc: '작고 비싸다. 용병들이 제일 먼저 챙기는 것.' },
-  prec:     { name: '정밀 부품', w: 1, h: 1, val: 120, kind: 'mat', color: '#7fd3ff', desc: '군용 규격 베어링과 회로. 강화 부품에 들어간다.' },
-  ace:      { name: '에이스 각인', w: 1, h: 1, val: 400, kind: 'mat', color: '#ff4d6d', desc: '이름 있는 자의 기체에서 뜯어낸 각인. 전설 부품에 들어간다.' },
+  goldchip: { name: '금빛 회로', w: 1, h: 1, val: 180, kind: 'mat', tier: '강화', color: '#ffd166', desc: '작고 비싸다. 용병들이 제일 먼저 챙기는 것.' },
+  prec:     { name: '정밀 부품', w: 1, h: 1, val: 120, kind: 'mat', tier: '강화', color: '#7fd3ff', desc: '군용 규격 베어링과 회로. 강화 부품에 들어간다.' },
+  ace:      { name: '에이스 각인', w: 1, h: 1, val: 400, kind: 'mat', tier: '전설', color: '#ff4d6d', desc: '이름 있는 자의 기체에서 뜯어낸 각인. 전설 부품에 들어간다.' },
   raven_ticket: { name: '레이븐 고용권', w: 2, h: 1, val: 0, kind: 'ticket', img: 'assets/raven_ticket.png', color: '#c49ac0', desc: '창고에서 사용하면 레이븐이 용병단에 합류한다.' },
-  crystal:  { name: '침식 결정', w: 1, h: 1, val: 220, kind: 'mat', img: 'assets/i_crystal.png', color: '#b98cff', desc: '침식체가 남긴 결정. 만지면 손끝이 저린다.' },
+  crystal:  { name: '침식 결정', w: 1, h: 1, val: 220, kind: 'mat', tier: '강화', img: 'assets/i_crystal.png', color: '#b98cff', desc: '침식체가 남긴 결정. 만지면 손끝이 저린다.' },
   debris:   { name: '대형 잔해', w: 2, h: 3, val: 300, kind: 'mat', color: '#9aa3ad', desc: '크고 무겁고 비싸다. 화물칸이 운다.' },
   blackbox: { name: '블랙박스', w: 1, h: 1, val: 150, kind: 'lore', img: 'assets/i_blackbox.png', color: '#ff8f3d', desc: '격추된 함선의 기록 장치. 팔거나, 격납고에서 해독하거나.' },
   canister: { name: '정화 캐니스터', w: 1, h: 2, val: 70, kind: 'use', img: 'assets/i_canister.png', color: '#7ff0e0', desc: '사용: 침식률 -25%.' },
   repairkit:{ name: '수리킷', w: 1, h: 1, val: 60, kind: 'use', img: 'assets/i_repairkit.png', color: '#9df07f', desc: '사용: 체력 40 회복. Tab 화물칸에서 장착 부품에 끌어다 놓으면 그 부품 내구도 +40.' },
+  // 상위 재료: 하위 재료 2~3개를 합성 (설계도 없이). 강화·전설 부품 제작에 들어간다 (임시)
+  alloy:    { name: '강화 합금', w: 1, h: 1, val: 160, kind: 'umat', tier: '강화', color: '#9fd8c8', desc: '고철을 코어 열로 다시 녹여 만든 판재. 강화 부품의 뼈대.' },
+  fcore:    { name: '융합 코어', w: 1, h: 2, val: 260, kind: 'umat', tier: '강화', color: '#6fb7ff', desc: '코어 둘을 엔진 냉각관으로 묶었다. 강화 액티브·서브웨폰에 들어간다.' },
+  qcircuit: { name: '양자 회로', w: 1, h: 1, val: 520, kind: 'umat', tier: '전설', color: '#ffd166', desc: '금빛 회로 위에 침식 결정을 얹은 기판. 전설 부품의 심장.' },
+  stardata: { name: '성구 데이터', w: 1, h: 1, val: 120, kind: 'data', tier: '일반', color: '#a8c8ff', desc: '사용: 이 구역의 지도를 한 번에 밝힌다 (소행성·장소 전부).' },
+  bb_reward: { name: '신호 블랙박스', w: 1, h: 1, val: 150, kind: 'lore', tier: '강화', color: '#ffb347', desc: '좌표가 남아 있는 블랙박스. 기지에서 해독하면 다음 출격 맵에 신호 지점이 뜬다.' },
+  // 해독키: 필드에서 줍고 기지에서 보안해독기에 '등록'한다. 등록하면 사용 횟수가 생기고, 다 쓰면 상점에서 충전한다
+  key_box1: { name: '상자 해독키 (일반)', w: 1, h: 1, val: 80, kind: 'key', tier: '일반', code: 'box1', color: '#9fb3c8', desc: '일반 등급 잠긴 상자의 코드 칩. 기지에서 등록하면 보안해독기로 5번 연다.' },
+  key_box2: { name: '상자 해독키 (강화)', w: 1, h: 1, val: 220, kind: 'key', tier: '강화', code: 'box2', color: '#5dffb0', desc: '강화 등급 잠긴 상자의 코드 칩. 등록하면 3번. 2막 보급고에서 주로 쓰인다.' },
+  key_box3: { name: '상자 해독키 (전설)', w: 1, h: 1, val: 600, kind: 'key', tier: '전설', code: 'box3', color: '#ffd166', desc: '전설 등급 잠긴 상자의 코드 칩. 등록하면 1번. 3막의 금고 규격이다.' },
+  key_zone: { name: '왕국 산하 행성 해독키', w: 1, h: 1, val: 300, kind: 'key', tier: '강화', code: 'zone', color: '#8fb6ff', desc: '보안 구역 역장의 출입 코드. 어째서 이런 폐광 소행성대에 왕국 산하 행성의 해독키가…? 등록하면 3번.' },
+  // 동력원: 주무기 에너지. 장착 1개 + 예비는 화물칸. 기지에 돌아오면 무료로 가득 찬다. cap = 펄스건 연사 기준 초, dmg = 주무기 피해 배율 (임시)
+  cell1:    { name: '동력원 (일반)', w: 1, h: 1, val: 60, kind: 'cell', tier: '일반', cap: 90, dmg: 1.0, color: '#7fe3ff', desc: '주무기 에너지. 펄스건으로 약 90초. 피해 ×1.0. R로 교체.' },
+  cell2:    { name: '동력원 (강화)', w: 1, h: 1, val: 180, kind: 'cell', tier: '강화', cap: 150, dmg: 1.2, color: '#5dffb0', desc: '주무기 에너지. 펄스건으로 약 150초. 피해 ×1.2. R로 교체.' },
+  cell3:    { name: '동력원 (전설)', w: 1, h: 1, val: 420, kind: 'cell', tier: '전설', cap: 240, dmg: 1.4, color: '#ffd166', desc: '주무기 에너지. 펄스건으로 약 240초. 피해 ×1.4. R로 교체.' },
   bp_raven:   { name: '설계도: 레이븐 추진기', w: 1, h: 1, val: 300, kind: 'bp', recipe: 'raven', color: '#ffd166', desc: '네임드 용병 레이븐의 추진기. 그는 이걸로 탄 사이를 미끄러졌다.' },
 };
 
@@ -46,6 +61,7 @@ SA.PARTS = {
   lance:   { name: '관통 레이저', slot: 'main', tier: '일반', val: 300, rate: 3.2, dmg: 15, spd: 760, spread: 0, shots: 1, pierce: 3, desc: '적을 3기까지 관통.' },
   rail:    { name: '레일건', slot: 'main', tier: '강화', val: 560, rate: 2.6, dmg: 26, spd: 950, spread: 0, shots: 1, pierce: 99, desc: '적을 전부 관통. 관통 레이저 계보.' },
   breaker: { name: '탄막 관통포', slot: 'main', tier: '전설', val: 1300, rate: 2.4, dmg: 32, spd: 950, spread: 0, shots: 1, pierce: 99, erase: true, desc: '적 전부 관통 + 지나간 자리의 적 탄을 지운다. 관통 레이저 계보.' },
+  sniper:  { name: '저격총', slot: 'main', tier: '강화', val: 560, rate: 0.833, dmg: 150, spd: 1150, spread: 0.02, shots: 1, life: 1.2, sniper: true, desc: '한 발 150, 1.2초에 1발. 우클릭으로 끝까지 정조준하면 피해 ×1.5. 에너지를 많이 먹는다.' },
   glass:   { name: '유리 대포', slot: 'main', tier: '강화', val: 520, rate: 6, dmg: 14, spd: 620, spread: 0.03, shots: 1, desc: '화력이 아주 세다. 대신 맞을 때마다 장착 부품 내구도가 크게 깎인다.' },
   // 서브웨폰 (자동)
   mg:      { name: '기관포 포탑', slot: 'sub', tier: '일반', val: 120, rate: 4, dmg: 3, range: 230, desc: '가장 가까운 적을 자동 조준.' },
@@ -76,7 +92,13 @@ SA.PARTS = {
   sensor:  { name: '조준 센서', slot: 'pas', tier: '강화', val: 520, img: 'assets/sensor.png', desc: '탄 퍼짐 60% 감소, 주무기 탄속 +10%. 조준선이 붉고 좁아진다. 레이븐이 가끔 설계도를 떨군다.' },
   magnet:  { name: '자력 수집기', slot: 'pas', tier: '일반', val: 120, desc: '아이템 흡수 거리 2배.' },
   cooler:  { name: '냉각기', slot: 'pas', tier: '일반', val: 160, desc: '주무기 연사 +15%.' },
-  plating: { name: '차폐 장갑', slot: 'pas', tier: '일반', val: 160, desc: '침식 상승 속도 -20%.' },
+  plating: { name: '차폐 장갑', slot: 'pas', tier: '일반', val: 160, desc: '침식 상승 속도 -20%, 침식 디버프 -30% (연사·이속 감소, 내구도·체력 감소).' },
+  // 관측 장비 (전용 1칸): Z로 화면 배율을 바꾼다. 장비가 좋을수록 더 멀리 보고, 미니맵 레이더가 넓다
+  obs1:    { name: '광역 관측기', slot: 'obs', tier: '일반', val: 200, obsLv: 1, desc: 'Z: 화면을 한 단계 넓게 본다. 미니맵 레이더 600.' },
+  obs2:    { name: '장거리 관측기', slot: 'obs', tier: '강화', val: 480, obsLv: 2, desc: 'Z: 화면을 두 단계까지 넓게 본다. 미니맵 레이더 900.' },
+  obs3:    { name: '심연 투시경', slot: 'obs', tier: '전설', val: 1100, obsLv: 3, desc: 'Z: 화면을 세 단계까지 넓게 본다. 미니맵 레이더 1200, 보스·사냥꾼은 거리와 상관없이 보인다.' },
+  decoder: { name: '보안해독기', slot: 'pas', tier: '강화', val: 420, desc: '등록된 해독 코드로 잠긴 상자·보안 구역을 연다. 보안상자는 해독기만 있으면 해킹으로 연다 (5초 버티기).' },
+  plating2:{ name: '강화 차폐 장갑', slot: 'pas', tier: '강화', val: 380, desc: '침식 상승 속도 -30%, 침식 디버프 -50%.' },
   engine2: { name: '추진 엔진', slot: 'pas', tier: '일반', val: 160, desc: '이동 속도 +12%.' },
   cargo:   { name: '화물칸 확장', slot: 'pas', tier: '일반', val: 180, desc: '화물칸 한 줄 추가.' },
   exitacc: { name: '탈출 가속기', slot: 'pas', tier: '일반', val: 160, desc: '탈출 카운트다운 30% 단축, 구역을 벗어나도 덜 줄어든다.' },
@@ -133,6 +155,12 @@ SA.RECIPES = {
   sensor:  { mats: { prec: 3, core: 2, wire: 2 } },
   cooler:  { mats: { wire: 2, scrap: 3 } },
   plating: { mats: { scrap: 8 } },
+  decoder: { mats: { prec: 2, wire: 2, goldchip: 1 } },
+  obs1:    { mats: { wire: 2, prec: 1 } },
+  obs2:    { from: 'obs1', mats: { prec: 2, core: 1 } },
+  obs3:    { from: 'obs2', mats: { crystal: 2, ace: 1 } },
+  plating2:{ from: 'plating', mats: { prec: 1, crystal: 1, scrap: 3 } },
+  sniper:  { mats: { prec: 2, core: 1, engine: 1 } },
   engine2: { mats: { engine: 1 } },
   cargo:   { mats: { scrap: 6, wire: 1 } },
   exitacc: { mats: { engine: 1, wire: 1 } },
@@ -150,7 +178,52 @@ SA.RECIPES = {
   raven:   { mats: { ace: 2, goldchip: 2, engine: 1 } },
   resonator:{ mats: { ace: 2, crystal: 3, prec: 2 } },
 };
-SA.START_RECIPES = ['pulse', 'mg', 'magnet'];   // 처음 아는 제작법은 이것뿐 (임시). 나머지는 초반 퀘스트 보상·설계도 드랍으로
+// 에너지·사격 (임시). eps = 계속 쏠 때 초당 에너지 (펄스건 1.0 기준, 무기 성향별)
+SA.ENERGY = { reload: 1.2, swap: 0.4, emerMax: 6, emerRegen: 0.25, hip: 1.6, aim: 0.5, aimSpeed: 0.75, slowSpeed: 0.5, sniperCharge: 0.8, sniperMul: 1.5,
+  eps: { pulse: 1.0, twin: 1.15, scatter: 1.0, shard: 1.1, crusher: 1.2, lance: 1.0, rail: 1.1, breaker: 1.25, glass: 1.2, sniper: 1.35 } };
+// 아이템 제작 (설계도 없이 항상 가능). 동력원은 모두 고철 1개가 들어가고, 상위 동력원은 하위 동력원을 쓴다 (임시)
+SA.CRAFT = {
+  cell1: { mats: { scrap: 1, wire: 1 } },
+  cell2: { mats: { cell1: 1, scrap: 1, core: 1 } },
+  cell3: { mats: { cell2: 1, scrap: 1, goldchip: 1, crystal: 1 } },
+  repairkit: { mats: { scrap: 2, wire: 1 } },
+  alloy:    { mats: { scrap: 2, core: 1 } },
+  fcore:    { mats: { core: 2, engine: 1 } },
+  qcircuit: { mats: { goldchip: 1, prec: 1, crystal: 1 } },
+};
+// 강화·전설 부품 제작에는 상위 재료가 들어간다 (강화: 강화 합금 또는 융합 코어 1 / 전설: 양자 회로 1 + 강화 합금 1)
+SA.UMAT_ADD = (id) => { const d = SA.PARTS[id]; if (!d) return {}; if (d.tier === '전설') return { qcircuit: 1, alloy: 1 }; if (d.tier === '강화') return (d.slot === 'act' || d.slot === 'sub') ? { fcore: 1 } : { alloy: 1 }; return {}; };
+// 코드 사용 횟수 (등록 1회분)와 상점 충전 가격 (가득 채우기) (임시)
+SA.CODES = { box1: { name: '일반 상자 코드', uses: 5, price: 150 }, box2: { name: '강화 상자 코드', uses: 3, price: 450 }, box3: { name: '전설 상자 코드', uses: 1, price: 900 }, zone: { name: '보안 구역 코드', uses: 3, price: 500 } };
+// 상자: 일반(부수기) / 잠긴 상자(해독기+상자 코드, 머물러 열기) / 보안상자(해독기만, 해킹 5초 버티기) (임시)
+SA.BOX = { openHold: 1.5, hackHold: 5, r: 46 };
+SA.LOOT_LOCKED = {
+  1: [['bp:일반', .5], ['bp:강화', .15], ['alloy', .5], ['cell1', .4], ['prec', .6], ['goldchip', .35], ['part:일반', .12], ['key_box1', .08]],
+  2: [['bp:강화', .5], ['alloy', 1], ['fcore', .5], ['cell2', .35], ['goldchip', .6], ['part:강화', .15], ['key_box2', .06]],
+  3: [['bp:전설', .4], ['qcircuit', 1], ['alloy', .6], ['cell3', .3], ['part:전설', .1]],
+};
+SA.LOOT_SECURE = [['part:강화', .5], ['part:전설', .12], ['bp:강화', .6], ['bp:전설', .2], ['qcircuit', .4], ['alloy', .8], ['fcore', .4], ['key_zone', .1]];
+// 부품 완성품 필드 드랍: 화물칸 크기 (주무기 3×1, 그 외 2×1), 내구도 40~80 무작위. 적 격추 확률 (임시)
+SA.PART_DROP = { size: { main: [3, 1], sub: [2, 1], act: [2, 1], pas: [2, 1], obs: [2, 1] }, dur: [40, 80],
+  chance: { fighter: 0.01, turret: 0.015, frigate: 0.03, boss: 0.25 }, tierRoll: [['전설', .05], ['강화', .25], ['일반', 1]] };
+// 설계도 확률: 일반은 그대로, 강화·전설은 낮추고 네임드·보스·대형은 높인다
+SA.BP_MUL = { normal: 0.5, frigate: 1.5, boss: 2.5 };
+SA.HIT_WEAR = 3;
+// 사망 처리 방식 (시작할 때 고르고, 설정에서 언제든 바꾼다)
+SA.DEATH_MODES = {
+  hard:    { name: '완전 상실', desc: '화물과 장착한 부품·동력원을 전부 잃는다. 보안 칸만 남는다.' },
+  recover: { name: '회수', desc: '화물과 장착 부품을 그 자리에 떨어뜨린다. 다음 출격 맵 어딘가에 잔해 신호가 뜨고, 찾아서 들고 탈출하면 되찾는다 (한 번만).' },
+  normal:  { name: '보통', desc: '화물을 잃고, 장착 부품 하나를 확률로 잃는다. 장착 부품 내구도 -40%.' },
+  easy:    { name: '쉬움', desc: '화물만 잃는다. 장착 부품은 그대로.' },
+};
+// 탈출: 귀환 비콘이 시간차로 나타나고, 부수면 그 자리에 귀환 포트가 열린다 (임시)
+SA.EXIT = { first: 60, every: 60, max: 3, hp: 120, emHold: 3, emTime: 15 };
+SA.RECOVER = { hold: 3 };
+// 시야: 화면 배율 단계 (관측 장비 등급만큼 더 넓게) · 미니맵 레이더 범위 · 지도 안개 칸 크기·밝히는 반경 (임시)
+SA.OBS = { levels: [2, 1.75, 1.5, 1.3], radar: [350, 600, 900, 1200], fogCell: 80, reveal: 330 };
+// 블랙박스 해독: 출격 1회가 지나면 완료, 크레딧을 내면 즉시
+SA.DECODE = { raids: 1, instant: 300 };   // 회수 잔해: 머물러서 회수하는 시간   // 피격 시 무작위 장착 부품 내구도 감소
+SA.START_RECIPES = ['pulse', 'mg', 'magnet', 'decoder', 'obs1'];   // 보안해독기는 처음부터 안다 (강화라 테오 구조 후 제작)   // 처음 아는 제작법은 이것뿐 (임시). 나머지는 초반 퀘스트 보상·설계도 드랍으로
 // 설계도 아이템은 부품마다 자동 생성. 등급별 풀에서 무작위로 떨어진다 (loot의 'bp:일반' 등)
 SA.BP_POOL = { 일반: [], 강화: [], 전설: [] };
 for (const id in SA.PARTS) {
@@ -160,6 +233,15 @@ for (const id in SA.PARTS) {
   if (id !== 'raven' && id !== 'sensor') SA.BP_POOL[d.tier].push(id);   // 레이븐 전용 설계도는 일반 드랍 풀에서 뺀다
 }
 SA.ITEMS.bp_sensor.img = 'assets/bp_sensor.png';   // 도트 설계도 카드
+// 부품 완성품 아이템 (필드 드랍용). 탈출하면 부품함으로 들어간다
+for (const id in SA.PARTS) {
+  const d = SA.PARTS[id], sz = SA.PART_DROP.size[d.slot];
+  SA.ITEMS['pt_' + id] = { name: d.name, w: sz[0], h: sz[1], val: Math.round(d.val * 0.6), kind: 'part', tier: d.tier, part: id, img: d.img, color: { 일반: '#9fb3c8', 강화: '#5dffb0', 전설: '#ffd166' }[d.tier], desc: `[부품] ${d.desc} 탈출하면 부품함으로 들어간다.` };
+}
+// 아이템 분류 이름
+SA.KIND_NAME = { mat: '재료', umat: '상위 재료', cell: '동력원', use: '소모품', key: '해독키', lore: '정보', data: '정보', bp: '설계도', capsule: '구조', part: '부품', ticket: '고용권' };
+// 강화·전설 레시피에 상위 재료 추가 (한 번만)
+for (const id in SA.RECIPES) Object.assign(SA.RECIPES[id].mats, SA.UMAT_ADD(id));
 
 // 기체. mount = 포탑/판정점 (도트 좌표, 0~1 비율)
 SA.SHIPS = {
@@ -206,26 +288,40 @@ SA.RESCUE = {
 };
 for (const id in SA.RESCUE.targets) {
   const t = SA.RESCUE.targets[id];
-  SA.ITEMS['cap_' + id] = { name: '구조 캡슐: ' + t.name, w: 2, h: 2, val: 0, kind: 'capsule', color: t.color, desc: '탈출해야 구조가 확정된다. 들고 있으면 이속 -10%. 잃으면 다음 출격에 신호가 다시 뜬다.' };
+  SA.ITEMS['cap_' + id] = { name: '구조 캡슐: ' + t.name, w: 2, h: 2, val: 0, kind: 'capsule', img: 'assets/i_rcap.png', color: t.color, desc: '탈출해야 구조가 확정된다. 들고 있으면 이속 -10%. 잃으면 다음 출격에 신호가 다시 뜬다.' };
 }
 // 네임드 레이븐 (임시 수치): 둥지에서 체력 30%가 되면 도주 → 다음 출격부터 다른 위치에서 재대결 → 격추하면 탈출 포드를 들고 탈출해야 완료
 SA.RAVEN = { hp: 1500, fleeAt: 0.3, phase3At: 0.25, dodgeCd: [1.8, 1.5, 1.1],
   fleeDrops: [['goldchip', 1], ['prec', .6], ['bp:강화', .3]] };
-SA.ITEMS.cap_raven = { name: '레이븐의 탈출 포드', w: 2, h: 2, val: 0, kind: 'capsule', color: '#ff4d6d', desc: '격추된 레이븐이 갇힌 탈출 포드. 들고 탈출해야 그를 붙잡는다. 들고 있으면 이속 -10%.' };
+SA.ITEMS.cap_raven = { name: '레이븐의 탈출 포드', w: 2, h: 2, val: 0, kind: 'capsule', img: 'assets/i_pod.png', color: '#ff4d6d', desc: '격추된 레이븐이 갇힌 탈출 포드. 들고 탈출해야 그를 붙잡는다. 들고 있으면 이속 -10%.' };
 // 난파선 (임시): 아이템 하나당 0.9초, 마지막 한 개는 4초. 벗어나면 진행 중 게이지가 초당 0.6씩 줄어든다.
 // 마지막 보상은 위에서부터 굴려 처음 당첨된 것 하나 (좋은 것 확률 높게)
 SA.WRECK = { per: 0.9, last: 4, decay: 0.6, final: [['bp:강화', .1], ['goldchip', .3], ['bp:일반', .25], ['engine', .35], ['prec', 1]] };
+// 대사창 화자: 초상화는 assets/portrait_<id>.png (원화가 작업물이 오면 넣는다. 없으면 실루엣)
+SA.SPEAKERS = {
+  raven:  { name: '레이븐', title: '네임드 용병', color: '#ff4d6d' },
+  serena: { name: '세레나', title: '왕국 장군', color: '#8fb6ff' },
+  volk:   { name: '볼크', title: '제국 돌격 에이스', color: '#ff7a6b' },
+};
+SA.DIALOG = { min: 4, max: 9, perChar: 0.07, queue: 3 };
+// 적이 쓰는 플레이어 스킬 (2막 보스·네임드용 구조. 적 정의에 skills: ['purge', ...] 를 넣으면 쓴다) (임시)
+SA.ENEMY_SKILLS = {
+  purge:   { cd: 10, desc: '주변 플레이어 탄을 지운다' },
+  shield:  { cd: 12, desc: '1.5초 무적' },
+  missile: { cd: 8, desc: '플레이어 쪽으로 부채꼴 탄 6발' },
+  boost:   { cd: 9, desc: '1초간 플레이어 쪽으로 빠르게 돌진' },
+};
 // 윙맨 AI 공통 (임시): leash = 플레이어에게서 최대 거리, 세레나 후퇴/복귀 체력 비율, 탄 회피 확률, 볼크 도발 확률
 SA.WING = { leash: 250, retreatAt: 0.35, backAt: 0.7, dodgeCmd: 0.95, dodgeAce: 0.3, taunt: 0.35 };
 // 네임드 윙맨 (초안·임시 수치). 중립 의뢰로 함께 출격한다. 기체 그림은 진영 전투기 도트를 빌려 쓴다
 SA.NAMED = {
-  kingdom: { name: '세레나', title: '왕국 장군', color: '#8fb6ff', sprite: 'k_fighter', style: 'cmd', hp: 160, regen: 4, speed: 175, range: 320,
+  kingdom: { name: '세레나', title: '왕국 장군', color: '#8fb6ff', speaker: 'serena', sprite: 'n_serena', style: 'cmd', hp: 160, regen: 4, speed: 175, range: 320,
              rate: 2.6, shots: 1, spread: 0.01, dmg: 12, spd: 760,
              hello: '수송선이 먼저다. 내 뒤는 당신이 봐. …그 기동, 어디서 본 것 같은데.', coverOn: '붙겠다. 대신 맞아 주겠다니… 예전에도 그런 사람이 있었지.', coverOff: '흩어진다. 시야 넓게.',
              arrive: '도착이다. 하나만 묻지. 당신에게 그 비행을 가르친 사람, 아직 살아 있나?',
              down: '기체 손상… 이탈한다. 그 사람에게 전해. …아니, 됐다.',
              barks: { retreat: '손상 3할 초과. 잠시 물러난다. 앞을 맡아.', back: '복귀한다. 좌측으로 돈다.' } },
-  empire:  { name: '볼크', title: '제국 돌격 에이스', color: '#ff7a6b', sprite: 'e_fighter', style: 'ace', hp: 180, regen: 4, speed: 185, range: 260,
+  empire:  { name: '볼크', title: '제국 돌격 에이스', color: '#ff7a6b', speaker: 'volk', sprite: 'n_volk', style: 'ace', hp: 180, regen: 4, speed: 185, range: 260,
              rate: 8, shots: 2, spread: 0.12, dmg: 3.5, spd: 560,
              hello: '제국 돌격대 볼크다. 사냥꾼 머리는 내 거다. 넌 뒤만 받쳐.', coverOn: '좋아, 방패는 네가 해라!', coverOff: '흩어져! 각자 사냥이다.',
              down: '젠장, 엔진이… 먼저 빠진다!',
@@ -247,9 +343,9 @@ SA.ENEMIES = {
   e_fighter: { name: '제국 전투기', faction: 'empire', ai: 'fighter', hp: 16, r: 9, speed: 108, img: 'assets/e_fighter.png', size: [26, 24],
                drops: [['scrap', .6], ['core', .12], ['bp:일반', .02]] },
   k_frigate: { name: '왕국 프리깃', faction: 'kingdom', ai: 'frigate', hp: 110, r: 20, speed: 38, img: 'assets/k_frigate.png', size: [28, 48],
-               drops: [['core', .55], ['wire', .5], ['prec', .3], ['scrap', .8], ['bp:일반', .05], ['bp:강화', .03]] },
+               drops: [['core', .55], ['wire', .5], ['prec', .3], ['scrap', .8], ['bp:일반', .05], ['bp:강화', .03], ['key_box1', .05], ['key_zone', .03], ['bb_reward', .04]] },
   e_frigate: { name: '제국 순양함', faction: 'empire', ai: 'frigate', hp: 130, r: 20, speed: 34, img: 'assets/e_frigate.png', size: [34, 47],
-               drops: [['core', .5], ['engine', .35], ['prec', .3], ['scrap', .8], ['bp:일반', .05], ['bp:강화', .03]] },
+               drops: [['core', .5], ['engine', .35], ['prec', .3], ['scrap', .8], ['bp:일반', .05], ['bp:강화', .03], ['key_box1', .05], ['key_zone', .03], ['bb_reward', .04]] },
   k_turret:  { name: '왕국 포대', faction: 'kingdom', ai: 'turret', hp: 70, r: 12, speed: 0, img: 'assets/k_turret.png', size: [18, 25], pivot: [0.5, 0.67],
                drops: [['scrap', .7], ['wire', .3], ['core', .25], ['prec', .15]] },
   e_turret:  { name: '제국 쌍포대', faction: 'empire', ai: 'turret', hp: 60, r: 10, speed: 0, img: 'assets/e_turret.png', size: [14, 21], pivot: [0.5, 0.72],
@@ -257,8 +353,12 @@ SA.ENEMIES = {
   m_turret:  { name: '폐광 포대', faction: 'mine', ai: 'turret', hp: 95, r: 13, speed: 0, img: 'assets/m_turret.png', size: [26, 33], pivot: [0.5, 0.57],
                drops: [['scrap', .8], ['engine', .25], ['core', .3], ['prec', .2], ['bp:일반', .04]] },
   corrode: { name: '침식체', ai: 'corrode', hp: 110, r: 11, speed: 80, color: '#b98cff', img: 'assets/corrode.png', size: [18, 32], drops: [['crystal', .4]] },
+  // 그림 전용 (스폰하지 않음): 네임드 윙맨 전용기 · 호위 화물선
+  n_serena:  { name: '세레나 전용기', ai: 'none', img: 'assets/w_serena.png', size: [28, 31], hp: 1, r: 7 },
+  n_volk:    { name: '볼크 전용기', ai: 'none', img: 'assets/w_volk.png', size: [31, 29], hp: 1, r: 7 },
+  convoy_ship: { name: '호위 화물선', ai: 'none', img: 'assets/convoy.png', size: [27, 75], hp: 1, r: 18 },
   hunter:  { name: '심연의 사냥꾼', ai: 'hunter', img: 'assets/hunter_0.png', anim: { n: 6, fps: 8 }, size: [64, 81], hp: 1400, r: 28, speed: 90, color: '#8a5cff', boss: true, drops: [['crystal', 1], ['crystal', 1], ['crystal', .5], ['ace', 1], ['ace', .4], ['bp:전설', .6], ['goldchip', 1], ['goldchip', .5]] },
-  raven:   { name: '네임드 용병 레이븐', ai: 'raven', img: 'assets/raven_hull.png', size: [30, 27], pivot: [0.5, 0.5], hp: 1500, r: 12, speed: 150, color: '#ff4d6d', boss: true, drops: [['bp_raven', .5], ['bp_sensor', .3], ['ace', 1], ['ace', .4], ['bp:강화', .8], ['goldchip', 1], ['goldchip', .6], ['blackbox', .8], ['engine', .5]] },
+  raven:   { name: '네임드 용병 레이븐', ai: 'raven', img: 'assets/raven_hull.png', size: [30, 27], pivot: [0.5, 0.5], hp: 1500, r: 12, speed: 150, color: '#ff4d6d', boss: true, drops: [['bp_raven', .5], ['bp_sensor', .3], ['ace', 1], ['ace', .4], ['bp:강화', .8], ['goldchip', 1], ['goldchip', .6], ['blackbox', .8], ['engine', .5], ['key_box2', .3]] },
 };
 
 // 침식 단계: at = 침식률 하한(%)

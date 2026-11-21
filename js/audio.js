@@ -88,6 +88,15 @@ SA.Audio = (() => {
       case 'buy': [784, 1046].forEach((f, i) => tone('square', f, t + i * 0.07, 0.12, 0.06, { lp: 3500 })); break;
       case 'deny': tone('square', 140, t, 0.15, 0.07, { lp: 900 }); break;
       case 'stage': tone('sawtooth', 110, t, 0.9, 0.18, { slide: 70, lp: 600 }); noise(t, 0.9, 0.08, { f: 200 }); break;
+      case 'swap': tone('square', 600, t, 0.04, 0.04, { lp: 2500 }); tone('square', 900, t + 0.06, 0.05, 0.04, { lp: 2500 }); break;
+      case 'reload': noise(t, 0.12, 0.08, { f: 1800, type: 'bandpass' }); tone('triangle', 260, t + 0.1, 0.25, 0.06, { slide: 700 }); break;
+      case 'snipe': noise(t, 0.3, 0.3, { f: 3000, fTo: 300 }); tone('sawtooth', 1600, t, 0.12, 0.1, { slide: 200, lp: 5000 }); break;
+      // 좋은 드랍: 등급이 높을수록 음이 하나씩 늘어난다 (부담스럽지 않게 짧고 작게)
+      case 'rare1': [880, 1175].forEach((f, i) => tone('triangle', f, t + i * 0.06, 0.12, 0.05)); break;
+      case 'rare2': [784, 988, 1319].forEach((f, i) => tone('triangle', f, t + i * 0.07, 0.16, 0.06)); tone('sine', 2637, t + 0.21, 0.25, 0.025); break;
+      case 'rare3': [659, 880, 1109, 1319, 1760].forEach((f, i) => tone('triangle', f, t + i * 0.07, 0.2, 0.06)); tone('sine', 3520, t + 0.35, 0.4, 0.03); break;
+      case 'hack': if (gate(name, 160)) tone('square', 900 + p * 900, t, 0.05, 0.03, { lp: 3000 }); break;
+      case 'unlock': [523, 784, 1046].forEach((f, i) => tone('square', f, t + i * 0.05, 0.1, 0.05, { lp: 3000 })); noise(t, 0.2, 0.08, { f: 4000, type: 'highpass' }); break;
     }
   };
 

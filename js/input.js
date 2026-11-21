@@ -1,7 +1,7 @@
 // 입력: 누르고 있는 키 + 이번 프레임에 눌린 키 + 마우스(캔버스 내부 좌표)
 SA.Input = (() => {
   const down = new Set(), pressed = new Set();
-  const mouse = { x: 640, y: 360, down: false, right: false, inCanvas: true };
+  const mouse = { x: 640, y: 360, down: false, right: false, inCanvas: true, wheel: 0 };
   let canvas = null;
 
   const attach = (cv) => {
@@ -28,8 +28,9 @@ SA.Input = (() => {
     });
     addEventListener('mouseup', (e) => { if (e.button === 0) mouse.down = false; if (e.button === 2) mouse.right = false; });
     addEventListener('contextmenu', (e) => e.preventDefault());
+    canvas.addEventListener('wheel', (e) => { mouse.wheel += Math.sign(e.deltaY); e.preventDefault(); }, { passive: false });
   };
-  const endFrame = () => pressed.clear();
+  const endFrame = () => { pressed.clear(); mouse.wheel = 0; };
   const isDown = (k) => down.has(k);
   const hit = (k) => pressed.has(k);
   const consume = (k) => pressed.delete(k);

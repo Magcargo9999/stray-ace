@@ -1,4 +1,6 @@
 // 프로필 저장 (localStorage). 저장이 막힌 환경에서도 게임은 돌아간다.
+// 장착 칸 uid 전부 (주무기 2 · 서브 · 액티브 · 패시브 · 관측)
+SA.loUids = (l) => [l.main, l.main2, ...(l.sub || []), ...(l.act || []), ...(l.pas || []), l.obs].filter(Boolean);
 SA.Save = (() => {
   const KEY = 'strayace_profile_v1';
   let partSeq = 1;
@@ -7,13 +9,15 @@ SA.Save = (() => {
   const fresh = () => {
     const parts = ['pulse', 'mg', 'purge', 'magnet'].map(newPart);   // 시작 지급은 이것뿐, 나머지는 제작
     const by = (id, n = 0) => parts.filter(p => p.id === id)[n].uid;
+    const stash = SA.Grid.make(SA.CFG.STASH_W, SA.CFG.STASH_H);
+    for (let i = 0; i < 3; i++) SA.Grid.add(stash, 'cell1');   // 시작 동력원 3개 (장착 1 + 예비 2)
     return {
       credits: 200,
-      stash: SA.Grid.make(SA.CFG.STASH_W, SA.CFG.STASH_H),
+      stash,
       ships: ['hex'],
       parts,
       loadouts: {
-        hex: { main: by('pulse'), sub: [by('mg')], act: [by('purge')], pas: [by('magnet')] },
+        hex: { main: by('pulse'), main2: null, sub: [by('mg')], act: [by('purge')], pas: [by('magnet')], obs: null, cell: 'cell1' },
       },
       pilots: { kai: { injury: 0 }, mina: { injury: 0 } },
       pilot: 'kai', ship: 'hex',
@@ -29,6 +33,7 @@ SA.Save = (() => {
       rescued: { teo: false, deliv: false },   // 조난 구조로 연 시설 (테오: 강화 제작, 도리: 배달 상점)
       resc: { escapes: 0, pity: 0, pending: null },   // 구조 신호 상태: 직전 구조 후 탈출 수, 불운 보정, 아직 못 구한 신호
       rescMig: true,
+      cellMig: true,
       raven: { stage: 0, done: false },   // 0: 둥지 첫 대결 · 1: 도주 후 재대결 · done: 포드 들고 탈출
       rep: { kingdom: 0, empire: 0, last: null },   // 진영 호감도
       route: null,            // 1막 끝에서 정해지는 2막 진영 루트
@@ -41,7 +46,7 @@ SA.Save = (() => {
     for (const it of p.stash.items.slice()) if (!SA.ITEMS[it.id]) { p.credits += LEGACY[it.id] || 0; SA.Grid.remove(p.stash, it.uid); }
     p.parts = p.parts.filter(q => SA.PARTS[q.id]);
     p.recipes = p.recipes.filter(r => SA.RECIPES[r]);
-    for (const r of ['pulse', 'mg']) if (!p.recipes.includes(r)) p.recipes.push(r);   // 기본 두 개는 항상 안다
+    for (const r of ['pulse', 'mg', 'decoder', 'obs1']) if (!p.recipes.includes(r)) p.recipes.push(r);   // 기본 제작법은 항상 안다 (보안해독기·광역 관측기는 v0.40부터)
     for (const id in p.bring) if (!SA.ITEMS[id]) delete p.bring[id];
     // 조난 구조 도입 전 세이브: 테오·도리는 다시 구조해야 한다(이미 쌓은 메인퀘스트는 유지)
     p.rescued = Object.assign({ teo: false, deliv: false }, p.rescued || {});
@@ -61,12 +66,18 @@ SA.Save = (() => {
       if (!d) { delete p.contracts[id]; continue; }
       if (c.accepted === undefined) { c.accepted = !c.done && c.progress > 0 && d.type !== 'raven'; if (d.type === 'raven' && !c.done) c.progress = 0; }
     }
+    // 동력원·주무기 2칸 도입 전 세이브: 칸을 채우고 시작 동력원을 준다
+    if (!p.cellMig) {
+      p.cellMig = true;
+      for (const s in p.loadouts) { const l = p.loadouts[s]; if (l.main2 === undefined) l.main2 = null; if (l.obs === undefined) l.obs = null; if (!l.cell) l.cell = 'cell1'; }
+      for (let i = 0; i < 3; i++) if (!SA.Grid.add(p.stash, 'cell1')) p.credits += SA.ITEMS.cell1.val;
+    }
     return p;
   };
   const load = () => {
     try {
       const s = localStorage.getItem(KEY);
-      if (s) { const j = JSON.parse(s), p = Object.assign(fresh(), j); p.rescMig = !!j.rescMig; return migrate(p); }
+      if (s) { const j = JSON.parse(s), p = Object.assign(fresh(), j); p.rescMig = !!j.rescMig; p.cellMig = !!j.cellMig; return migrate(p); }
     } catch (e) { console.warn('save load failed', e); }
     return fresh();
   };

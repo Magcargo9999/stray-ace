@@ -130,3 +130,20 @@ h3 { margin: 6px 0 8px; font-size: 15px; color: #cfe3ff; } h4 { margin: 10px 0 6
 .rep-bg-kingdom { background: #7fb4ff; } .rep-bg-empire { background: #ff6b7a; }
 .repbar i.neg { opacity: .45; }
 .card .row { display: flex; gap: 6px; margin-top: 6px; }
+/* 작업대 탭 · 등급 색 (일반 회청 / 강화 초록 / 전설 금) */
+.benchwrap { flex: 1 1 100%; max-width: none; }
+.subtabs { display: flex; gap: 4px; flex-wrap: wrap; margin: 0 0 6px; }
+.subtabs button { background: #0b1120; border: 1px solid #1d2840; color: #9aa7bd; padding: 5px 12px; font: inherit; font-size: 13px; cursor: pointer; }
+.subtabs button.on { background: #16223b; color: #fff; border-color: #8fd3ff; }
+.subtabs.tiers button.t-일반.on { border-color: #9fb3c8; } .subtabs.tiers button.t-강화.on { border-color: #5dffb0; } .subtabs.tiers button.t-전설.on { border-color: #ffd166; }
+.benchcols { display: flex; gap: 18px; } .benchcols > .col { flex: 1; min-width: 0; }
+.tier { font-size: 11px; padding: 0 5px; border: 1px solid #3a4560; color: #9fb3c8; margin-left: 4px; }
+.t-강화 .tier { border-color: #2d7a55; color: #5dffb0; } .t-전설 .tier { border-color: #8a6a1a; color: #ffd166; }
+.recipe.t-강화, .slot.t-강화 { border-left: 3px solid #2d7a55; } .recipe.t-전설, .slot.t-전설 { border-left: 3px solid #b88a1f; }
+.grid .item.g-강화 { box-shadow: inset 0 0 0 1px #2d7a55; } .grid .item.g-전설 { box-shadow: inset 0 0 0 1px #b88a1f, 0 0 6px rgba(255,209,102,.35); }
+.modes { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin: 6px 0 10px; }
+.modes .modebtn { text-align: left; white-space: normal; padding: 8px 10px; }
+.modes .modebtn.on { border-color: #5dffb0; background: #12261f; }
+#rangepanel { position: fixed; right: 14px; top: 200px; width: 190px; background: rgba(8,12,22,.92); border: 1px solid #2a3a5a; padding: 10px; z-index: 20; display: flex; flex-wrap: wrap; gap: 4px; }
+#rangepanel b { width: 100%; color: #cfe3ff; } #rangepanel .small { width: 100%; margin-top: 6px; }
+#rangepanel .btn.on { border-color: #5dffb0; color: #5dffb0; } #rangepanel [data-out] { width: 100%; margin-top: 8px; }

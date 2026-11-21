@@ -96,11 +96,24 @@ SA.Hangar = (() => {
       if (p) { r.onmouseenter = (e) => partTip(e, p); r.onmouseleave = SA.UI.hideTip; }
       return r;
     };
-    col2.appendChild(slotRow('좌클릭 주무기', 'main', 0, lo.main));
+    col2.appendChild(slotRow('주무기 1', 'main', 0, lo.main));
+    col2.appendChild(slotRow('주무기 2 (휠)', 'main', 1, lo.main2));
+    // 동력원: 창고에 있는 등급 중 하나를 꽂고 나간다 (예비는 아래 '가져갈 소모품'에서)
+    {
+      const cells = ['cell1', 'cell2', 'cell3'], cnt = (c) => SA.Grid.count(prof.stash, c);
+      if (lo.cell && !cnt(lo.cell)) lo.cell = cells.slice().reverse().find(cnt) || lo.cell;
+      const d = lo.cell && SA.ITEMS[lo.cell], has = d && cnt(lo.cell);
+      const r = h('div', 'slot' + (has ? '' : ' empty'), `<span class="k">동력원</span><span>${has ? `${d.name} <span class="dim">창고 ${cnt(lo.cell)}개</span>` : '<span class="bad">없음 — 비상 발전만 (작업대에서 제작)</span>'}</span>`);
+      r.onclick = () => { const own = cells.filter(cnt); if (!own.length) { SA.Audio.sfx('deny'); toast('창고에 동력원이 없다. 작업대에서 만들 수 있다 (고철 1 + 전선 1).', '#ffb3b3'); return; }
+        lo.cell = own[(own.indexOf(lo.cell) + 1) % own.length]; save(); go('sortie'); };
+      r.onmouseenter = (e) => SA.UI.showTipHtml(e, '클릭해서 등급을 바꾼다.<br>주무기는 동력원 에너지로 쏜다. 다 쓰면 R로 화물칸의 예비와 교체한다.<br>예비가 없으면 비상 발전(아주 느림)으로만 쏜다.'); r.onmouseleave = SA.UI.hideTip;
+      col2.appendChild(r);
+    }
     for (let i = 0; i < sh.sub; i++) col2.appendChild(slotRow(`서브웨폰 ${i + 1} (자동)`, 'sub', i, lo.sub[i]));
     col2.appendChild(slotRow('Q 액티브', 'act', 0, lo.act[0]));
     col2.appendChild(slotRow('E 액티브', 'act', 1, lo.act[1]));
     for (let i = 0; i < sh.pas; i++) col2.appendChild(slotRow(`패시브 ${i + 1}`, 'pas', i, lo.pas[i]));
+    col2.appendChild(slotRow('관측 장비 (Z)', 'obs', 0, lo.obs));
     const auto = h('button', 'btn small', '빈 칸 자동 장착'); auto.onclick = () => { autoEquip(prof.ship); go('sortie'); };
     col2.appendChild(auto);
 
@@ -115,10 +128,11 @@ SA.Hangar = (() => {
     const cg = SA.SHIPS[prof.ship].cargo, cap = cg[0] * cg[1];
     const usedCells = () => Object.keys(prof.bring).reduce((n, k) => n + prof.bring[k] * SA.ITEMS[k].w * SA.ITEMS[k].h, 0);
     let anyUse = false;
-    for (const [id] of SA.SHOP.consumables) {
-      const d = SA.ITEMS[id], have = SA.Grid.count(prof.stash, id);
+    for (const id of [...SA.SHOP.consumables.map(x => x[0]), 'cell1', 'cell2', 'cell3']) {
+      const d = SA.ITEMS[id], have = SA.Grid.count(prof.stash, id) - (lo.cell === id ? 1 : 0);   // 장착할 동력원 하나는 빼고 센다
       if (!have) continue;
       anyUse = true;
+      if (prof.bring[id] === undefined && id === lo.cell && have > 0) prof.bring[id] = 1;   // 예비 동력원은 기본 1개
       const n = Math.min(prof.bring[id] || 0, have); prof.bring[id] = n;
       const r = h('div', 'sellrow', `<img src="${SA.Render.iconSrc(id)}" style="width:${d.w * 16}px;height:${d.h * 16}px"><span>${d.name} <b>${n}</b> / ${have}<br><span class="dim small">${d.desc}</span></span>`);
       const minus = h('button', 'btn tiny', '−'), plus = h('button', 'btn tiny', '+');
@@ -133,12 +147,14 @@ SA.Hangar = (() => {
     if (!anyUse) col3.appendChild(h('div', 'dim small', '창고에 소모품이 없다. 상점에서 살 수 있다.'));
     else col3.appendChild(h('div', 'dim small', `화물칸 ${usedCells()}/${cap}칸 차지 · 격추되면 잃는다`));
 
-    const warn = !lo.main ? '<div class="bad small">주무기가 없다.</div>' : '';
-    const dmg = [lo.main, ...lo.sub, ...lo.act, ...lo.pas].map(part).filter(p => p && p.dur / p.max < 0.5).length;
+    const warn = (!lo.main && !lo.main2 ? '<div class="bad small">주무기가 없다.</div>' : '') + (!(lo.cell && SA.Grid.count(prof.stash, lo.cell)) ? '<div class="warn small">장착할 동력원이 없다 — 비상 발전으로만 쏜다.</div>' : '');
+    const dmg = SA.loUids(lo).map(part).filter(p => p && p.dur / p.max < 0.5).length;
     col3.appendChild(h('div', '', warn + (dmg ? `<div class="warn small">내구도 50% 미만 부품 ${dmg}개 — 작업대에서 수리</div>` : '')));
     const b = h('button', 'btn big', '출격'); b.onclick = sortieGo;
     col3.appendChild(b);
-    col3.appendChild(h('div', 'dim small', '격추되면: 화물 손실 (보안 칸 2×2 제외) · 장착 부품 내구도 -40% · 파일럿 부상 2회'));
+    const rg = h('button', 'btn small', '연습장 (지금 장착으로 시험)'); rg.onclick = () => { const l = prof.loadouts[prof.ship]; if (!l.main && !l.main2) { toast('주무기를 장착해야 한다.', '#ffb3b3'); return; } close(); SA.Main.startRange(); };
+    col3.appendChild(rg);
+    { const dm = SA.DEATH_MODES[prof.deathMode] || SA.DEATH_MODES.normal; col3.appendChild(h('div', 'dim small', `격추되면 [${dm.name}]: ${dm.desc} 파일럿 부상 2회. (설정에서 변경)`)); }
     body.append(col1, col2, col3);
   };
   const shipImg = (id) => {
@@ -159,7 +175,7 @@ SA.Hangar = (() => {
   };
   const pickPart = (e, kind, idx) => {
     const prof = P(), lo = prof.loadouts[prof.ship], sh = SA.SHIPS[prof.ship];
-    const used = new Set([lo.main, ...lo.sub, ...lo.act, ...lo.pas].filter(Boolean));
+    const used = new Set(SA.loUids(lo));
     const opts = prof.parts.filter(p => {
       const d = SA.PARTS[p.id];
       if (d.slot !== kind || used.has(p.uid)) return false;
@@ -168,7 +184,7 @@ SA.Hangar = (() => {
     });
     const m = h('div', 'ctx wide');
     const set = (uid) => {
-      if (kind === 'main') lo.main = uid; else lo[kind][idx] = uid;
+      if (kind === 'main') lo[idx ? 'main2' : 'main'] = uid; else if (kind === 'obs') lo.obs = uid; else lo[kind][idx] = uid;
       save(); document.querySelectorAll('.ctx').forEach(x => x.remove()); go('sortie');
     };
     if (!opts.length) m.appendChild(h('div', 'dim small pad', '장착할 수 있는 부품이 없다. 작업대에서 제작하자.'));
@@ -176,7 +192,7 @@ SA.Hangar = (() => {
       const d = SA.PARTS[p.id], b = h('button', '', `${pimg(d)}${d.name} <span class="dim">${d.tier} · ${Math.round(p.dur)}/${Math.round(p.max)}</span><div class="small dim">${d.desc}</div>`);
       b.onclick = () => set(p.uid); m.appendChild(b);
     }
-    const cur = kind === 'main' ? lo.main : lo[kind][idx];
+    const cur = kind === 'main' ? lo[idx ? 'main2' : 'main'] : kind === 'obs' ? lo.obs : lo[kind][idx];
     if (cur) { const b = h('button', '', '<span class="bad">비우기</span>'); b.onclick = () => set(null); m.appendChild(b); }
     m.style.left = Math.min(innerWidth - 320, e.clientX) + 'px'; m.style.top = Math.min(innerHeight - 300, e.clientY) + 'px';
     document.querySelectorAll('.ctx').forEach(x => x.remove());
@@ -185,19 +201,22 @@ SA.Hangar = (() => {
   };
   const autoEquip = (shipId) => {
     const prof = P(), lo = prof.loadouts[shipId], sh = SA.SHIPS[shipId];
-    const used = () => new Set([lo.main, ...lo.sub, ...lo.act, ...lo.pas].filter(Boolean));
+    const used = () => new Set(SA.loUids(lo));
     const best = (kind, filt = () => true) => prof.parts.filter(p => SA.PARTS[p.id].slot === kind && !used().has(p.uid) && filt(p) && (!SA.PARTS[p.id].onlyShip || SA.PARTS[p.id].onlyShip === shipId))
       .sort((a, b) => SA.PARTS[b.id].val - SA.PARTS[a.id].val || b.dur - a.dur)[0];
     if (!lo.main) { const p = best('main'); if (p) lo.main = p.uid; }
+    if (!lo.main2) { const p = best('main'); if (p) lo.main2 = p.uid; }
+    if (!lo.cell) lo.cell = ['cell3', 'cell2', 'cell1'].find(c => SA.Grid.count(prof.stash, c)) || null;
     for (let i = 0; i < sh.sub; i++) if (!lo.sub[i]) { const p = best('sub'); if (p) lo.sub[i] = p.uid; }
     for (let i = 0; i < 2; i++) if (!lo.act[i]) { const p = best('act'); if (p) lo.act[i] = p.uid; }
     for (let i = 0; i < sh.pas; i++) if (!lo.pas[i]) { const p = best('pas'); if (p) lo.pas[i] = p.uid; }
+    if (!lo.obs) { const p = best('obs'); if (p) lo.obs = p.uid; }
     save();
   };
   const sortieGo = () => {
     const prof = P(), lo = prof.loadouts[prof.ship];
     if (prof.pilot !== 'cmdr' && prof.pilots[prof.pilot].injury) { toast('선택한 파일럿이 부상 중이다.', '#ffb3b3'); SA.Audio.sfx('deny'); return; }
-    if (!lo.main) { toast('주무기를 장착해야 출격할 수 있다.', '#ffb3b3'); SA.Audio.sfx('deny'); return; }
+    if (!lo.main && !lo.main2) { toast('주무기를 장착해야 출격할 수 있다.', '#ffb3b3'); SA.Audio.sfx('deny'); return; }
     close(); SA.Main.startRaid();
   };
 
@@ -211,7 +230,12 @@ SA.Hangar = (() => {
         const d = SA.ITEMS[it.id];
         if (d.kind === 'ticket') return [['고용하기', () => hireRaven(it, grid)]];
         const a = [[`판매 ₵${d.val}`, () => { SA.Grid.remove(grid, it.uid); prof.credits += d.val; SA.Audio.sfx('buy'); save(); render(); }]];
-        if (it.id === 'blackbox') a.unshift(['해독 (기록 열람)', () => decode(it)]);
+        if (it.id === 'blackbox' || it.id === 'bb_reward') {
+          a.unshift([`즉시 해독 ₵${SA.DECODE.instant}`, () => decode(it, true)]);
+          if (!prof.decoding) a.unshift(['해독 맡기기 (다음 출격 뒤 완료)', () => decode(it, false)]);
+        }
+        if (d.kind === 'key') a.unshift([`해독기에 등록 (+${SA.CODES[d.code].uses}회)`, () => registerKey(it)]);
+        if (d.kind === 'part') a.unshift(['부품함으로 옮기기', () => { SA.Grid.remove(prof.stash, it.uid); const np = SA.Save.newPart(d.part); np.dur = it.dur !== undefined ? it.dur : 60; prof.parts.push(np); save(); render(); }]);
         if (d.kind === 'bp' && prof.recipes.includes(d.recipe)) a.push(['(이미 아는 설계도 — 판매)', () => {}]);
         return a;
       },
@@ -240,6 +264,14 @@ SA.Hangar = (() => {
     right.appendChild(h('div', 'dim small', '우클릭: 판매 · 블랙박스는 해독하면 기록이 열리지만 팔 수 없게 된다.'));
     body.append(left, right);
   };
+  // 해독키 등록: 기지 기록에 코드가 남고(해독기를 잃어도 유지) 사용 횟수가 생긴다. 이후 상점에서 충전할 수 있다
+  const registerKey = (it) => {
+    const prof = P(), d = SA.ITEMS[it.id], c = SA.CODES[d.code];
+    prof.codes = prof.codes || {}; prof.codeKnown = prof.codeKnown || {};
+    SA.Grid.remove(prof.stash, it.uid);
+    prof.codes[d.code] = (prof.codes[d.code] || 0) + c.uses; prof.codeKnown[d.code] = true;
+    SA.Audio.sfx('unlock'); toast(`${c.name} 등록 — 남은 ${prof.codes[d.code]}회. 이제 상점에서 충전할 수 있다`, '#5dffb0'); save(); render();
+  };
   const neededFor = (id) => {
     let n = 0;
     for (const r of P().recipes) { const m = (SA.RECIPES[r] || {}).mats || {}; n = Math.max(n, m[id] || 0); }
@@ -257,49 +289,105 @@ SA.Hangar = (() => {
     for (let i = 0; i < n; i++) { const it = prof.stash.items.find(x => x.id === id); if (!it) break; SA.Grid.remove(prof.stash, it.uid); prof.credits += SA.ITEMS[id].val; }
     SA.Audio.sfx('buy'); save(); render();
   };
-  const decode = (it) => {
+  const decode = (it, instant) => {
     const prof = P();
+    if (instant && prof.credits < SA.DECODE.instant) { toast('크레딧이 부족하다.', '#ffb3b3'); SA.Audio.sfx('deny'); return; }
+    if (!instant && prof.decoding) { toast('해독기가 이미 다른 블랙박스를 돌리고 있다.', '#ffb3b3'); SA.Audio.sfx('deny'); return; }
     SA.Grid.remove(prof.stash, it.uid);
-    const next = SA.STORY.blackbox.findIndex((_, i) => !prof.logs.includes(i));
-    if (next < 0) { prof.credits += 150; toast('이미 다 아는 내용이다. 부품값 ₵150을 받았다.'); }
-    else { prof.logs.push(next); toast(`기록 해독: ${SA.STORY.blackbox[next].title} — 기록 탭`, '#ff8f3d'); }
-    save(); render();
+    const r = SA.Decode.start(prof, it.id, instant);
+    toast(r.text, '#ff8f3d'); SA.Audio.sfx('unlock'); save(); render();
   };
 
-  // ── 작업대 ──
+  // ── 작업대: 종류 탭 + 등급 탭 ──
+  let benchKind = 'main', benchTier = '전체';
+  const KINDS = [['main', '주무기'], ['sub', '서브웨폰'], ['act', '액티브'], ['pas', '패시브'], ['obs', '관측'], ['item', '동력원·소모품'], ['mat', '상위 재료']];
+  const TIERS = ['전체', '일반', '강화', '전설'];
+  const tierOf = (id) => (SA.PARTS[id] || SA.ITEMS[id] || {}).tier || '일반';
+  const matLine = (mats, have) => Object.keys(mats).map(k => `<span class="${have(k) >= mats[k] ? 'ok' : 'bad'}">${SA.ITEMS[k].name} ${have(k)}/${mats[k]}</span>`).join(' · ');
   const bench = (body) => {
-    const prof = P(), left = h('div', 'col wide'), right = h('div', 'col wide');
+    const prof = P(), wrap = h('div', 'col wide benchwrap'), left = h('div', 'col wide'), right = h('div', 'col wide');
+    const tabs = h('div', 'subtabs');
+    for (const [k, nm] of KINDS) { const b = h('button', benchKind === k ? 'on' : '', nm); b.onclick = () => { benchKind = k; render(); }; tabs.appendChild(b); }
+    const tiers = h('div', 'subtabs tiers');
+    for (const t of TIERS) { const b = h('button', (benchTier === t ? 'on ' : '') + 't-' + t, t); b.onclick = () => { benchTier = t; render(); }; tiers.appendChild(b); }
+    wrap.append(tabs, tiers);
+    const tierOk = (id) => benchTier === '전체' || tierOf(id) === benchTier;
+    const have = (k) => SA.Grid.count(prof.stash, k);
+    const isPart = !['item', 'mat'].includes(benchKind);
     left.appendChild(h('h3', '', '제작'));
-    const ord = (r) => ['main', 'sub', 'act', 'pas'].indexOf((SA.PARTS[r] || {}).slot) * 10 + ['일반', '강화', '전설'].indexOf((SA.PARTS[r] || {}).tier);
-    for (const rid of prof.recipes.slice().sort((a, b) => ord(a) - ord(b))) {
-      const r = SA.RECIPES[rid], d = SA.PARTS[rid]; if (!r || !d) continue;
-      const have = (k) => SA.Grid.count(prof.stash, k);
-      const fromOk = !r.from || prof.parts.some(p => p.id === r.from);
-      const locked = d.tier !== '일반' && !prof.rescued.teo;   // 정비사 테오를 구조해야 강화 등급 이상 제작 가능
-      const ok = !locked && fromOk && Object.keys(r.mats).every(k => have(k) >= r.mats[k]);
-      const mats = Object.keys(r.mats).map(k => `<span class="${have(k) >= r.mats[k] ? 'ok' : 'bad'}">${SA.ITEMS[k].name} ${have(k)}/${r.mats[k]}</span>`).join(' · ');
-      const row = h('div', 'recipe', `${pimg(d)}<b>${d.name}</b> <span class="dim">${d.tier} · ${{ main: '주무기', sub: '서브웨폰', act: '액티브', pas: '패시브' }[d.slot]}</span><div class="small">${d.desc}</div><div class="small">${r.from ? `<span class="${fromOk ? 'ok' : 'bad'}">${SA.PARTS[r.from].name} 1개</span> + ` : ''}${mats}</div>`);
-      const b = h('button', 'btn small' + (ok ? '' : ' dis'), locked ? '잠김' : '제작');
-      if (locked) row.appendChild(h('div', 'small bad', '정비사 테오를 구조하면 제작할 수 있다'));
-      b.onclick = () => craft(rid);
-      row.appendChild(b); left.appendChild(row);
+    if (isPart) {
+      const ids = prof.recipes.filter(r => SA.RECIPES[r] && SA.PARTS[r] && SA.PARTS[r].slot === benchKind && tierOk(r))
+        .sort((a, b) => TIERS.indexOf(tierOf(a)) - TIERS.indexOf(tierOf(b)));
+      if (!ids.length) left.appendChild(h('div', 'dim small', '아는 설계도가 없다. 설계도는 필드에서 줍는다.'));
+      for (const rid of ids) {
+        const r = SA.RECIPES[rid], d = SA.PARTS[rid];
+        const fromOk = !r.from || prof.parts.some(p => p.id === r.from);
+        const locked = d.tier !== '일반' && !prof.rescued.teo;   // 정비사 테오를 구조해야 강화 등급 이상 제작 가능
+        const ok = !locked && fromOk && Object.keys(r.mats).every(k => have(k) >= r.mats[k]);
+        const row = h('div', 'recipe t-' + d.tier, `${pimg(d)}<b>${d.name}</b> <span class="tier">${d.tier}</span><div class="small">${d.desc}</div><div class="small">${r.from ? `<span class="${fromOk ? 'ok' : 'bad'}">${SA.PARTS[r.from].name} 1개</span> + ` : ''}${matLine(r.mats, have)}</div>`);
+        const b = h('button', 'btn small' + (ok ? '' : ' dis'), locked ? '잠김' : '제작');
+        if (locked) row.appendChild(h('div', 'small bad', '정비사 테오를 구조하면 제작할 수 있다'));
+        b.onclick = () => craft(rid);
+        row.appendChild(b); left.appendChild(row);
+      }
+    } else {
+      const ids = Object.keys(SA.CRAFT).filter(id => { const k = SA.ITEMS[id].kind; return (benchKind === 'mat' ? k === 'umat' : k !== 'umat') && tierOk(id); });
+      if (!ids.length) left.appendChild(h('div', 'dim small', '이 등급에는 만들 것이 없다.'));
+      for (const id of ids) {
+        const r = SA.CRAFT[id], d = SA.ITEMS[id], ok = Object.keys(r.mats).every(k => have(k) >= r.mats[k]);
+        const row = h('div', 'recipe t-' + tierOf(id), `<img src="${SA.Render.iconSrc(id)}" style="height:34px;float:left;margin:0 8px 0 0"><b>${d.name}</b> <span class="tier">${tierOf(id)}</span> <span class="dim small">창고 ${have(id)}개</span><div class="small">${d.desc}</div><div class="small">${matLine(r.mats, have)}</div>`);
+        const b = h('button', 'btn small' + (ok ? '' : ' dis'), '제작');
+        b.onclick = () => craftItem(id);
+        row.appendChild(b); left.appendChild(row);
+      }
+      if (benchKind === 'mat') left.appendChild(h('div', 'dim small', '상위 재료는 설계도 없이 만들 수 있고, 필드에서 줍기도 한다. 강화·전설 부품 제작에 들어간다.'));
     }
-    right.appendChild(h('h3', '', '보유 부품'));
-    const needRep = prof.parts.filter(p => p.dur < p.max);
-    const cost = needRep.reduce((n, p) => n + repairCost(p), 0);
-    const all = h('button', 'btn' + (needRep.length ? '' : ' dis'), needRep.length ? `전부 수리 ₵${cost}` : '수리할 부품 없음');
-    all.onclick = () => { if (!needRep.length) return; if (prof.credits < cost) { toast('크레딧이 부족하다.', '#ffb3b3'); SA.Audio.sfx('deny'); return; } prof.credits -= cost; needRep.forEach(repair); SA.Audio.sfx('repair'); save(); render(); };
-    right.appendChild(all);
-    right.appendChild(h('div', 'dim small', '수리하면 내구도가 가득 차지만 최대 내구도가 3씩 줄어든다. 너무 닳으면 분해하고 새로 만들자.'));
-    const equipped = new Set(); for (const s in prof.loadouts) { const l = prof.loadouts[s]; [l.main, ...l.sub, ...l.act, ...l.pas].forEach(u => u && equipped.add(u)); }
-    for (const p of prof.parts.slice().sort((a, b) => SA.PARTS[a.id].slot.localeCompare(SA.PARTS[b.id].slot))) {
-      const d = SA.PARTS[p.id], r = p.dur / p.max;
-      const row = h('div', 'slot', `<span>${d.name} <span class="dim">${d.tier}${equipped.has(p.uid) ? ' · 장착 중' : ''}</span></span><span class="bar"><i style="width:${r * 100}%;background:${r >= 0.5 ? '#5dffb0' : r > 0 ? '#ffd166' : '#ff4d6d'}"></i></span><span class="dim small">${Math.round(p.dur)}/${Math.round(p.max)}</span>`);
-      if (p.dur < p.max) { const b = h('button', 'btn tiny', `수리 ₵${repairCost(p)}`); b.onclick = (e) => { e.stopPropagation(); if (prof.credits < repairCost(p)) { SA.Audio.sfx('deny'); return; } prof.credits -= repairCost(p); repair(p); SA.Audio.sfx('repair'); save(); render(); }; row.appendChild(b); }
-      if (!equipped.has(p.uid)) { const b = h('button', 'btn tiny', `분해 ₵${Math.round(d.val * 0.4)}`); b.onclick = (e) => { e.stopPropagation(); prof.parts = prof.parts.filter(x => x !== p); prof.credits += Math.round(d.val * 0.4); SA.Audio.sfx('buy'); save(); render(); }; row.appendChild(b); }
-      right.appendChild(row);
+    if (isPart) {
+      right.appendChild(h('h3', '', '보유 부품'));
+      const needRep = prof.parts.filter(p => p.dur < p.max);
+      const cost = needRep.reduce((n, p) => n + repairCost(p), 0);
+      const all = h('button', 'btn' + (needRep.length ? '' : ' dis'), needRep.length ? `전부 수리 ₵${cost}` : '수리할 부품 없음');
+      all.onclick = () => { if (!needRep.length) return; if (prof.credits < cost) { toast('크레딧이 부족하다.', '#ffb3b3'); SA.Audio.sfx('deny'); return; } prof.credits -= cost; needRep.forEach(repair); SA.Audio.sfx('repair'); save(); render(); };
+      right.appendChild(all);
+      right.appendChild(h('div', 'dim small', '수리하면 내구도가 가득 차지만 최대 내구도가 3씩 줄어든다. 분해하면 제작 재료의 절반을 돌려받는다.'));
+      const equipped = new Set(); for (const s in prof.loadouts) SA.loUids(prof.loadouts[s]).forEach(u => equipped.add(u));
+      const mine = prof.parts.filter(p => SA.PARTS[p.id].slot === benchKind && tierOk(p.id)).sort((a, b) => TIERS.indexOf(tierOf(a.id)) - TIERS.indexOf(tierOf(b.id)));
+      if (!mine.length) right.appendChild(h('div', 'dim small', '이 칸의 부품이 없다.'));
+      for (const p of mine) {
+        const d = SA.PARTS[p.id], r = p.dur / p.max;
+        const row = h('div', 'slot t-' + d.tier, `<span>${d.name} <span class="tier">${d.tier}</span><span class="dim">${equipped.has(p.uid) ? ' · 장착 중' : ''}</span></span><span class="bar"><i style="width:${r * 100}%;background:${r >= 0.5 ? '#5dffb0' : r > 0 ? '#ffd166' : '#ff4d6d'}"></i></span><span class="dim small">${Math.round(p.dur)}/${Math.round(p.max)}</span>`);
+        row.onmouseenter = (e) => partTip(e, p); row.onmouseleave = SA.UI.hideTip;
+        if (p.dur < p.max) { const b = h('button', 'btn tiny', `수리 ₵${repairCost(p)}`); b.onclick = (e) => { e.stopPropagation(); if (prof.credits < repairCost(p)) { SA.Audio.sfx('deny'); return; } prof.credits -= repairCost(p); repair(p); SA.Audio.sfx('repair'); save(); render(); }; row.appendChild(b); }
+        if (!equipped.has(p.uid)) { const b = h('button', 'btn tiny', '분해'); b.title = salvageText(p); b.onclick = (e) => { e.stopPropagation(); salvage(p); }; row.appendChild(b); }
+        right.appendChild(row);
+      }
+    } else {
+      right.appendChild(h('h3', '', '창고 재료'));
+      const ids = [...new Set(prof.stash.items.map(it => it.id))].filter(id => { const k = SA.ITEMS[id].kind; return benchKind === 'mat' ? (k === 'mat' || k === 'umat') : (k === 'cell' || k === 'use'); });
+      if (!ids.length) right.appendChild(h('div', 'dim small', '없다.'));
+      for (const id of ids) right.appendChild(h('div', 'slot t-' + tierOf(id), `<span><img src="${SA.Render.iconSrc(id)}" style="height:18px;vertical-align:middle"> ${SA.ITEMS[id].name}</span><span class="dim">${have(id)}개</span>`));
     }
-    body.append(left, right);
+    const cols = h('div', 'benchcols'); cols.append(left, right); wrap.appendChild(cols);
+    body.append(wrap);
+  };
+  // 분해: 제작 재료의 절반(내림)을 돌려준다. 레시피가 없는 부품은 고철 1
+  const salvageMats = (p) => { const r = SA.RECIPES[p.id], out = {}; if (!r) return { scrap: 1 }; for (const k in r.mats) { const n = Math.floor(r.mats[k] / 2); if (n) out[k] = n; } if (!Object.keys(out).length) out.scrap = 1; return out; };
+  const salvageText = (p) => '분해하면: ' + Object.entries(salvageMats(p)).map(([k, n]) => `${SA.ITEMS[k].name} ${n}`).join(', ');
+  const salvage = (p) => {
+    const prof = P(), out = salvageMats(p), ids = []; for (const k in out) for (let i = 0; i < out[k]; i++) ids.push(k);
+    const tmp = SA.Grid.make(prof.stash.w, prof.stash.h, prof.stash.items.slice());
+    if (!ids.every(id => SA.Grid.add(tmp, id))) { toast('창고에 재료를 넣을 자리가 없다.', '#ffb3b3'); SA.Audio.sfx('deny'); return; }
+    ids.forEach(id => SA.Grid.add(prof.stash, id));
+    prof.parts = prof.parts.filter(x => x !== p);
+    toast(`분해: ${SA.PARTS[p.id].name} → ${salvageText(p).slice(6)}`, '#cfe3ff'); SA.Audio.sfx('salvage', 1); save(); render();
+  };
+  const craftItem = (id) => {
+    const prof = P(), r = SA.CRAFT[id];
+    if (!Object.keys(r.mats).every(k => SA.Grid.count(prof.stash, k) >= r.mats[k])) { SA.Audio.sfx('deny'); toast('재료가 부족하다.', '#ffb3b3'); return; }
+    const tmp = SA.Grid.make(prof.stash.w, prof.stash.h, prof.stash.items.slice()); SA.Grid.takeMats(tmp, r.mats);
+    if (!SA.Grid.add(tmp, id)) { SA.Audio.sfx('deny'); toast('창고에 자리가 없다.', '#ffb3b3'); return; }
+    SA.Grid.takeMats(prof.stash, r.mats); SA.Grid.add(prof.stash, id);
+    toast(`제작 완료: ${SA.ITEMS[id].name}`, '#5dffb0'); SA.Audio.sfx('buy'); SA.Quest.event('craft'); save(); render();
   };
   const repairCost = (p) => Math.ceil((p.max - p.dur) * SA.PARTS[p.id].val / 250);
   const repair = (p) => { p.max = Math.max(40, p.max - 3); p.dur = p.max; };
@@ -313,7 +401,7 @@ SA.Hangar = (() => {
       SA.Grid.takeMats(prof.stash, r.mats);
       prof.parts = prof.parts.filter(p => p !== src);
       const np = SA.Save.newPart(rid); prof.parts.push(np);
-      for (const s in prof.loadouts) { const l = prof.loadouts[s]; if (l.main === src.uid) l.main = np.uid; for (const k of ['sub', 'act', 'pas']) l[k] = l[k].map(u => u === src.uid ? np.uid : u); }   // 장착 중이면 그대로 교체
+      for (const s in prof.loadouts) { const l = prof.loadouts[s]; for (const k of ['main', 'main2', 'obs']) if (l[k] === src.uid) l[k] = np.uid; for (const k of ['sub', 'act', 'pas']) l[k] = l[k].map(u => u === src.uid ? np.uid : u); }   // 장착 중이면 그대로 교체
     } else {
       if (!SA.Grid.takeMats(prof.stash, r.mats)) { SA.Audio.sfx('deny'); toast('재료가 부족하다.', '#ffb3b3'); return; }
       prof.parts.push(SA.Save.newPart(rid));
@@ -336,7 +424,7 @@ SA.Hangar = (() => {
         if (prof.credits < s.price) { toast('크레딧이 부족하다.', '#ffb3b3'); SA.Audio.sfx('deny'); return; }
         prof.credits -= s.price; prof.ships.push(id);
         const cur = prof.loadouts[prof.ship];   // 지금 기체의 장착을 최대한 그대로 옮긴다
-        prof.loadouts[id] = { main: cur.main, sub: cur.sub.slice(0, s.sub), act: cur.act.slice(), pas: cur.pas.slice(0, s.pas) };
+        prof.loadouts[id] = { main: cur.main, main2: cur.main2 || null, sub: cur.sub.slice(0, s.sub), act: cur.act.slice(), pas: cur.pas.slice(0, s.pas), obs: cur.obs || null, cell: cur.cell || null };
         autoEquip(id); prof.ship = id; toast(`${s.name} 구매 — 가진 부품으로 자동 장착했다`, '#5dffb0'); SA.Audio.sfx('buy'); save(); render();
       };
       c.appendChild(b); c1.appendChild(c);
@@ -353,6 +441,17 @@ SA.Hangar = (() => {
         prof.credits -= price; SA.Audio.sfx('buy'); toast(`${d.name} 구매 — 창고로. 출격 준비에서 가져갈 개수를 고른다.`); save(); render();
       };
       c.appendChild(b); c2.appendChild(c);
+    }
+    // 해독 코드 충전 (등록한 코드만)
+    c2.appendChild(h('h3', '', '해독 코드 충전'));
+    const known = Object.keys(SA.CODES).filter(k => (prof.codeKnown || {})[k]);
+    if (!known.length) c2.appendChild(h('div', 'dim small', '필드에서 해독키를 주워 창고에서 등록하면 여기서 충전할 수 있다. 여는 데는 보안해독기(패시브) 장착이 필요하다.'));
+    for (const k of known) {
+      const c = SA.CODES[k], cur = (prof.codes || {})[k] || 0, full = cur >= c.uses;
+      const r = h('div', 'sellrow', `<span>${c.name} <b>${cur}</b>/${c.uses}회<br><span class="dim small">가득 채운다</span></span>`);
+      const b = h('button', 'btn small' + (full ? ' dis' : ''), full ? '가득' : `₵${c.price}`);
+      b.onclick = () => { if (full) return; if (prof.credits < c.price) { toast('크레딧이 부족하다.', '#ffb3b3'); SA.Audio.sfx('deny'); return; } prof.credits -= c.price; prof.codes[k] = c.uses; SA.Audio.sfx('buy'); save(); render(); };
+      r.appendChild(b); c2.appendChild(r);
     }
     c2.appendChild(h('h3', '', '재료 배달'));
     if (!prof.rescued.deliv) {
@@ -442,6 +541,10 @@ SA.Hangar = (() => {
   // ── 기록 ──
   const records = (body) => {
     const prof = P(), c1 = h('div', 'col wide'), c2 = h('div', 'col');
+    if (prof.decoding) c1.appendChild(h('div', 'warn small', `해독 중: ${SA.ITEMS[prof.decoding.id].name} — 다음 출격이 끝나면 완료`));
+    if (prof.lastDecode && prof.lastDecode.log && !SA.STORY.blackbox.includes(prof.lastDecode.log)) {   // 보상형은 기록에 안 남고 최근 해독으로만 보인다
+      const b = prof.lastDecode.log; c1.appendChild(h('div', 'card log', `<span class="dim small">최근 신호 해독 · ${b.src}</span><br><b>${b.title}</b>${b.lines.map(l => `<div class="small">${l}</div>`).join('')}<div class="small warn">다음 출격: ${b.signal.label}</div>`));
+    }
     c1.appendChild(h('h3', '', `블랙박스 기록 ${prof.logs.length}/${SA.STORY.blackbox.length}`));
     if (!prof.logs.length) c1.appendChild(h('div', 'dim', '아직 해독한 기록이 없다. 블랙박스는 추락한 정찰선과 네임드에게서 나온다.'));
     for (const i of prof.logs) { const b = SA.STORY.blackbox[i]; c1.appendChild(h('div', 'card log', `<b>${b.title}</b>${b.lines.map(l => `<div class="small">${l}</div>`).join('')}`)); }

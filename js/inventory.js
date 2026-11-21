@@ -16,7 +16,7 @@ SA.UI = (() => {
     el.style.width = grid.w * CELL + 'px'; el.style.height = grid.h * CELL + 'px';
     for (const it of grid.items) {
       const d = SA.ITEMS[it.id], [w, hh] = SA.Grid.dims(it);
-      const n = h('div', 'item');
+      const n = h('div', 'item' + (SA.ITEMS[it.id].tier && SA.ITEMS[it.id].tier !== '일반' ? ' g-' + SA.ITEMS[it.id].tier : ''));
       n.style.left = it.x * CELL + 'px'; n.style.top = it.y * CELL + 'px';
       n.style.width = w * CELL + 'px'; n.style.height = hh * CELL + 'px';
       n.style.setProperty('--c', d.color);
@@ -25,9 +25,10 @@ SA.UI = (() => {
       if (it.rot) img.style.transform = `translate(-50%,-50%) rotate(90deg)`;
       else img.style.transform = 'translate(-50%,-50%)';
       n.appendChild(img);
-      if (opts.showVal !== false) n.appendChild(h('span', 'val', '₵' + d.val));
+      if (d.kind === 'cell' && it.ch !== undefined) n.appendChild(h('span', 'val', Math.round(it.ch * 100) + '%'));   // 동력원 충전량
+      else if (opts.showVal !== false) n.appendChild(h('span', 'val', '₵' + d.val));
       n.addEventListener('mousedown', (e) => onItemDown(e, name, it));
-      n.addEventListener('mouseenter', (e) => showTip(e, it.id));
+      n.addEventListener('mouseenter', (e) => showTip(e, it.id, it.dur !== undefined ? `<br>내구도 ${it.dur}/100` : it.ch !== undefined ? `<br>충전 ${Math.round(it.ch * 100)}%` : ''));
       n.addEventListener('mouseleave', hideTip);
       n.addEventListener('contextmenu', (e) => { e.preventDefault(); openMenu(e, name, it); });
       el.appendChild(n);
@@ -42,7 +43,8 @@ SA.UI = (() => {
     const d = SA.ITEMS[id];
     if (!tip) { tip = h('div', 'tip'); document.body.appendChild(tip); }
     const cells = d.w * d.h;
-    tip.innerHTML = `<b style="color:${d.color}">${d.name}</b> <span class="dim">${d.w}×${d.h}</span><br>` +
+    const tier = d.kind === 'bp' ? (SA.PARTS[d.recipe] || {}).tier : d.tier;
+    tip.innerHTML = `<b style="color:${d.color}">${d.name}</b> <span class="dim">${d.w}×${d.h} · ${SA.KIND_NAME[d.kind] || ''}${tier ? ' · ' + tier : ''}</span><br>` +
       `₵${d.val} <span class="dim">· 칸당 ₵${Math.round(d.val / cells)}</span><br><span class="desc">${d.desc}</span>${extra}` +
       `<div class="keys">끌기: 이동 · R: 회전 · 우클릭: 메뉴${SA.R && SA.R.tabOpen ? ' · Shift+클릭: 보안칸↔화물칸 · Ctrl+클릭: 버리기' : ''}</div>`;
     tip.style.display = 'block'; moveTip(e);
@@ -134,7 +136,7 @@ SA.UI = (() => {
     document.querySelectorAll('.grid .preview').forEach(p => p.style.display = 'none');
     // 주변 아이템: 끌지 않고 좌클릭만 하면 화물칸 빈자리로
     if (d.src.kind === 'ground' && Math.hypot(e.clientX - d.sx, e.clientY - d.sy) < 5) {
-      if (SA.Grid.add(SA.R.cargo, d.id)) { d.src.item.taken = true; SA.Audio.sfx('pickup', 1); } else { SA.Audio.sfx('deny'); SA.Raid.msg('화물칸에 자리가 없다', '#ffb3b3', 2); }
+      if (SA.Grid.add(SA.R.cargo, d.id, d.src.item.ch !== undefined ? { ch: d.src.item.ch } : undefined)) { d.src.item.taken = true; SA.Audio.sfx('pickup', 1); } else { SA.Audio.sfx('deny'); SA.Raid.msg('화물칸에 자리가 없다', '#ffb3b3', 2); }
       refreshAll(); if (SA.R && SA.R.tabOpen) renderGround(); return;
     }
     const t = targetAt(e.clientX, e.clientY, d);
@@ -156,7 +158,7 @@ SA.UI = (() => {
         if (SA.Grid.place(g, d.src.it, t.x, t.y, d.rot)) SA.Audio.sfx('click'); else SA.Audio.sfx('deny');
       } else if (SA.Grid.fits(g, d.id, t.x, t.y, d.rot)) {
         if (t.v.opts.accept && !t.v.opts.accept(d.id)) { SA.Audio.sfx('deny'); refreshAll(); return; }
-        const it = d.src.kind === 'grid' ? SA.Grid.remove(srcGrid, d.src.it.uid) : { uid: SA.Grid.newUid(), id: d.id };
+        const it = d.src.kind === 'grid' ? SA.Grid.remove(srcGrid, d.src.it.uid) : Object.assign({ uid: SA.Grid.newUid(), id: d.id }, d.src.item.ch !== undefined ? { ch: d.src.item.ch } : {});
         if (d.src.kind === 'ground') d.src.item.taken = true;
         it.x = t.x; it.y = t.y; it.rot = d.rot; g.items.push(it);
         SA.Audio.sfx('pickup', 1);
@@ -182,10 +184,10 @@ SA.UI = (() => {
       if (!s) { SA.Audio.sfx('deny'); return; }
       SA.Grid.remove(g, it.uid); Object.assign(it, s); other.items.push(it); SA.Audio.sfx('click');
     };
-    const discard = (it, g) => { SA.Grid.remove(g, it.uid); SA.Raid.dropToSpace(it.id); };
+    const discard = (it, g) => { SA.Grid.remove(g, it.uid); SA.Raid.dropToSpace(it.id, it); };
     const menu = (it, g) => {
       const a = [];
-      if (SA.ITEMS[it.id].kind === 'use') a.push(['사용', () => SA.Raid.useItem(it, g)]);
+      if (SA.ITEMS[it.id].kind === 'use' || it.id === 'stardata') a.push(['사용', () => SA.Raid.useItem(it, g)]);
       a.push([g === R.cargo ? '보안 칸으로' : '화물칸으로', () => quickMove(it, g)]);
       a.push(['버리기', () => discard(it, g)]);
       return a;

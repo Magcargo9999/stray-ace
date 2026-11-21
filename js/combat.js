@@ -16,8 +16,14 @@ SA.Combat = (() => {
     const d = part.dur / part.max;
     return d >= 0.5 ? 1 : d <= 0 ? 0 : 0.5 + d;
   };
-  const wear = (part, amt) => { if (part) part.dur = Math.max(0, part.dur - amt); };
+  const wear = (part, amt) => { if (part && !(SA.R && SA.R.range)) part.dur = Math.max(0, part.dur - amt); };   // 연습장에서는 닳지 않는다
   const hasPas = (P, id) => P.pas.some(p => p && p.id === id && eff(p) > 0);
+  // 차폐 장갑: 침식 디버프 감소 비율 (일반 30%, 강화 50%)
+  const corrResist = (P) => hasPas(P, 'plating2') ? 0.5 : hasPas(P, 'plating') ? 0.3 : 0;
+  const corrMul = (P, v) => 1 - (1 - v) * (1 - corrResist(P));   // 연사·이속 배율(1 미만)을 장갑만큼 1에 가깝게
+  // 동력원
+  const cellDef = (P) => P.cell && SA.ITEMS[P.cell.id];
+  const energyOf = (P) => P.cell && P.cell.e > 0 ? P.cell.e : 0;
 
   // ── 탄 ──
   const eb = (R, x, y, a, spd, o = {}) => {
@@ -43,6 +49,35 @@ SA.Combat = (() => {
     }
   };
   const text = (R, x, y, s, col = '#fff') => R.texts.push({ x, y, s, col, life: 1.1 });
+
+  // ── 동력원 교체 (R) ──
+  // 화물칸·보안 칸의 예비 동력원 중 등급이 높고 많이 남은 것을 꺼낸다. 다 쓴 동력원은 빈 채로 화물칸에 돌아간다
+  const spareCell = (R) => {
+    let best = null, bs = -1;
+    for (const g of [R.cargo, R.secure]) for (const it of g.items) {
+      const d = SA.ITEMS[it.id]; if (d.kind !== 'cell') continue;
+      const ch = it.ch === undefined ? 1 : it.ch; if (ch <= 0.01) continue;
+      const s = d.cap * ch; if (s > bs) { bs = s; best = { it, g }; }
+    }
+    return best;
+  };
+  const startReload = (R, P, manual) => {
+    if (P.reloadT > 0) return true;
+    const sp = spareCell(R);
+    if (!sp) { if (manual) { SA.Audio.sfx('deny'); text(R, P.x, P.y - 18, '예비 동력원 없음', '#ffb3b3'); } return false; }
+    if (manual && P.cell && P.cell.e >= SA.ITEMS[P.cell.id].cap - 0.01) return false;   // 가득 찬 걸 바꿀 필요 없다
+    P.reloadT = SA.ENERGY.reload; P.reloadSrc = sp; SA.Audio.sfx('reload');
+    return true;
+  };
+  const finishReload = (R, P) => {
+    const sp = P.reloadSrc; P.reloadSrc = null;
+    if (!sp || !sp.g.items.includes(sp.it)) return;
+    const d = SA.ITEMS[sp.it.id], ch = sp.it.ch === undefined ? 1 : sp.it.ch;
+    SA.Grid.remove(sp.g, sp.it.uid);
+    if (P.cell) { const od = SA.ITEMS[P.cell.id]; if (!SA.Grid.add(sp.g, P.cell.id, { ch: P.cell.e / od.cap })) SA.Grid.add(sp.g === R.cargo ? R.secure : R.cargo, P.cell.id, { ch: P.cell.e / od.cap }); }
+    P.cell = { id: sp.it.id, e: d.cap * ch };
+    text(R, P.x, P.y - 18, `${d.name} 장착`, '#7fe3ff'); SA.Audio.sfx('pickup');
+  };
 
   // ── 레이븐 슬립스트림 이동 AI ──
   // 0.5초 앞까지 탄 궤적을 예측해 17개 방향(정지 포함) 중 고른다: 충돌 경로는 크게 감점, 스침 범위를 지나는 경로는 가점.
@@ -82,7 +117,12 @@ SA.Combat = (() => {
     let my = (I.isDown('KeyS') ? 1 : 0) - (I.isDown('KeyW') ? 1 : 0);
     const ml = Math.hypot(mx, my); if (ml) { mx /= ml; my /= ml; }
     if (ml) { P.lastMx = mx; P.lastMy = my; }
-    let spd = P.speed * st.speed * (hasPas(P, 'engine2') ? 1.12 : 1) * (hasPas(P, 'raven') ? 1.15 : 1);
+    let spd = P.speed * corrMul(P, st.speed) * (hasPas(P, 'engine2') ? 1.12 : 1) * (hasPas(P, 'raven') ? 1.15 : 1);
+    const EN = SA.ENERGY;
+    P.aiming = I.mouse.right && !R.tabOpen && !R.paused;   // 우클릭 조준: 탄이 모이고 이속 감소
+    P.slow = I.isDown('ShiftLeft') || I.isDown('ShiftRight');   // Shift 저속 이동
+    if (P.aiming) spd *= EN.aimSpeed;
+    if (P.slow) spd *= EN.slowSpeed;
     if (R.cargo && R.cargo.items.some(i => SA.ITEMS[i.id].kind === 'capsule')) spd *= SA.RESCUE.speedMul;   // 구조 캡슐 운반 중
     if (P.skillState === 'repair') spd *= 0.5;
     if (P.skillState === 'boost') spd *= 1.6;
@@ -120,25 +160,48 @@ SA.Combat = (() => {
       if (P.barrierT > 4) P.barrier = Math.min(P.barrierMax, P.barrier + 20 * dt);
     }
 
-    // 주무기
+    // 주무기: 휠로 2개 교체, 동력원 에너지로 쏜다, R로 동력원 교체
     P.fireCd -= dt;
+    P.swapT = Math.max(0, (P.swapT || 0) - dt);
+    if (I.mouse.wheel && !R.tabOpen && P.mains[0] && P.mains[1] && P.swapT <= 0 && !(P.reloadT > 0)) {
+      P.wi = 1 - P.wi; P.main = P.mains[P.wi]; P.swapT = EN.swap; P.aimC = 0;
+      SA.Audio.sfx('swap'); text(R, P.x, P.y - 18, SA.PARTS[P.main.id].name, '#cfe3ff');
+    }
+    if (I.hit('KeyR') && !R.tabOpen) startReload(R, P, true);
+    if (P.reloadT > 0) { P.reloadT -= dt; if (P.reloadT <= 0) finishReload(R, P); }
+    const onCell = energyOf(P) > 0;
+    if (!onCell) P.emer = Math.min(EN.emerMax, (P.emer || 0) + EN.emerRegen * dt);   // 비상 발전: 아주 느리게 찬다
+    const main = P.main, me = eff(main), md = main && SA.PARTS[main.id];
+    if (md && md.sniper) P.aimC = P.aiming && P.swapT <= 0 ? Math.min(EN.sniperCharge, (P.aimC || 0) + dt) : 0;   // 저격총 정조준 충전
     const firing = I.mouse.down && !R.tabOpen && !R.paused;
-    const main = P.main, me = eff(main);
-    if (firing && main && me > 0 && P.fireCd <= 0) {
-      const d = SA.PARTS[main.id];
-      const rate = d.rate * (hasPas(P, 'cooler') ? 1.15 : 1) * (hasPas(P, 'resonator') ? 1 : st.fire) * me;
-      P.fireCd = 1 / rate;
-      const tx = P.x + Math.cos(P.aim) * 8, ty = P.y + Math.sin(P.aim) * 8, sn = hasPas(P, 'sensor');   // 조준 센서: 집탄 ↑ (퍼짐 ×0.4), 탄속 +10%
-      for (let i = 0; i < d.shots; i++) {
-        let a = P.aim + U.rnd(-d.spread, d.spread) * (sn ? 0.4 : 1);
-        let ox = 0, oy = 0;
-        if (main.id === 'twin') { const s = i ? 1 : -1; ox = Math.cos(P.aim + Math.PI / 2) * 3 * s; oy = Math.sin(P.aim + Math.PI / 2) * 3 * s; a = P.aim; }
-        const beam = d.pierce >= 3;
-        pb(R, tx + ox, ty + oy, a, d.spd * (sn ? 1.1 : 1) * U.rnd(0.92, 1.05), d.dmg, { pierce: d.pierce, life: d.life || 1.1, main: true, frag: d.frag, close: d.close, erase: d.erase,
-          col: d.erase ? '#ffe9a8' : beam ? '#9ff' : main.id === 'glass' ? '#ffd0f0' : '#bfe9ff', w: d.pierce >= 99 ? 3 : beam ? 2.4 : main.id === 'glass' ? 2.4 : 1.6 });
+    if (firing && main && me > 0 && P.fireCd <= 0 && P.swapT <= 0 && !(P.reloadT > 0)) {
+      const d = md;
+      const rate = d.rate * (hasPas(P, 'cooler') ? 1.15 : 1) * (hasPas(P, 'resonator') ? 1 : corrMul(P, st.fire)) * me;
+      const cost = (EN.eps[main.id] || 1) / d.rate;   // 한 발(한 번 사격) 에너지
+      const src = onCell ? 'cell' : P.emer >= cost ? 'emer' : null;   // 동력원 끝자락도 그대로 쓰고 방전 → 자동 교체
+      if (!src) {
+        P.fireCd = 0.25;
+        if (!startReload(R, P, false) && (P.dryT || 0) <= R.t) { P.dryT = R.t + 1.2; SA.Audio.sfx('deny'); text(R, P.x, P.y - 18, '에너지 없음 · 비상 발전', '#ffb3b3'); }
+      } else {
+        if (R.range) { /* 연습장: 에너지 소모 없음 */ } else if (src === 'cell') P.cell.e = Math.max(0, P.cell.e - cost); else P.emer -= cost;
+        P.fireCd = 1 / rate;
+        const cmul = src === 'cell' ? cellDef(P).dmg : 1;
+        const full = d.sniper && P.aimC >= EN.sniperCharge, dmul = cmul * (full ? EN.sniperMul : 1);
+        const tx = P.x + Math.cos(P.aim) * 8, ty = P.y + Math.sin(P.aim) * 8, sn = hasPas(P, 'sensor');   // 조준 센서: 집탄 ↑ (퍼짐 ×0.4), 탄속 +10%
+        const spr = d.spread * (sn ? 0.4 : 1) * (P.aiming ? EN.aim : EN.hip);
+        for (let i = 0; i < d.shots; i++) {
+          let a = P.aim + U.rnd(-spr, spr);
+          let ox = 0, oy = 0;
+          if (main.id === 'twin') { const s = i ? 1 : -1; ox = Math.cos(P.aim + Math.PI / 2) * 3 * s; oy = Math.sin(P.aim + Math.PI / 2) * 3 * s; a = P.aim + U.rnd(-spr, spr) * 0.5; }
+          const beam = d.pierce >= 3;
+          pb(R, tx + ox, ty + oy, a, d.spd * (sn ? 1.1 : 1) * U.rnd(0.92, 1.05), d.dmg * dmul, { pierce: d.pierce, life: d.life || 1.1, main: true, frag: d.frag, close: d.close, erase: d.erase,
+            col: d.sniper ? (full ? '#ffe08a' : '#e6f4ff') : d.erase ? '#ffe9a8' : beam ? '#9ff' : main.id === 'glass' ? '#ffd0f0' : '#bfe9ff', w: d.sniper ? (full ? 3.2 : 2.2) : d.pierce >= 99 ? 3 : beam ? 2.4 : main.id === 'glass' ? 2.4 : 1.6 });
+        }
+        if (d.sniper) { P.aimC = 0; R.shake = Math.max(R.shake, full ? 3 : 1.5); if (full) fx(R, tx, ty, 8, '#ffe08a', 90, 0.25, 1.2); }
+        wear(main, 0.004);
+        SA.Audio.sfx(d.sniper ? 'snipe' : 'shoot');
+        if (src === 'cell' && P.cell.e <= 0) { text(R, P.x, P.y - 18, '동력원 방전 — R', '#ffd166'); startReload(R, P, false); }
       }
-      wear(main, 0.004);
-      SA.Audio.sfx('shoot');
     }
 
     // 서브웨폰 (자동)
@@ -165,7 +228,7 @@ SA.Combat = (() => {
       else { s.x = P.x + s.ox; s.y = P.y + s.oy; }
       if (R.tabOpen) continue;   // 화물칸(Tab)을 여는 동안 서브웨폰은 멈춘다
       s.cd -= dt; s.boost = Math.max(0, (s.boost || 0) - dt);
-      const rate = d.rate * st.fire * e * (s.boost > 0 ? 2.5 : 1);
+      const rate = d.rate * corrMul(P, st.fire) * e * (s.boost > 0 ? 2.5 : 1);
       if (id === 'mine') {                 // 지나간 자리에 지뢰
         if (s.cd <= 0 && Math.hypot(P.vx, P.vy) > 30) { s.cd = 1 / rate; pb(R, s.x, s.y, 0, 0, d.dmg, { mine: 20, aoe: 46, life: 9, col: '#ffcf6b' }); wear(s.part, 0.02); }
         continue;
@@ -263,7 +326,7 @@ SA.Combat = (() => {
       stun(R, best, 0.8); hitEnemy(R, best, 8); SA.Audio.sfx('ram');
     } else if (id === 'dump') {            // 값싼 화물 2개를 버리고 무적+가속
       const cheap = R.cargo.items.slice().sort((p, q) => SA.ITEMS[p.id].val / (SA.ITEMS[p.id].w * SA.ITEMS[p.id].h) - SA.ITEMS[q.id].val / (SA.ITEMS[q.id].w * SA.ITEMS[q.id].h)).slice(0, 2);
-      for (const it of cheap) { SA.Grid.remove(R.cargo, it.uid); SA.Raid.dropToSpace(it.id); }
+      for (const it of cheap) { SA.Grid.remove(R.cargo, it.uid); SA.Raid.dropToSpace(it.id, it); }
       P.invuln = Math.max(P.invuln, 1.2); P.dumpT = 2; fx(R, P.x, P.y, 16, '#ffd166', 140, 0.4); SA.Audio.sfx('boost');
     } else if (id === 'cannon') { a.cd = 0; a.charge = 0; P.charging = true; SA.Audio.sfx('repair');
     } else if (id === 'orbital') {
@@ -374,6 +437,7 @@ SA.Combat = (() => {
     const P = R.player;
     if (P.invuln > 0 || P.dead || R.state !== 'play') return;
     if (P.skillState === 'slip') return;   // 레이븐 슬립스트림: 피격 무효
+    if (R.range && R.rangeGod) { P.invuln = 0.3; R.hurtFlash = 0.15; return; }   // 연습장 피해 무효
     if (P.odT > 0) dmg *= 2;
     if (hasPas(P, 'vault')) dmg *= 1 - Math.min(0.25, (SA.Grid.value(R.cargo) + SA.Grid.value(R.secure)) / 4000);
     if (P.barrier > 0) { const b = Math.min(P.barrier, dmg); P.barrier -= b; dmg -= b; }
@@ -381,8 +445,8 @@ SA.Combat = (() => {
     P.hp -= dmg; P.invuln = SA.CFG.HIT_INVULN;
     R.shake = 6; R.hurtFlash = 0.35;
     R.graze = Math.floor(R.graze * SA.GRAZE.hitKeep);
-    const eq = [P.main, ...P.subs.map(s => s.part), ...P.acts.map(a => a && a.part), ...P.pas].filter(Boolean);
-    if (eq.length) wear(U.pick(eq), 2);
+    const eq = [...P.mains, ...P.subs.map(s => s.part), ...P.acts.map(a => a && a.part), ...P.pas, P.obs].filter(Boolean);
+    if (eq.length) wear(U.pick(eq), SA.HIT_WEAR);
     if (P.main && P.main.id === 'glass') eq.forEach(p => wear(p, 4));
     if (hasPas(P, 'counter') && P.counterCd <= 0) {
       P.counterCd = 5; P.invuln += 0.6;
@@ -412,11 +476,31 @@ SA.Combat = (() => {
     return best;
   };
 
+  // 적 스킬: 플레이어 액티브를 적도 쓴다 (조건이 맞으면 쿨타임마다)
+  const enemySkills = (R, e, dt) => {
+    const P = R.player, list = e.skills || SA.ENEMIES[e.type].skills, d = Math.sqrt(U.d2(e.x, e.y, P.x, P.y));
+    e.skCd = e.skCd || {};
+    for (const id of list) {
+      const S = SA.ENEMY_SKILLS[id]; if (!S) continue;
+      e.skCd[id] = (e.skCd[id] === undefined ? U.rnd(1, S.cd) : e.skCd[id]) - dt;
+      if (e.skCd[id] > 0 || d > 420 || P.dead) continue;
+      let used = false;
+      if (id === 'purge' && R.pb.some(b => U.d2(b.x, b.y, e.x, e.y) < 70 * 70)) { R.pb = R.pb.filter(b => U.d2(b.x, b.y, e.x, e.y) > 70 * 70); R.rings.push({ x: e.x, y: e.y, r: 4, max: 70, life: 0.3, col: '#ff9de2' }); used = true; }
+      else if (id === 'shield' && e.hp < e.maxHp * 0.7) { e.inv = 1.5; used = true; }
+      else if (id === 'missile') { fan(R, e.x, e.y, U.ang(e.x, e.y, P.x, P.y), 6, 0.9, 130, { r: 3.5, col: '#ffb347' }); used = true; }
+      else if (id === 'boost' && d > 120) { const a = U.ang(e.x, e.y, P.x, P.y); e.vx = Math.cos(a) * 380; e.vy = Math.sin(a) * 380; e.roll = 0.5; used = true; }
+      if (used) { e.skCd[id] = S.cd; text(R, e.x, e.y - 20, SA.PARTS[id] ? SA.PARTS[id].name : id, '#ff9de2'); }
+    }
+  };
   const updateEnemies = (R, dt) => {
     const P = R.player;
     for (const e of R.enemies) {
       if (e.dead) continue;
       e.flash = Math.max(0, e.flash - dt);
+      if (e.zone && !e.zone.open) continue;   // 닫힌 보안 구역의 경비는 역장이 열릴 때까지 잠들어 있다
+      if (e.skills || (SA.ENEMIES[e.type] || {}).skills) enemySkills(R, e, dt);
+      if (e.dummy === 'still') { e.face = U.ang(e.x, e.y, P.x, P.y); continue; }   // 연습장 허수아비: 가만히
+      if (e.dummy === 'move') { e.t += dt; e.x = e.homeX + Math.sin(e.t * 0.9) * 160; e.y = e.homeY + Math.sin(e.t * 1.7) * 40; e.face = U.ang(e.x, e.y, P.x, P.y); continue; }   // 좌우로 움직이기만
       let dist = Math.sqrt(U.d2(e.x, e.y, P.x, P.y));
       if (dist > 900 && !e.boss && !e.tgt) continue;           // 멀면 잠든다
       e.face = e.face === undefined ? Math.atan2(R.player.y - e.y, R.player.x - e.x) : e.face;
@@ -535,12 +619,12 @@ SA.Combat = (() => {
     }
     if (!e.rematch && e.hp <= e.maxHp * RV.fleeAt) {
       e.fleeing = true; e.fleeT = 2.2; e.inv = 1;
-      SA.Raid.msg('레이븐: "…오늘은 여기까지. 다음엔 제대로 해요, 대장."', '#ff4d6d', 5);
+      SA.Raid.say('raven', '…오늘은 여기까지. 다음엔 제대로 해요, 대장.');
       SA.Raid.ravenFlee(e);
       return;
     }
-    if (e.hp < e.maxHp * 0.6 && e.phase === 1) { e.phase = 2; SA.Raid.msg('레이븐: "제법이군. 이제 진짜다."', '#ff4d6d'); }
-    if (e.rematch && e.hp < e.maxHp * RV.phase3At && e.phase === 2) { e.phase = 3; e.slipT = 0.5; SA.Raid.msg('레이븐: "탄 사이엔 길이 있어요. 따라와 봐요."', '#ff4d6d', 4); SA.Audio.sfx('siren'); }
+    if (e.hp < e.maxHp * 0.6 && e.phase === 1) { e.phase = 2; SA.Raid.say('raven', '제법이군. 이제 진짜다.'); }
+    if (e.rematch && e.hp < e.maxHp * RV.phase3At && e.phase === 2) { e.phase = 3; e.slipT = 0.5; SA.Raid.say('raven', '탄 사이엔 길이 있어요. 따라와 봐요.'); SA.Audio.sfx('siren'); }
 
     // 탄 회피: 맞을 궤도의 탄이 가까우면 옆으로 미끄러진다
     e.dodgeCd = Math.max(0, (e.dodgeCd || 0) - dt);
@@ -615,13 +699,14 @@ SA.Combat = (() => {
   const damageEnemy = (R, e, dmg) => {
     if (e.dead || e.inv > 0) return;
     e.hp -= dmg; e.flash = 0.08;
+    if (R.range && R.dmgLog) R.dmgLog.push([R.t, Math.min(dmg, dmg + e.hp)]);   // 연습장 DPS
     if (!e.awake && !e.crate) e.awake = true;
     if (e.type === 'raven' && !R.bossEngaged) SA.Raid.bossEngaged(e);
     if (e.hp <= 0) killEnemy(R, e);
   };
   const killEnemy = (R, e) => {
     e.dead = true;
-    if (e.crate) { SA.Audio.sfx('open'); fx(R, e.x, e.y, 10, '#ffd166', 60, 0.4); }
+    if (e.crate) { SA.Audio.sfx('open'); fx(R, e.x, e.y, 10, '#ffd166', 60, 0.4); if (e.beaconOf) { SA.Raid.beaconBroken(e); fx(R, e.x, e.y, 24, '#ffb347', 140, 0.6, 2); } }
     else {
       R.kills++; R.killTypes = R.killTypes || {}; R.killTypes[e.type] = (R.killTypes[e.type] || 0) + 1;
       const big = e.r > 15 ? 2 : 1;
@@ -751,7 +836,7 @@ SA.Combat = (() => {
     }
     return best;
   };
-  const wingBark = (R, a, N, key) => { if (!N.barks || !N.barks[key] || (a.barkT || 0) > 0) return; a.barkT = 10; SA.Raid.msg(`${N.name}: "${N.barks[key]}"`, N.color, 3); };
+  const wingBark = (R, a, N, key) => { if (!N.barks || !N.barks[key] || (a.barkT || 0) > 0) return; a.barkT = 10; SA.Raid.say(N.speaker, N.barks[key]); };
   const wingAI = (R, a, N, dt) => {
     const P = R.player, W = SA.WING, style = N.style;
     a.barkT = Math.max(0, (a.barkT || 0) - dt);
@@ -841,7 +926,7 @@ SA.Combat = (() => {
       if (a.calm > 4) a.hp = Math.min(a.maxHp, a.hp + a.regen * dt);   // 4초 동안 안 맞으면 천천히 회복
       if (a.kind === 'wing') {
         const N = SA.NAMED[a.named];
-        if (SA.Input.hit('KeyG') && !R.tabOpen) { a.cover = !a.cover; SA.Raid.msg(a.cover ? `${N.name}: "${N.coverOn}" — 엄호: 받는 피해 절반을 내가 대신 맞는다` : `${N.name}: "${N.coverOff}"`, N.color, 3); }
+        if (SA.Input.hit('KeyG') && !R.tabOpen) { a.cover = !a.cover; SA.Raid.say(N.speaker, a.cover ? N.coverOn : N.coverOff); SA.Raid.msg(a.cover ? '엄호: 윙맨이 곁으로 온다 — 윙맨이 받는 피해 절반을 내가 대신 맞는다' : '엄호 해제: 윙맨이 다시 자유롭게 싸운다', N.color, 3); }
         wingAI(R, a, N, dt);
       } else if (a.kind === 'convoy') {
         // 플레이어가 너무 멀면 기다린다. 소행성은 밀어낸다
@@ -879,5 +964,5 @@ SA.Combat = (() => {
     for (const b of R.beams) b.life -= dt; R.beams = R.beams.filter(b => b.life > 0);
   };
 
-  return { updateAllies, hurtAlly, updateExtra, stun, hitEnemy, eff, wear, eb, ring, fan, fx, text, updatePlayer, updateEnemies, updateBullets, spawnEnemy, hurtPlayer, damageEnemy, insideAsteroid, hasPas };
+  return { corrResist, corrMul, startReload, energyOf, updateAllies, hurtAlly, updateExtra, stun, hitEnemy, eff, wear, eb, ring, fan, fx, text, updatePlayer, updateEnemies, updateBullets, spawnEnemy, hurtPlayer, damageEnemy, insideAsteroid, hasPas };
 })();
