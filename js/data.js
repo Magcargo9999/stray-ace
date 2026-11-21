@@ -215,17 +215,21 @@ SA.ITEMS.cap_raven = { name: '레이븐의 탈출 포드', w: 2, h: 2, val: 0, k
 // 난파선 (임시): 아이템 하나당 0.9초, 마지막 한 개는 4초. 벗어나면 진행 중 게이지가 초당 0.6씩 줄어든다.
 // 마지막 보상은 위에서부터 굴려 처음 당첨된 것 하나 (좋은 것 확률 높게)
 SA.WRECK = { per: 0.9, last: 4, decay: 0.6, final: [['bp:강화', .1], ['goldchip', .3], ['bp:일반', .25], ['engine', .35], ['prec', 1]] };
+// 윙맨 AI 공통 (임시): leash = 플레이어에게서 최대 거리, 세레나 후퇴/복귀 체력 비율, 탄 회피 확률, 볼크 도발 확률
+SA.WING = { leash: 250, retreatAt: 0.35, backAt: 0.7, dodgeCmd: 0.95, dodgeAce: 0.3, taunt: 0.35 };
 // 네임드 윙맨 (초안·임시 수치). 중립 의뢰로 함께 출격한다. 기체 그림은 진영 전투기 도트를 빌려 쓴다
 SA.NAMED = {
-  kingdom: { name: '세레나', title: '왕국 장군', color: '#8fb6ff', sprite: 'k_fighter', hp: 160, regen: 4, speed: 175, range: 320,
+  kingdom: { name: '세레나', title: '왕국 장군', color: '#8fb6ff', sprite: 'k_fighter', style: 'cmd', hp: 160, regen: 4, speed: 175, range: 320,
              rate: 2.6, shots: 1, spread: 0.01, dmg: 12, spd: 760,
              hello: '수송선이 먼저다. 내 뒤는 당신이 봐. …그 기동, 어디서 본 것 같은데.', coverOn: '붙겠다. 대신 맞아 주겠다니… 예전에도 그런 사람이 있었지.', coverOff: '흩어진다. 시야 넓게.',
              arrive: '도착이다. 하나만 묻지. 당신에게 그 비행을 가르친 사람, 아직 살아 있나?',
-             down: '기체 손상… 이탈한다. 그 사람에게 전해. …아니, 됐다.' },
-  empire:  { name: '볼크', title: '제국 돌격 에이스', color: '#ff7a6b', sprite: 'e_fighter', hp: 180, regen: 4, speed: 185, range: 260,
+             down: '기체 손상… 이탈한다. 그 사람에게 전해. …아니, 됐다.',
+             barks: { retreat: '손상 3할 초과. 잠시 물러난다. 앞을 맡아.', back: '복귀한다. 좌측으로 돈다.' } },
+  empire:  { name: '볼크', title: '제국 돌격 에이스', color: '#ff7a6b', sprite: 'e_fighter', style: 'ace', hp: 180, regen: 4, speed: 185, range: 260,
              rate: 8, shots: 2, spread: 0.12, dmg: 3.5, spd: 560,
              hello: '제국 돌격대 볼크다. 사냥꾼 머리는 내 거다. 넌 뒤만 받쳐.', coverOn: '좋아, 방패는 네가 해라!', coverOff: '흩어져! 각자 사냥이다.',
-             down: '젠장, 엔진이… 먼저 빠진다!' },
+             down: '젠장, 엔진이… 먼저 빠진다!',
+             barks: { charge: '큰 놈이다! 내가 먼저 간다!', low: '아직 날 수 있어! 물러나는 건 제국 돌격대가 아니야!' } },
 };
 SA.CONVOY = { hp: 420, r: 18, speed: 42, waveEvery: 20, waveN: 3 };   // 호위 수송선 (임시)
 SA.REPAIRKIT_DUR = 40;   // 수리킷을 부품에 쓰면 내구도 +40 (최대 내구도는 그대로)

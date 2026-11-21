@@ -726,9 +726,105 @@ SA.Combat = (() => {
     a.hp -= dmg; a.flash = 0.08; a.calm = 0;
     if (a.hp <= 0) { a.hp = 0; a.dead = true; fx(R, a.x, a.y, 30, '#ffb347', 140, 0.6, 2); SA.Audio.sfx('bigboom'); SA.Raid.allyDown(a); }
   };
+  // ── 네임드 윙맨 AI (임시 수치) ──
+  // 공통: 플레이어에게서 SA.WING.leash까지 나가 싸운다. G(엄호)를 켜면 사냥을 멈추고 플레이어 뒤에 붙는다.
+  // 세레나 = 냉정한 지휘관: 측면 저격, 수송선·플레이어를 노리는 적 우선, 탄을 정확히 피함, 체력이 낮으면 물러나 회복.
+  // 볼크 = 무모한 돌격: 가까운 적 주위를 돌며 난사, 탄을 잘 안 피함, 주변 적의 시선을 끈다, 물러나지 않음.
+  const alive = (e) => e && !e.dead && !e.crate;
+  const wingThreat = (R, a, look) => {      // look초 안에 부딪힐 탄 중 가장 빠른 것
+    let best = null, bt = look;
+    for (const b of R.eb) {
+      const dx = b.x - a.x, dy = b.y - a.y; if (dx * dx + dy * dy > 110 * 110) continue;
+      const vv = b.vx * b.vx + b.vy * b.vy; if (!vv) continue;
+      const t = -(dx * b.vx + dy * b.vy) / vv; if (t < 0 || t > bt) continue;
+      const cx = dx + b.vx * t, cy = dy + b.vy * t;
+      if (cx * cx + cy * cy < (b.r + a.r + 4) ** 2) { bt = t; best = { b, cx, cy }; }
+    }
+    return best;
+  };
+  const wingBark = (R, a, N, key) => { if (!N.barks || !N.barks[key] || (a.barkT || 0) > 0) return; a.barkT = 10; SA.Raid.msg(`${N.name}: "${N.barks[key]}"`, N.color, 3); };
+  const wingAI = (R, a, N, dt) => {
+    const P = R.player, W = SA.WING, style = N.style;
+    a.barkT = Math.max(0, (a.barkT || 0) - dt);
+    if (!a.side) a.side = Math.random() < 0.5 ? -1 : 1;
+    const inZone = (e) => U.d2(e.x, e.y, P.x, P.y) < (W.leash + 60) ** 2;
+    let t = null, tx, ty, sp = N.speed;
+    if (style === 'cmd') {                  // 세레나: 후퇴 판단
+      if (a.retreat && a.hp > a.maxHp * W.backAt) { a.retreat = false; a.barkT = 0; wingBark(R, a, N, 'back'); }
+      else if (!a.retreat && a.hp < a.maxHp * W.retreatAt) { a.retreat = true; a.barkT = 0; wingBark(R, a, N, 'retreat'); }
+    }
+    if (a.cover || a.retreat) {             // 엄호·후퇴: 플레이어 뒤로
+      const back = P.aim + Math.PI, off = a.cover ? 18 : 40;
+      tx = P.x + Math.cos(back) * off; ty = P.y + Math.sin(back) * off;
+      t = nearestEnemy(R, a.x, a.y, N.range);
+    } else if (style === 'cmd') {
+      // 우선순위: 수송선·윙맨을 노리는 적 > 플레이어 가까이 온 적 > 가까운 적
+      let bs = Infinity;
+      for (const e of R.enemies) {
+        if (!alive(e) || !inZone(e)) continue;
+        let s = Math.sqrt(U.d2(e.x, e.y, a.x, a.y));
+        if (e.tgt && !e.tgt.dead) s -= 200;
+        if (R.convoy && !R.convoy.dead && U.d2(e.x, e.y, R.convoy.x, R.convoy.y) < 170 * 170) s -= 150;
+        if (U.d2(e.x, e.y, P.x, P.y) < 170 * 170) s -= 100;
+        if (e === a.tgtE) s -= 60;          // 표적을 자주 바꾸지 않는다
+        if (s < bs) { bs = s; t = e; }
+      }
+      if (t !== a.tgtE) { a.tgtE = t; a.side = -a.side; }
+      if (t) {                              // 측면으로 돌아 거리 190에서 저격
+        const ang = U.ang(t.x, t.y, P.x, P.y) + a.side * 1.1;
+        tx = t.x + Math.cos(ang) * 190; ty = t.y + Math.sin(ang) * 190;
+      } else { const s2 = P.aim + Math.PI / 2 * a.side; tx = P.x + Math.cos(s2) * 70; ty = P.y + Math.sin(s2) * 70; }
+    } else {                                // 볼크: 가까운 적에게 달려들어 돈다
+      if (!alive(a.tgtE) || !inZone(a.tgtE)) {
+        a.tgtE = null; let bd = 320 * 320;
+        for (const e of R.enemies) { if (!alive(e) || !inZone(e)) continue; const q = U.d2(e.x, e.y, a.x, a.y); if (q < bd) { bd = q; a.tgtE = e; } }
+        if (a.tgtE && (a.tgtE.boss || (SA.ENEMIES[a.tgtE.type] || {}).hp >= 100)) wingBark(R, a, N, 'charge');
+      }
+      t = a.tgtE;
+      if (t) {
+        a.orbA = (a.orbA || 0) + 2.2 * a.side * dt;
+        tx = t.x + Math.cos(a.orbA) * (t.r + 48); ty = t.y + Math.sin(a.orbA) * (t.r + 48); sp *= 1.15;
+      } else { tx = P.x + Math.cos(P.aim) * 90; ty = P.y + Math.sin(P.aim) * 90; }
+      // 도발: 주변 적이 볼크를 노린다
+      a.tauntT = (a.tauntT || 0) - dt;
+      if (a.tauntT <= 0) {
+        a.tauntT = 1;
+        for (const e of R.enemies) if (alive(e) && !e.boss && !e.tgt && U.d2(e.x, e.y, a.x, a.y) < 170 * 170 && Math.random() < W.taunt) { e.tgt = a; e.tauntT = 4; }
+      }
+      if (a.hp < a.maxHp * 0.3) wingBark(R, a, N, 'low');
+    }
+    // 플레이어에게서 leash 밖으로 나가지 않는다
+    const lx = tx - P.x, ly = ty - P.y, lq = Math.hypot(lx, ly);
+    if (lq > W.leash) { tx = P.x + lx / lq * W.leash; ty = P.y + ly / lq * W.leash; }
+    const dx = tx - a.x, dy = ty - a.y, dd = Math.hypot(dx, dy);
+    sp = Math.min(sp * (Math.hypot(a.x - P.x, a.y - P.y) > W.leash + 40 ? 1.7 : 1), dd * 6);
+    let vx = (dd ? dx / dd : 0) * sp, vy = (dd ? dy / dd : 0) * sp, kk = 5;
+    // 탄 회피: 세레나는 거의 다, 볼크는 가끔
+    const th = wingThreat(R, a, style === 'cmd' ? 0.45 : 0.3);
+    if (th && (th.b.wd === undefined ? (th.b.wd = Math.random() < (style === 'cmd' ? W.dodgeCmd : W.dodgeAce)) : th.b.wd)) {
+      let ox = -th.cx, oy = -th.cy, oq = Math.hypot(ox, oy);
+      if (oq < 0.5) { ox = -th.b.vy; oy = th.b.vx; oq = Math.hypot(ox, oy); }
+      vx = ox / oq * 280; vy = oy / oq * 280; kk = 14;
+    }
+    a.vx += (vx - a.vx) * Math.min(1, kk * dt); a.vy += (vy - a.vy) * Math.min(1, kk * dt);
+    a.x += a.vx * dt; a.y += a.vy * dt;
+    pushOutAsteroids(R, a, a.r);
+    // 사격
+    if (!t || U.d2(t.x, t.y, a.x, a.y) > N.range * N.range) t = nearestEnemy(R, a.x, a.y, N.range);
+    a.face = t ? U.ang(a.x, a.y, t.x, t.y) : Math.atan2(a.vy, a.vx) || P.aim;
+    a.cd -= dt;
+    if (t && a.cd <= 0 && R.state === 'play') {
+      a.cd = 1 / N.rate;
+      for (let k = 0; k < N.shots; k++) pb(R, a.x, a.y, a.face + U.rnd(-N.spread, N.spread), N.spd, N.dmg, { col: N.color, w: 2, life: 0.9 });
+    }
+  };
+  // 볼크의 도발이 끝나면 적은 다시 플레이어를 노린다
+  const updateTaunts = (R, dt) => { for (const e of R.enemies) if (e.tauntT > 0) { e.tauntT -= dt; if (e.tauntT <= 0 && e.tgt && e.tgt.kind === 'wing') e.tgt = null; } };
+
   const updateAllies = (R, dt) => {
     if (!R.allies) return;
     const P = R.player;
+    updateTaunts(R, dt);
     for (const a of R.allies) {
       if (a.dead) continue;
       a.flash = Math.max(0, (a.flash || 0) - dt);
@@ -737,19 +833,7 @@ SA.Combat = (() => {
       if (a.kind === 'wing') {
         const N = SA.NAMED[a.named];
         if (SA.Input.hit('KeyG') && !R.tabOpen) { a.cover = !a.cover; SA.Raid.msg(a.cover ? `${N.name}: "${N.coverOn}" — 엄호: 받는 피해 절반을 내가 대신 맞는다` : `${N.name}: "${N.coverOff}"`, N.color, 3); }
-        const back = P.aim + Math.PI, side = back + (a.cover ? 0 : 0.7);
-        const off = a.cover ? 18 : 46;
-        const tx = P.x + Math.cos(side) * off, ty = P.y + Math.sin(side) * off;
-        const dx = tx - a.x, dy = ty - a.y, dd = Math.hypot(dx, dy), sp = Math.min(N.speed * (dd > 200 ? 1.6 : 1), dd * 6);
-        a.vx += ((dd ? dx / dd : 0) * sp - a.vx) * Math.min(1, 5 * dt); a.vy += ((dd ? dy / dd : 0) * sp - a.vy) * Math.min(1, 5 * dt);
-        a.x += a.vx * dt; a.y += a.vy * dt;
-        const t = nearestEnemy(R, a.x, a.y, N.range);
-        a.face = t ? U.ang(a.x, a.y, t.x, t.y) : P.aim;
-        a.cd -= dt;
-        if (t && a.cd <= 0 && R.state === 'play') {
-          a.cd = 1 / N.rate;
-          for (let k = 0; k < N.shots; k++) pb(R, a.x, a.y, a.face + U.rnd(-N.spread, N.spread), N.spd, N.dmg, { col: N.color, w: 2, life: 0.9 });
-        }
+        wingAI(R, a, N, dt);
       } else if (a.kind === 'convoy') {
         // 플레이어가 너무 멀면 기다린다. 소행성은 밀어낸다
         if (a.arrived) continue;

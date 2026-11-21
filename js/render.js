@@ -308,6 +308,7 @@ SA.Render = (() => {
     const col = isW ? N.color : '#8fb6ff';
     ctx.strokeStyle = col; ctx.globalAlpha = 0.5; ctx.lineWidth = 1; ctx.beginPath(); ctx.arc(a.x, a.y, a.r + 6, 0, 6.29); ctx.stroke(); ctx.globalAlpha = 1;
     if (isW && a.cover) { ctx.strokeStyle = '#5dffb0'; ctx.setLineDash([2, 3]); ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(R.player.x, R.player.y); ctx.stroke(); ctx.setLineDash([]); }
+    else if (isW && !R.player.dead) { ctx.strokeStyle = col; ctx.globalAlpha = 0.22; ctx.setLineDash([1, 4]); ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(R.player.x, R.player.y); ctx.stroke(); ctx.setLineDash([]); ctx.globalAlpha = 1; }
     label(ctx, isW ? N.name : (a.waiting ? '수송선 (대기 중)' : '수송선'), a.x, a.y - a.r - 14, col, 6);
     ctx.fillStyle = '#10202e'; ctx.fillRect(a.x - 14, a.y - a.r - 9, 28, 3); ctx.fillStyle = col; ctx.fillRect(a.x - 14, a.y - a.r - 9, 28 * a.hp / a.maxHp, 3);
   };
@@ -523,11 +524,11 @@ SA.Render = (() => {
       let y = 56;
       for (const a of R.allies) {
         const isW = a.kind === 'wing', N = isW && SA.NAMED[a.named], col = isW ? N.color : '#8fb6ff';
-        T(ctx, a.dead ? `${isW ? N.name : '수송선'} — 격추` : isW ? `${N.name}${a.cover ? ' · 엄호 중' : ''}` : `수송선${a.arrived ? ' · 도착' : a.waiting ? ' · 대기 (가까이 와라)' : ''}`, 24, y, a.dead ? '#777' : col, 12);
+        T(ctx, a.dead ? `${isW ? N.name : '수송선'} — 격추` : isW ? `${N.name}${a.cover ? ' · 엄호 중' : a.retreat ? ' · 후퇴 중' : ''}` : `수송선${a.arrived ? ' · 도착' : a.waiting ? ' · 대기 (가까이 와라)' : ''}`, 24, y, a.dead ? '#777' : col, 12);
         if (!a.dead) bar(ctx, 24, y + 6, 160, 5, a.hp / a.maxHp, col);
         y += 26;
       }
-      if (R.wing && !R.wing.dead) T(ctx, `G: 엄호 ${R.wing.cover ? '끄기' : '켜기'} (받는 피해 절반을 대신 맞는다)`, 24, y, '#9aa7bd', 11);
+      if (R.wing && !R.wing.dead) T(ctx, `G: 엄호 ${R.wing.cover ? '끄기 (다시 자유롭게 싸운다)' : '켜기 (곁으로 불러 받는 피해 절반을 대신 맞는다)'}`, 24, y, '#9aa7bd', 11);
       if (R.wingFail) T(ctx, '의뢰 실패 — 이번 판은 진행되지 않는다', 24, y + 18, '#ffb3b3', 11);
     }
     // 메시지
