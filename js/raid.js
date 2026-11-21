@@ -29,7 +29,7 @@ SA.Raid = (() => {
       cargo: SA.Grid.make(ship.cargo[0], ship.cargo[1] + (hasP('cargo') ? 1 : 0)),
       secure: SA.Grid.make(SA.CFG.SECURE_W + (hasP('secure2') ? 1 : 0), SA.CFG.SECURE_H),
       bolts: [], beams: [], strikes: [], wells: [],
-      corr: 0, stage: 0, graze: 0, kills: 0, shake: 0, hurtFlash: 0,
+      corr: 0, stage: 0, graze: 0, grazeN: 0, kills: 0, shake: 0, hurtFlash: 0,
       msgs: [], pickLog: [], hint: null, hintT: 0, boss: null, bossEngaged: false, ravenKilled: false,
       mouseWorld: { x: 0, y: 0 }, cam: { x: 0, y: 0 }, spawnT: 0, corrT: 0, hunterSpawned: false,
       distressAt: U.rnd(140, 260), extracted: false, deathT: 0, lootValueStart: 0,
@@ -172,7 +172,11 @@ SA.Raid = (() => {
   // ── 메시지 ──
   const msg = (text, col = '#fff', life = 3.5) => { SA.R.msgs.push({ text, col, life, max: life }); if (SA.R.msgs.length > 4) SA.R.msgs.shift(); };
 
-  const grazeBonus = () => { const amp = SA.R.player && C().hasPas(SA.R.player, 'grazeamp'); return Math.min(amp ? 0.5 : 0.3, Math.floor(SA.R.graze / (amp ? 25 : 40)) * 0.05); };
+  // 스침 스택 보너스 (모든 파일럿 공통): 드랍률과 플레이어 피해량
+  const grazeCap = () => (SA.R.player && C().hasPas(SA.R.player, 'grazeamp')) ? SA.GRAZE.capAmp : SA.GRAZE.cap;
+  const grazeTier = () => Math.floor((SA.R.graze || 0) / SA.GRAZE.per);
+  const grazeBonus = () => Math.min(grazeCap()[0], grazeTier() * SA.GRAZE.drop);
+  const grazeDmg = () => Math.min(grazeCap()[1], grazeTier() * SA.GRAZE.dmg);
 
   // 불운 보정: 새 설계도 없이 출격할수록 설계도 확률 +25%씩 (최대 3배). 새 설계도를 등록하면 초기화.
   const pity = (id) => id.startsWith('bp') ? Math.min(3, 1 + .25 * (SA.profile.bpMiss || 0)) : 1;
@@ -635,5 +639,5 @@ SA.Raid = (() => {
     return R.items.filter(it => !it.taken && U.d2(it.x, it.y, P.x, P.y) < r * r);
   };
 
-  return { start, update, msg, swapPlan, doSwap, dropLoot, spawnItem, playerDied, bossEngaged, bossKilled, ravenFlee, ravenFled, allyDown, convoyArrived, finish, useItem, dropToSpace, nearbyGround, grazeBonus };
+  return { start, update, msg, swapPlan, doSwap, dropLoot, spawnItem, playerDied, bossEngaged, bossKilled, ravenFlee, ravenFled, allyDown, convoyArrived, finish, useItem, dropToSpace, nearbyGround, grazeBonus, grazeDmg };
 })();

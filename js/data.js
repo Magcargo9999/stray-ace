@@ -82,7 +82,7 @@ SA.PARTS = {
   shockplate: { name: '충격 장갑', slot: 'pas', tier: '일반', val: 180, desc: '가까운 적(80 이내)에게 피해 +20%, 기절 시간 +50%.' },
   barrier: { name: '베리어 발생기', slot: 'pas', tier: '강화', val: 260, desc: '4초간 안 맞으면 차오르는 보호막 40.' },
   counter: { name: '반격 장치', slot: 'pas', tier: '강화', val: 320, desc: '맞으면 주변 적 탄을 지우고 0.6초 더 무적. (5초마다)' },
-  grazeamp:{ name: '스침 증폭기', slot: 'pas', tier: '강화', val: 300, desc: '스침 드랍 보너스: 25회마다 +5%, 최대 +50%.' },
+  grazeamp:{ name: '스침 증폭기', slot: 'pas', tier: '강화', val: 300, desc: '스침 스택 보너스 상한 증가: 드랍 +40% → +60%, 피해 +20% → +30%.' },
   grazeflow:{ name: '스침 환류기', slot: 'pas', tier: '강화', val: 300, desc: '5번 스칠 때마다 액티브 쿨타임 -1초.' },
   redheart:{ name: '붉은 심장', slot: 'pas', tier: '강화', val: 300, desc: '체력 50% 이하일 때 주무기 피해 +30%.' },
   vault:   { name: '금고 장갑', slot: 'pas', tier: '강화', val: 320, desc: '화물 가치가 높을수록 받는 피해 감소 (최대 -25%).' },
@@ -175,13 +175,16 @@ SA.SHIPS = {
              subMounts: [[-8.5, 2], [8.5, 2], [-13, 9.5], [13.5, 9.5], [0, 11.5]], desc: '포탑 소켓 5개가 알아서 쏜다. 실수 허용량 최저.' },
 };
 
+// 스침 스택 (모든 파일럿 공통, 임시 수치): 20스택마다 드랍 +5%·피해 +2%. 피격 시 스택 20% 감소
+SA.GRAZE = { per: 20, drop: 0.05, dmg: 0.02, cap: [0.4, 0.2], capAmp: [0.6, 0.3], hitKeep: 0.8 };
+
 SA.PILOTS = {
   kai:   { name: '카이', title: '회전왕', color: '#5dffb0', quote: '빙글 돌면, 탄이 알아서 비켜 간다.', skill: 'roll', cd: 4, cost: 0, desc: '배럴 롤: 0.4초 무적 + 이동 방향으로 미끄러짐.' },
   mina:  { name: '미나', title: '정비병', color: '#ffd166', quote: '고칠 수 있으면, 아직 안 끝난 거야.', skill: 'repair', cd: 15, cost: 0, desc: '자가수리: 3초간 감속, 체력 25% 회복.' },
   bruno: { name: '브루노', title: '돌격대장', color: '#ff8f3d', quote: '정면이 제일 안전해. 뒤에서 맞으면 아프거든.', skill: 'ram', cd: 6, cost: 400, desc: '램 돌진: 앞으로 돌진, 부딪힌 적에게 피해 + 경로의 탄 삭제.' },
   jet:   { name: '제트', title: '애프터버너', color: '#6ec6ff', quote: '빨리 가면, 그만큼 덜 맞아.', skill: 'boost', cd: 8, cost: 300, desc: '가속 부스트: 2초간 이동 +60%.' },
   silva: { name: '실바', title: '유령', color: '#b3a1ff', quote: '네가 쏜 자리엔, 이미 내가 없어.', skill: 'warp', cd: 5, cost: 500, desc: '단거리 워프: 커서 방향으로 순간이동.' },
-  raven: { name: '레이븐', title: '옛 제자', color: '#ff4d6d', quote: '탄 사이엔 길이 있어요. 가르쳐 주신 대로.', skill: 'slip', cd: 9, cost: 0, hidden: true, desc: '슬립스트림: 2초간 판정이 작아지고 스치기 범위 2배, 스칠 때마다 쿨타임 -0.2초.' },
+  raven: { name: '레이븐', title: '옛 제자', color: '#ff4d6d', quote: '탄 사이엔 길이 있어요. 가르쳐 주신 대로.', skill: 'slip', cd: 18, cost: 0, hidden: true, desc: '슬립스트림: 3초간 이동을 AI가 맡아 탄 사이를 아슬아슬하게 빠져나간다(조준·사격은 직접). 그동안 피격 무효, 스치기 범위 2배, 스침 1회에 스택 +2, 스칠 때마다 쿨타임 -0.2초.' },
   // 파일럿이 모두 부상일 때만 나가는 직접 출격 (기술 없음, 침식 3배)
   cmdr:  { name: '단장', title: '직접 출격', color: '#8f9bb8', quote: '전원 부상이다. 그래도 누군가는 떠야 한다.', skill: null, cd: 0, cost: 0, hidden: true, desc: '파일럿 기술 없음. 침식이 3배 빠르게 찬다.' },
 };

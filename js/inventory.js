@@ -232,14 +232,14 @@ SA.UI = (() => {
   };
   const renderStatus = () => {
     const R = SA.R; if (!R) return;
-    const P = R.player, st = SA.CORROSION[R.stage], gb = SA.Raid.grazeBonus();
+    const P = R.player, st = SA.CORROSION[R.stage], gb = SA.Raid.grazeBonus(), gd = SA.Raid.grazeDmg();
     const val = SA.Grid.value(R.cargo) + SA.Grid.value(R.secure);
     const pl = SA.PILOTS[P.pilot];
     $('#tw-status').innerHTML = `
       <div class="row"><span>체력</span><b>${Math.ceil(P.hp)} / ${P.maxHp}${P.barrierMax ? ` <span class="dim">+ 베리어 ${Math.round(P.barrier)}</span>` : ''}</b></div>
       <div class="row"><span>침식</span><b style="color:#cbb8ff">${Math.floor(R.corr)}% · ${st.name}</b></div>
       <div class="dim small">${R.stage ? `연사 ${Math.round(st.fire * 100)}% · 이속 ${Math.round(st.speed * 100)}%` : '아직 영향 없음'}</div>
-      <div class="row"><span>스침 보너스</span><b style="color:#fff3a8">${R.graze}회 · 드랍 +${Math.round(gb * 100)}%</b></div>
+      <div class="row"><span>스침 보너스</span><b style="color:#fff3a8">${R.graze}스택 · 드랍 +${Math.round(gb * 100)}% · 피해 +${Math.round(gd * 100)}%</b></div>
       <div class="row"><span>운반 가치</span><b>₵${val}</b></div>
       <div class="row"><span>격추 · 시간</span><b>${R.kills}기 · ${Math.floor(R.t / 60)}:${String(Math.floor(R.t % 60)).padStart(2, '0')}</b></div>
       <h4>파일럿 — ${pl.name} (${pl.title})</h4><div class="dim small">${pl.desc}</div>

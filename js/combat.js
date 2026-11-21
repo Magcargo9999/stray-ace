@@ -44,6 +44,35 @@ SA.Combat = (() => {
   };
   const text = (R, x, y, s, col = '#fff') => R.texts.push({ x, y, s, col, life: 1.1 });
 
+  // ── 레이븐 슬립스트림 이동 AI ──
+  // 0.5초 앞까지 탄 궤적을 예측해 17개 방향(정지 포함) 중 고른다: 충돌 경로는 크게 감점, 스침 범위를 지나는 경로는 가점.
+  // 피격은 어차피 무효라 AI는 '아슬아슬한 연출'과 스침 스택 수집을 맡는다.
+  const SLIP_DIRS = [[0, 0]]; for (let i = 0; i < 16; i++) SLIP_DIRS.push([Math.cos(i / 8 * Math.PI), Math.sin(i / 8 * Math.PI)]);
+  const slipSteer = (R, P, spd, dt) => {
+    P.slipAiT = (P.slipAiT || 0) - dt;
+    if (P.slipAiT > 0 && P.slipDir) return P.slipDir;
+    P.slipAiT = 0.08;
+    const G = SA.CFG.GRAZE_R * 2, home = P.slipHome || { x: P.x, y: P.y };
+    const near = R.eb.filter(b => U.d2(b.x, b.y, P.x, P.y) < 240 * 240).slice(0, 160);
+    let best = SLIP_DIRS[0], bestS = -Infinity;
+    for (const dir of SLIP_DIRS) {
+      let s = 0;
+      for (let i = 1; i <= 5; i++) {
+        const t = i * 0.1, px = P.x + dir[0] * spd * t, py = P.y + dir[1] * spd * t;
+        if (insideAsteroid(R, px, py)) { s -= 80; break; }
+        for (const b of near) {
+          const k = b.frz > 0 ? 0 : (b.slow || 1), q = U.d2(px, py, b.x + b.vx * t * k, b.y + b.vy * t * k);
+          if (q < (b.r + 7) ** 2) s -= 30 / t;
+          else if (!b.grazed && q < (b.r + G) ** 2) s += 1.5;
+        }
+      }
+      s -= Math.max(0, Math.hypot(P.x + dir[0] * spd * 0.5 - home.x, P.y + dir[1] * spd * 0.5 - home.y) - 140) * 0.05;
+      if (P.slipDir) s += (dir[0] * P.slipDir[0] + dir[1] * P.slipDir[1]) * 0.8;
+      if (s > bestS) { bestS = s; best = dir; }
+    }
+    P.slipDir = best; return best;
+  };
+
   // ── 플레이어 ──
   const updatePlayer = (R, dt, rdt) => {
     const P = R.player, I = SA.Input, st = SA.CORROSION[R.stage];
@@ -59,6 +88,8 @@ SA.Combat = (() => {
     if (P.skillState === 'boost') spd *= 1.6;
     if (P.dumpT > 0) { P.dumpT -= dt; spd *= 1.8; }
     if (P.charging) spd *= 0.45;
+    const slipping = P.skillState === 'slip' && !(P.dash > 0);
+    if (slipping) { const d = slipSteer(R, P, spd, dt); mx = d[0]; my = d[1]; if (Math.random() < 0.5) R.after.push({ x: P.x, y: P.y, life: 0.3 }); }
     // 폭주 코어·반사·반격 타이머
     P.odT = Math.max(0, (P.odT || 0) - dt); P.reflectT = Math.max(0, (P.reflectT || 0) - dt); P.counterCd = Math.max(0, (P.counterCd || 0) - dt);
     const cdk = P.odT > 0 ? 3 : 1;
@@ -69,7 +100,7 @@ SA.Combat = (() => {
       if (P.skillState === 'ram') ramHits(R, P);
       if (Math.random() < 0.8) R.after.push({ x: P.x, y: P.y, life: 0.25 });
     } else {
-      const k = Math.min(1, P.accel * dt);
+      const k = Math.min(1, P.accel * dt * (slipping ? 3 : 1));
       P.vx += (mx * spd - P.vx) * k; P.vy += (my * spd - P.vy) * k;
       P.x += P.vx * dt; P.y += P.vy * dt;
     }
@@ -266,6 +297,7 @@ SA.Combat = (() => {
     if (hasPas(P, 'shockplate') && d < 80 + e.r) m *= 1.2;
     if (e.stun > 0 && hasPas(P, 'execute')) m *= 1.4;
     if (hasPas(P, 'resonator')) m *= [1, 1.1, 1.25, 1.45][R.stage];
+    m *= 1 + SA.Raid.grazeDmg();   // 스침 스택 피해 보너스
     if (b && b.main && hasPas(P, 'redheart') && P.hp < P.maxHp * 0.5) m *= 1.3;
     if (b && b.close) { if (d < 70 + e.r) m *= 2; if (e.stun > 0) m *= 1.5; }
     damageEnemy(R, e, dmg * m);
@@ -289,7 +321,7 @@ SA.Combat = (() => {
       }
       case 'repair': P.skillState = 'repair'; P.skillT = 3; SA.Audio.sfx('repair'); break;
       case 'boost': P.skillState = 'boost'; P.skillT = 2; SA.Audio.sfx('boost'); break;
-      case 'slip': P.skillState = 'slip'; P.skillT = 2; SA.Audio.sfx('boost'); break;
+      case 'slip': P.skillState = 'slip'; P.skillT = 3; P.slipHome = { x: P.x, y: P.y }; P.slipDir = null; P.slipAiT = 0; SA.Audio.sfx('boost'); break;
       case 'warp': {
         const a = U.ang(P.x, P.y, R.mouseWorld.x, R.mouseWorld.y);
         const dist = Math.min(95, Math.sqrt(U.d2(P.x, P.y, R.mouseWorld.x, R.mouseWorld.y)));
@@ -315,13 +347,14 @@ SA.Combat = (() => {
   const hurtPlayer = (R, dmg) => {
     const P = R.player;
     if (P.invuln > 0 || P.dead || R.state !== 'play') return;
+    if (P.skillState === 'slip') return;   // 레이븐 슬립스트림: 피격 무효
     if (P.odT > 0) dmg *= 2;
     if (hasPas(P, 'vault')) dmg *= 1 - Math.min(0.25, (SA.Grid.value(R.cargo) + SA.Grid.value(R.secure)) / 4000);
     if (P.barrier > 0) { const b = Math.min(P.barrier, dmg); P.barrier -= b; dmg -= b; }
     P.barrierT = 0;
     P.hp -= dmg; P.invuln = SA.CFG.HIT_INVULN;
     R.shake = 6; R.hurtFlash = 0.35;
-    R.graze = Math.floor(R.graze / 2);
+    R.graze = Math.floor(R.graze * SA.GRAZE.hitKeep);
     const eq = [P.main, ...P.subs.map(s => s.part), ...P.acts.map(a => a && a.part), ...P.pas].filter(Boolean);
     if (eq.length) wear(U.pick(eq), 2);
     if (P.main && P.main.id === 'glass') eq.forEach(p => wear(p, 4));
@@ -600,13 +633,13 @@ SA.Combat = (() => {
       if (R.allies && R.allies.length) { let hit = false; for (const a of R.allies) if (!a.dead && U.d2(b.x, b.y, a.x, a.y) < (b.r + a.r) ** 2) { hurtAlly(R, a, b.dmg); hit = true; break; } if (hit) continue; }
       if (!P.dead && R.state === 'play') {
         const dx = b.x - P.x, dy = b.y - P.y, dd = dx * dx + dy * dy;
-        if (dd < (b.r + hitR) ** 2 && P.invuln <= 0) { hurtPlayer(R, b.dmg); continue; }
+        if (!slip && dd < (b.r + hitR) ** 2 && P.invuln <= 0) { hurtPlayer(R, b.dmg); continue; }
         if (!b.grazed && dd < (b.r + G) ** 2) {
-          b.grazed = true; R.graze++;
+          b.grazed = true; R.grazeN++; R.graze += slip ? 2 : 1;
           if (slip) P.skillCd = Math.max(0, P.skillCd - 0.2);
           P.gzc = Math.min(40, (P.gzc || 0) + 1);
           for (const sb of P.subs) if (sb.part.id === 'gzcharge') sb.boost = 1.5;
-          if (hasPas(P, 'grazeflow') && R.graze % 5 === 0) for (const a of P.acts) if (a) a.cd = Math.max(0, a.cd - 1);
+          if (hasPas(P, 'grazeflow') && R.grazeN % 5 === 0) for (const a of P.acts) if (a) a.cd = Math.max(0, a.cd - 1);
           if (P.invuln <= 0 || P.rollT > 0) SA.Audio.sfx('graze');
           fx(R, (b.x + P.x) / 2, (b.y + P.y) / 2, 2, '#fff7c2', 60, 0.18, 1);
         }

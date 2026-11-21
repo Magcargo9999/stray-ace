@@ -405,6 +405,7 @@ SA.Render = (() => {
     }
     if (P.barrier > 0) { ctx.strokeStyle = `rgba(110,220,255,${0.25 + P.barrier / P.barrierMax * 0.4})`; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.arc(P.x, P.y - 2, 22, 0, 6.29); ctx.stroke(); }
     if (P.shieldT > 0) { ctx.fillStyle = 'rgba(160,255,240,0.18)'; ctx.beginPath(); ctx.arc(P.x, P.y - 2, 24, 0, 6.29); ctx.fill(); }
+    if (P.skillState === 'slip') { ctx.strokeStyle = '#ff4d6d'; ctx.globalAlpha = 0.7; ctx.lineWidth = 1; ctx.beginPath(); ctx.arc(P.x, P.y, SA.CFG.GRAZE_R * 2, 0, 6.29); ctx.stroke(); ctx.globalAlpha = 1; }
     if (P.skillState === 'repair') { ctx.strokeStyle = '#9df07f'; ctx.lineWidth = 1; ctx.beginPath(); ctx.arc(P.x, P.y, 18 + Math.sin(R.t * 10) * 2, 0, 6.29); ctx.stroke(); }
     // 판정점: 항상 보인다
     ctx.fillStyle = '#062018'; ctx.beginPath(); ctx.arc(P.x, P.y, P.hitR + 2.2, 0, 6.29); ctx.fill();
@@ -538,8 +539,8 @@ SA.Render = (() => {
     bar(ctx, bx, by - 6, 280, 12, P.hp / P.maxHp, P.hp / P.maxHp < 0.3 ? '#ff4d6d' : '#5dffb0');
     if (P.barrierMax) bar(ctx, bx, by - 10, 280, 3, P.barrier / P.barrierMax, '#6ee0ff', 'rgba(0,0,0,0)');
     T(ctx, `HP ${Math.ceil(P.hp)}/${P.maxHp}`, bx, by + 22, '#e6edf3', 13);
-    const gb = SA.Raid.grazeBonus();
-    T(ctx, `스침 ${R.graze} · 드랍 +${Math.round(gb * 100)}%`, bx + 280, by + 22, gb > 0 ? '#fff3a8' : '#8f9bb8', 12, 'right', false);
+    const gb = SA.Raid.grazeBonus(), gd = SA.Raid.grazeDmg();
+    T(ctx, `스침 ${R.graze} · 드랍 +${Math.round(gb * 100)}% · 피해 +${Math.round(gd * 100)}%`, bx + 280, by + 22, gb > 0 ? '#fff3a8' : '#8f9bb8', 12, 'right', false);
     const slot = (x, key, name, cd, max, ok) => {
       ctx.fillStyle = 'rgba(255,255,255,0.06)'; ctx.fillRect(x, by - 58, 84, 40);
       if (cd > 0) { ctx.fillStyle = 'rgba(0,0,0,0.55)'; ctx.fillRect(x, by - 58, 84 * (cd / max), 40); }
