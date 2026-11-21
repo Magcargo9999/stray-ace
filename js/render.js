@@ -177,7 +177,8 @@ SA.Render = (() => {
     // 잔상
     for (const a of R.after) {
       ctx.globalAlpha = a.life * 1.6 * 0.5;
-      if (a.enemy) { ctx.fillStyle = '#ff4d6d'; ctx.beginPath(); ctx.arc(a.x, a.y, 10, 0, 6.29); ctx.fill(); }
+      if (a.dot) { ctx.fillStyle = a.dot; ctx.fillRect(a.x - 1.5, a.y - 1.5, 3, 3); }
+      else if (a.enemy) { ctx.fillStyle = '#ff4d6d'; ctx.beginPath(); ctx.arc(a.x, a.y, 10, 0, 6.29); ctx.fill(); }
       else drawShip(ctx, R, a.x, a.y, P.aim, true);
       ctx.globalAlpha = 1;
     }
@@ -399,6 +400,7 @@ SA.Render = (() => {
     for (const sb of P.subs) {
       ctx.save(); ctx.translate(sb.x, sb.y);
       if (sb.part.id === 'drone') { ctx.fillStyle = '#ffe6a8'; ctx.fillRect(-2.5, -2.5, 5, 5); ctx.fillStyle = '#0d1018'; ctx.fillRect(-1, -1, 2, 2); }
+      else if (sb.part.id === 'sdrone') { ctx.fillStyle = '#8ff0ff'; ctx.fillRect(-3, -3, 6, 6); ctx.fillStyle = '#0d1018'; ctx.fillRect(-1.5, -1.5, 3, 3); ctx.strokeStyle = 'rgba(143,240,255,0.5)'; ctx.lineWidth = 1; ctx.strokeRect(-4.5, -4.5, 9, 9); }
       else { const c = { intercept: '#7fe3ff', chain: '#9fd8ff', hturret: '#ffb347', flamer: '#ff7a3d', mine: '#ffcf6b', gzcharge: '#fff3a8' }[sb.part.id] || '#c9b27a';
         ctx.rotate(sb.ang); ctx.fillStyle = '#0d1018'; ctx.fillRect(-2, -2, 8, 4); ctx.fillStyle = c; ctx.fillRect(-1, -1, 6, 2); }
       ctx.restore();

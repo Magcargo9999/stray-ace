@@ -145,13 +145,39 @@ SA.Combat = (() => {
     for (const s of P.subs) {
       const e = eff(s.part); if (!e) continue;
       const id = s.part.id, d = SA.PARTS[id];
-      if (id === 'drone') { s.orb += dt * 2.2; s.x = P.x + Math.cos(s.orb) * 22; s.y = P.y + Math.sin(s.orb) * 22; }
+      if (id === 'drone') {                // 추적 드론: 적에게 날아가 주위를 돌며 쏜다 (기체에서 leash 이내)
+        s.orb += dt * 2.2;
+        if (s.x === 0 && s.y === 0) { s.x = P.x; s.y = P.y; }
+        const t = !R.tabOpen && nearestEnemy(R, P.x, P.y, d.range);
+        let tx = P.x + Math.cos(s.orb) * 22, ty = P.y + Math.sin(s.orb) * 22;
+        if (t) {
+          tx = t.x + Math.cos(s.orb) * (t.r + 30); ty = t.y + Math.sin(s.orb) * (t.r + 30);
+          const q = Math.hypot(tx - P.x, ty - P.y); if (q > d.leash) { tx = P.x + (tx - P.x) / q * d.leash; ty = P.y + (ty - P.y) / q * d.leash; }
+        }
+        const k = Math.min(1, 6 * dt); s.x += (tx - s.x) * k; s.y += (ty - s.y) * k;
+        if (Math.random() < 0.3) R.after.push({ x: s.x, y: s.y, life: 0.12, dot: '#ffe6a8' });
+      } else if (id === 'sdrone') {        // 방패 드론: 기체 가까이 돌며 닿는 탄을 지운다
+        let th = null, tq = 70 * 70;       // 기체로 다가오는 가장 가까운 탄 쪽으로 돈다
+        for (const b of R.eb) { const dx = b.x - P.x, dy = b.y - P.y, q = dx * dx + dy * dy; if (q < tq && dx * b.vx + dy * b.vy < 0) { tq = q; th = b; } }
+        if (th) s.orb += U.clamp(U.angDiff(s.orb, U.ang(P.x, P.y, th.x, th.y)), -14 * dt, 14 * dt); else s.orb += dt * 3;
+        s.x = P.x + Math.cos(s.orb) * 20; s.y = P.y + Math.sin(s.orb) * 20;
+      }
       else { s.x = P.x + s.ox; s.y = P.y + s.oy; }
       if (R.tabOpen) continue;   // 화물칸(Tab)을 여는 동안 서브웨폰은 멈춘다
       s.cd -= dt; s.boost = Math.max(0, (s.boost || 0) - dt);
       const rate = d.rate * st.fire * e * (s.boost > 0 ? 2.5 : 1);
       if (id === 'mine') {                 // 지나간 자리에 지뢰
         if (s.cd <= 0 && Math.hypot(P.vx, P.vy) > 30) { s.cd = 1 / rate; pb(R, s.x, s.y, 0, 0, d.dmg, { mine: 20, aoe: 46, life: 9, col: '#ffcf6b' }); wear(s.part, 0.02); }
+        continue;
+      }
+      if (id === 'sdrone') {
+        s.ecd = Math.max(0, (s.ecd || 0) - dt);
+        if (s.ecd <= 0) for (const b of R.eb) if (b.life > 0 && U.d2(b.x, b.y, s.x, s.y) < (b.r + 8) ** 2) {
+          b.life = 0; s.ecd = 1 / (d.rate * e); fx(R, b.x, b.y, 4, '#8ff0ff', 50, 0.2, 1); wear(s.part, 0.004); break;
+        }
+        const t = nearestEnemy(R, s.x, s.y, d.range);
+        if (t) s.ang = U.ang(s.x, s.y, t.x, t.y);
+        if (t && s.cd <= 0) { s.cd = 0.8; pb(R, s.x, s.y, s.ang, 420, d.dmg, { col: '#8ff0ff', w: 1, life: 0.6 }); }
         continue;
       }
       if (id === 'intercept') {            // 가까운 적 탄 격추
