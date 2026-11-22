@@ -91,7 +91,7 @@ SA.Tutorial = (() => {
     4: () => {   // ④ 난파선 — 보안 칸 2×2보다 많이 나온다. 무엇을 지킬지 고른다
       const P = R.player, x = U.clamp(P.x + 420, 80, R.map.w - 80), y = U.clamp(P.y, 120, R.map.h - 120);
       const fit = Object.keys(SA.PARTS).filter(k => SA.PARTS[k].tier === '강화' && !['raven', 'resonator', 'timestop', 'decoder', 'secure2'].includes(k) && SA.ITEMS['pt_' + k] && SA.ITEMS['pt_' + k].w <= 2 && SA.ITEMS['pt_' + k].h <= 2);
-      const loot = ['qcircuit', 'alloy', 'scrap', 'bp:강화', 'core', 'pt_' + U.pick(fit), 'wire', 'alloy', 'scrap'];
+      const loot = ['qcircuit', 'alloy', 'bp:강화', 'pt_' + U.pick(fit)];
       const w = { type: 'wreck', x, y, label: '떠다니는 수송선 잔해', fast: true, seen: true, done: false, prog: 0, seed: Math.random(), loot, total: loot.length + 1, cur: 0 };
       R.pois.push(w); R.tut.wreck = w;
     },
