@@ -345,9 +345,9 @@ for (const id in SA.RECIPES) Object.assign(SA.RECIPES[id].mats, SA.UMAT_ADD(id))
 
 // 기체. mount = 포탑/판정점 (도트 좌표, 0~1 비율)
 SA.SHIPS = {
-  // 단장 전용기 (튜토리얼 프롤로그 전용, 격납고에는 안 나온다). 도트는 사용자 제작 예정 — 그 전까지 레이븐 도트를 그대로 쓴다 (임시)
+  // 단장 전용기 (튜토리얼 프롤로그 전용, 격납고에는 안 나온다). 양쪽 날개에 포 2문 (subScale: 포탑을 크게 그린다)
   ace:     { name: '전용기', role: '에이스', price: 0, hidden: true, hp: 120, speed: 165, accel: 18, turn: 22, hitR: 2, sub: 2, act: 2, pas: 3, cargo: [4, 3],
-             img: 'assets/raven_hull.png', size: [30, 27], mount: [0.5, 0.5], subMounts: [[-10, 4], [10, 4]], desc: '3년 전, 단장의 기체.' },
+             img: 'assets/ace_hull.png', size: [27, 40], mount: [0.5, 0.52], subMounts: [[-9.5, 8.5], [9.5, 8.5]], subScale: 1.7, flames: [[10.1, 38.5], [16.4, 38.5]], desc: '3년 전, 단장의 기체.' },
   hex:     { name: '헥스', role: '기본', price: 0, hp: 100, speed: 130, accel: 14, turn: 18, hitR: 2.5, sub: 2, act: 2, pas: 3, cargo: [4, 4],
              flames: [[11.5, 30.5], [21.5, 30.5]], img: 'assets/hex_hull.png', turretImg: 'assets/hex_turret.png', size: [32, 32], mount: [16.5 / 32, 18.5 / 32],
              subMounts: [[-9, 4], [9, 4]], desc: '모든 능력치가 평균. 지급 기체.' },

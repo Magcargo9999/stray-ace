@@ -12,7 +12,7 @@ SA.Tutorial = (() => {
     const mk = (id, lv = 0, mod = null) => { const p = SA.Save.newPart(id); p.lv = lv; if (mod) p.mod = mod; p.max = p.dur = SA.LV_MAX[lv]; parts.push(p); return p.uid; };
     const tp = {
       ship: 'ace', pilot: 'kai', parts, stash: SA.Grid.make(1, 1), bring: {}, recipes: [], credits: 0,
-      loadouts: { ace: { main: mk('lance', 2, 'm_pierce'), main2: null, sub: [mk('drone', 1, 's_two'), mk('mg', 1, 's_rate')],
+      loadouts: { ace: { main: mk('lance', 2, 'm_pierce'), main2: null, sub: [mk('hturret', 1, 's_dbl'), mk('hturret', 1, 's_dbl')],   // 양쪽 날개 포 2문
         act: [mk('orbital', 1, 'a_o10'), mk('timestop')], pas: [mk('barrier', 2), mk('sensor'), mk('cooler', 1)], obs: null, cell: null } },
     };
     return SA.Raid.start(tp, { tut: true });
@@ -29,7 +29,7 @@ SA.Tutorial = (() => {
     R.zoom = R.zoomTarget = SA.OBS.levels[0]; R.zoomLv = 0; R.obsLv = 0;
     R.fogW = Math.ceil(R.map.w / SA.OBS.fogCell); R.fogH = Math.ceil(R.map.h / SA.OBS.fogCell); R.fog = new Uint8Array(R.fogW * R.fogH).fill(1); R.fogT = 0;
     R.cam.x = P.x; R.cam.y = P.y; R.allies = [];
-    R.tut = { st: 0, t: 0, rt: 0, goal: '', card: '3년 전.', cardA: 1, white: 0, f: {} };
+    R.tut = { st: 0, t: 0, rt: 0, goal: '', card: '3년 전.', cardA: 1, white: 0, f: {}, pq: [], prompt: null };
     SA.Audio.play('raid');
     return R;
   };
@@ -42,30 +42,50 @@ SA.Tutorial = (() => {
     const P = R.player, e = C().spawnEnemy(R, type, U.clamp(P.x + dx, 40, R.map.w - 40), U.clamp(P.y + dy, 40, R.map.h - 40), { awake: true, noRespawn: true });
     e.tut = tag; return e;
   };
+  // 조작 안내: 시간이 느려지고 화면 가운데에 누를 키가 뜬다. 해내면 풀린다 (한 번에 하나씩)
+  const I = () => SA.Input;
+  const prompt = (keys, text, done, sub) => R.tut.pq.push({ keys, text, done, sub, t: 0 });
+  const updPrompt = (rdt) => {
+    const T = R.tut;
+    if (!T.prompt && T.pq.length) { T.prompt = T.pq.shift(); SA.Audio.sfx('beep'); }
+    const p = T.prompt;
+    if (!p) return;
+    p.t += rdt;
+    if (!R.tabOpen) R.timeScale = 0.2;
+    if (p.t > 0.5 && p.done(p)) {
+      T.prompt = null; if (!R.tabOpen) R.timeScale = 1; SA.Audio.sfx('pickup', 2);
+    }
+  };
   const go = (st) => { const T = R.tut; T.st = st; T.t = 0; T.f = {}; T.n = 0; SA.Audio.sfx('beep'); ENTER[st] && ENTER[st](); };
   const ck = (b) => b ? '✓' : '·';
 
   // 구간에 들어갈 때
   const ENTER = {
     1: () => {   // ① 도주 시작
-      say('…따라붙었군. 떨쳐 내야 한다.');
+      say('…따라붙었군.');
       spawn('k_fighter', -340, -70, 1); spawn('k_fighter', -340, 70, 1);
       SA.Audio.sfx('siren');
+      const P = R.player, x0 = P.x, y0 = P.y;
+      prompt(['W', 'A', 'S', 'D'], '이동', () => Math.hypot(P.x - x0, P.y - y0) > 40, '누르는 방향으로 움직인다');
+      prompt(['마우스', '좌클릭'], '조준 · 사격', () => I().mouse.down, '마우스로 겨누고, 좌클릭을 누르고 있으면 쏜다');
     },
-    2: () => {   // ② 탄막 — 스침 10스택을 쌓을 때까지 순양함은 격추되지 않는다
-      say('큰 놈이다. 탄 사이로 지나간다. 판정은 한가운데 점 하나뿐.');
+    2: () => {   // ② 탄막 — 첫 스침 보너스(20스택)를 쌓을 때까지 순양함은 격추되지 않는다
       const fr = spawn('k_frigate', 380, 0, 2); fr.hp = fr.maxHp = 99999; R.tut.fr = fr;
       spawn('k_fighter', 420, -160, 2);
+      prompt(['Shift'], '저속 이동', () => I().isDown('ShiftLeft') || I().isDown('ShiftRight'), '누르는 동안 느려지고 판정점이 보인다. 맞는 곳은 기체 한가운데 점 하나뿐');
+      prompt([], '스침', (p) => R.graze > 0 || p.t > 5, '적 탄을 판정점 가까이로 아슬아슬하게 스치면 스택이 쌓인다');
     },
     3: () => {   // ③ 매복 편대 — 기술과 장비를 아끼지 말 것
-      say('매복이다. 장비를 아끼지 마라.');
       msg('매복!', '#ff6b7a', 2.5); SA.Audio.sfx('siren'); R.shake = 6;
       for (let i = 0; i < 6; i++) { const a = i / 6 * 6.28 + 0.3; spawn('k_fighter', Math.cos(a) * 300, Math.sin(a) * 260, 3); }
       spawn('k_frigate', 360, -40, 3);
       R.tut.total = 7;
+      const P = R.player, a = P.acts;
+      prompt(['Space'], '파일럿 기술 · 배럴 롤', () => P.rollT > 0 || P.skillCd > 0, '잠깐 무적이 되어 이동 방향으로 미끄러진다');
+      prompt(['Q'], '액티브 · 궤도 폭격', () => a[0] && a[0].cd > 0, '마우스 커서 위치에 잠시 뒤 포격이 떨어진다');
+      prompt(['E'], '액티브 · 탄막 정지', () => a[1] && a[1].cd > 0, '주변 적 탄이 잠깐 멈춘다');
     },
     4: () => {   // ④ 난파선 — 보안 칸 2×2보다 많이 나온다. 무엇을 지킬지 고른다
-      say('저 잔해… 쓸 만한 게 남아 있을지도 모른다.');
       const P = R.player, x = U.clamp(P.x + 420, 80, R.map.w - 80), y = U.clamp(P.y, 120, R.map.h - 120);
       const fit = Object.keys(SA.PARTS).filter(k => SA.PARTS[k].tier === '강화' && !['raven', 'resonator', 'timestop', 'decoder', 'secure2'].includes(k) && SA.ITEMS['pt_' + k] && SA.ITEMS['pt_' + k].w <= 2 && SA.ITEMS['pt_' + k].h <= 2);
       const loot = ['qcircuit', 'alloy', 'scrap', 'bp:강화', 'core', 'pt_' + U.pick(fit), 'wire', 'alloy', 'scrap'];
@@ -73,7 +93,6 @@ SA.Tutorial = (() => {
       R.pois.push(w); R.tut.wreck = w;
     },
     5: () => {   // ⑤ 탈출 — 귀환 비콘 → 포트에서 버티기
-      say('저기만 넘으면 된다.');
       const P = R.player, x = { x: U.clamp(P.x + 480, 80, R.map.w - 80), y: U.clamp(P.y - 60, 120, R.map.h - 120), active: false, prog: 0, beepT: 0 };
       R.extracts.push(x); R.tut.ex = x;
       x.beacon = C().spawnEnemy(R, 'crate', x.x, x.y, { crate: true, beaconOf: x, def: { hp: SA.EXIT.hp, r: 13 }, hp: SA.EXIT.hp, maxHp: SA.EXIT.hp, r: 13, loot: [] });
@@ -90,6 +109,7 @@ SA.Tutorial = (() => {
     R = r; const T = R.tut, P = R.player;
     T.t += dt; T.rt += rdt;
     P.x = U.clamp(P.x, 16, R.map.w - 16); P.y = U.clamp(P.y, 16, R.map.h - 16);
+    if (T.st >= 1 && T.st <= 5) updPrompt(rdt);
     switch (T.st) {
       case 0:   // 검은 화면 "3년 전."
         T.goal = '';
@@ -97,17 +117,16 @@ SA.Tutorial = (() => {
         if (T.cardA <= 0) { T.card = null; go(1); }
         break;
       case 1: {
-        T.goal = `WASD 이동 · 마우스 조준 · 좌클릭 사격 — 추격기 격추 ${2 - alive(1)}/2`;
-        if (!alive(1) && T.t > 1) go(2);
+        T.goal = `추격기 격추 ${2 - alive(1)}/2  (WASD 이동 · 좌클릭 사격)`;
+        if (!alive(1) && T.t > 1 && !T.prompt && !T.pq.length) go(2);
         break;
       }
       case 2: {
         if (!T.f.open) {
-          T.goal = `Shift 저속 이동(판정점이 보인다) · 적 탄을 아슬아슬하게 스치기 — 스침 스택 ${Math.min(10, R.graze)}/10`;
-          if (R.graze >= 10 || T.t > 60) {
+          T.goal = `적 탄을 스쳐 스침 스택 쌓기 ${Math.min(SA.GRAZE.per, R.graze)}/${SA.GRAZE.per}  (Shift 저속)`;
+          if (R.graze >= SA.GRAZE.per || T.t > 60) {   // 첫 보너스(드랍·피해 +)가 붙는 스택까지
             T.f.open = true; T.fr.hp = T.fr.maxHp = 260;
             msg('스침 스택 — 쌓일수록 주는 피해와 드랍이 오른다. 맞으면 조금 깎인다', '#fff3a8', 6);
-            say('…감은 안 죽었군.');
           }
         } else {
           T.goal = `순양함 격추 — 스침 스택만큼 피해 ↑ (지금 +${Math.round(SA.Raid.grazeDmg() * 100)}%)`;
@@ -122,7 +141,7 @@ SA.Tutorial = (() => {
         if (a[0] && (a[0].cd > 0 || a[0].ch < 2)) f.q = true;
         if (a[1] && a[1].cd > 0) f.e = true;
         T.goal = `${ck(f.roll)} Space 배럴 롤(잠깐 무적)  ${ck(f.q)} Q 궤도 폭격(커서 위치)  ${ck(f.e)} E 탄막 정지 — 편대 ${T.total - alive(3)}/${T.total}`;
-        if (!alive(3) && T.t > 1) { say('그래. 이게 내 기체다.'); go(4); }
+        if (!alive(3) && T.t > 1 && !T.prompt && !T.pq.length) go(4);
         break;
       }
       case 4: {
@@ -130,13 +149,13 @@ SA.Tutorial = (() => {
         if (!w.done) T.goal = '잔해 위에 머물러 뒤지기 — 나온 것은 기체로 끌려와 화물칸에 들어간다';
         else if (!f.told) {
           f.told = true;
-          say('격추되면 화물칸은 날아간다. 남는 건 보안 칸뿐이다.');
-          msg('보안 칸(2×2)에 넣은 것은 격추돼도 살아남는다 — 다 넣을 수는 없다. 가장 값진 것을 골라라', '#ffd166', 8);
+          prompt(['Tab'], '화물칸 열기', () => R.tabOpen, '여는 동안 시간이 느려진다. 이동은 되지만 사격은 못 한다');
+          msg('격추되면 화물칸은 날아간다. 보안 칸(2×2)에 넣은 것만 살아남는다 — 다 넣을 수는 없다. 가장 값진 것을 골라라', '#ffd166', 10);
         }
         if (w.done) {
           const n = R.secure.items.length;
-          if (!R.tabOpen && !n) T.goal = 'Tab — 화물칸 열기 (여는 동안 시간이 느려진다)';
-          else if (R.tabOpen) T.goal = `좋은 것(양자 회로·설계도·부품)을 보안 칸으로 끌어 옮기기 — 지금 ${n}개 · 다 됐으면 Tab으로 닫기`;
+          if (!R.tabOpen && !n) T.goal = 'Tab — 화물칸 열기';
+          else if (R.tabOpen) T.goal = `좋은 것(양자 회로·설계도·부품)을 끌어서 보안 칸에 넣기 — 지금 ${n}개 · 다 됐으면 Tab으로 닫기`;
           else T.goal = `보안 칸 ${n}개 — 더 넣으려면 Tab, 됐으면 그대로 출발`;
           if (n && !R.tabOpen) { T.n += rdt; if (T.n > 1.2) go(5); } else T.n = 0;
         }
@@ -145,7 +164,7 @@ SA.Tutorial = (() => {
       case 5: {
         const x = T.ex, E = SA.CFG.EXTRACT_TIME;
         if (!x.active) { T.goal = '귀환 비콘(주황) 부수기'; break; }
-        if (!T.f.open) { T.f.open = true; msg('귀환 포트 개방 — 안에서 버티면 탈출', '#5dffb0', 4); SA.Audio.sfx('unlock'); T.wave = 1.5; }
+        if (!T.f.open) { T.f.open = true; msg('귀환 포트 개방 — 안에서 버티면 탈출', '#5dffb0', 4); SA.Audio.sfx('unlock'); T.wave = 1.5; say('…조금만 더.'); }
         const inside = U.d2(x.x, x.y, P.x, P.y) < SA.CFG.EXTRACT_R ** 2;
         if (inside) { const b = Math.floor(x.prog); x.prog += dt; if (Math.floor(x.prog) !== b) SA.Audio.sfx('beep'); }
         else x.prog = Math.max(0, x.prog - dt * 3);
@@ -203,6 +222,26 @@ SA.Tutorial = (() => {
       const w = ctx.measureText('목표  ' + T.goal).width;
       ctx.fillStyle = 'rgba(8,10,18,0.72)'; ctx.fillRect(14, 14, w + 24, 30);
       txt(ctx, '목표', 26, 34, '#8f9bb8', 14); txt(ctx, T.goal, 66, 34, '#ffd166', 14);
+    }
+    if (T.prompt) {   // 키 안내 (시간이 느려진 동안)
+      const p = T.prompt, a = Math.min(1, p.t * 4), y = R.tabOpen ? 70 : Math.round(H * 0.27);
+      ctx.globalAlpha = a;
+      ctx.fillStyle = 'rgba(5,7,13,0.78)'; ctx.fillRect(W / 2 - 300, y - 46, 600, p.sub ? 112 : 92);
+      ctx.strokeStyle = '#ffd166'; ctx.lineWidth = 1; ctx.strokeRect(W / 2 - 300 + 0.5, y - 45.5, 599, (p.sub ? 112 : 92) - 1);
+      ctx.font = 'bold 18px "Galmuri11", "Malgun Gothic", sans-serif';
+      const ws = p.keys.map(k => Math.max(36, ctx.measureText(k).width + 22)), gap = 8, tw = ws.reduce((n, w) => n + w, 0) + gap * Math.max(0, ws.length - 1);
+      let x = W / 2 - tw / 2;
+      const pulse = 0.5 + 0.5 * Math.sin(p.t * 8);
+      p.keys.forEach((k, i) => {   // 키 모양 상자
+        ctx.fillStyle = '#1b2233'; ctx.fillRect(x, y - 34, ws[i], 34);
+        ctx.fillStyle = `rgba(255,209,102,${0.5 + 0.5 * pulse})`; ctx.fillRect(x, y - 4, ws[i], 4);
+        ctx.strokeStyle = '#e6edf3'; ctx.strokeRect(x + 0.5, y - 33.5, ws[i] - 1, 33);
+        txt(ctx, k, x + ws[i] / 2, y - 11, '#ffffff', 18, 'center');
+        x += ws[i] + gap;
+      });
+      txt(ctx, p.text, W / 2, y + (p.keys.length ? 26 : -8), '#ffd166', 18, 'center');
+      if (p.sub) txt(ctx, p.sub, W / 2, y + (p.keys.length ? 52 : 22), '#cfe3ff', 13, 'center');
+      ctx.globalAlpha = 1;
     }
     if (T.st === 6 && !T.f.beam && T.warnA) {   // 화면 오른쪽 밖에서 겨누는 붉은 선
       const y = H / 2 + 6 * (R.zoom || 2);

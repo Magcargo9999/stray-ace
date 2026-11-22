@@ -504,7 +504,9 @@ SA.Render = (() => {
       if (sb.part.id === 'drone') { if (pre.sub_drone) { ctx.rotate(sb.ang + Math.PI / 2); ctx.imageSmoothingEnabled = true; ctx.drawImage(pre.sub_drone, -5.5, -5.5, 11, 11); } else { ctx.fillStyle = '#ffe6a8'; ctx.fillRect(-2.5, -2.5, 5, 5); ctx.fillStyle = '#0d1018'; ctx.fillRect(-1, -1, 2, 2); } }
       else if (sb.part.id === 'sdrone') { ctx.fillStyle = '#8ff0ff'; ctx.fillRect(-3, -3, 6, 6); ctx.fillStyle = '#0d1018'; ctx.fillRect(-1.5, -1.5, 3, 3); ctx.strokeStyle = 'rgba(143,240,255,0.5)'; ctx.lineWidth = 1; ctx.strokeRect(-4.5, -4.5, 9, 9); }
       else { const c = { intercept: '#7fe3ff', chain: '#9fd8ff', hturret: '#ffb347', flamer: '#ff7a3d', mine: '#ffcf6b', gzcharge: '#fff3a8' }[sb.part.id] || '#c9b27a';
-        ctx.rotate(sb.ang); ctx.fillStyle = '#0d1018'; ctx.fillRect(-2, -2, 8, 4); ctx.fillStyle = c; ctx.fillRect(-1, -1, 6, 2); }
+        ctx.rotate(sb.ang); const k = SA.SHIPS[P.ship].subScale || 1; if (k !== 1) ctx.scale(k, k);
+        ctx.fillStyle = '#0d1018'; ctx.fillRect(-2, -2, 8, 4); ctx.fillStyle = c; ctx.fillRect(-1, -1, 6, 2);
+        if (k !== 1) { ctx.fillStyle = '#0d1018'; ctx.beginPath(); ctx.arc(0, 0, 2.6, 0, 6.29); ctx.fill(); ctx.fillStyle = '#3d4658'; ctx.beginPath(); ctx.arc(0, 0, 1.7, 0, 6.29); ctx.fill(); } }   // 큰 포탑: 둥근 받침
       ctx.restore();
     }
     if (P.barrier > 0) { ctx.strokeStyle = `rgba(110,220,255,${0.25 + P.barrier / P.barrierMax * 0.4})`; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.arc(P.x, P.y - 2, 22, 0, 6.29); ctx.stroke(); }
