@@ -1,24 +1,103 @@
-// 격납고: 출격 준비, 창고, 작업대, 상점, 의뢰, 기록
+// 격납고: 장면(hangarScene.js) 위에 바로가기 막대·목표 카드, 물건을 누르면 뜨는 창들
+// 창: 출격 준비(sortie) · 창고(stash) · 작업대(bench) · 의뢰(contracts) · 해독기(decoder) · 상점(shop) · 배달(deliv) · 거치대(rack)
 SA.Hangar = (() => {
   const h = (...a) => SA.UI.h(...a), $ = (s) => document.querySelector(s);
-  let tab = 'sortie';
   const P = () => SA.profile;
   const part = (uid) => P().parts.find(p => p.uid === uid);
   const save = () => SA.Save.store(P());
+  const S = () => SA.HangarScene;
+  let panel = null, panelArg = null, lastResult = null, ready = false;
 
   const toast = (s, col = '#e6edf3') => {
     const t = h('div', 'toast', s); t.style.color = col;
     $('#toasts').appendChild(t); setTimeout(() => t.remove(), 3200);
   };
+  const tip = (el, html) => { el.onmouseenter = (e) => SA.UI.showTipHtml(e, typeof html === 'function' ? html() : html); el.onmouseleave = SA.UI.hideTip; return el; };
+  const ico = (name, cls = '') => `<img class="hgi ${cls}" src="assets/hangar/${name}.png">`;
+
+  // 바로가기 막대 (숫자키 1~7)
+  const BAR = [['sortie', 'ic_rack', '출격 준비'], ['stash', 'ic_locker', '창고'], ['bench', 'ic_tools', '작업대'], ['contracts', 'ic_note', '의뢰'],
+    ['decoder', 'ic_decoder', '해독기'], ['shop', 'ic_coins', '상점'], ['deliv', 'ic_crate', '배달']];
+  const locked = (id) => id === 'deliv' && !P().rescued.deliv;
+  const TITLE = { sortie: '출격 준비', stash: '창고', bench: '작업대', contracts: '의뢰 게시판', decoder: '해독기', shop: '상점 · 오스의 단말', deliv: '배달 · 도리', rack: '기체' };
+  const WHO = { bench: () => P().rescued.teo ? 'teo' : 'mina', contracts: () => 'os', shop: () => 'os', deliv: () => 'dori' };
+
+  const init = () => {
+    if (ready) return; ready = true;
+    S().init();
+    const bar = $('#hg-bar');
+    BAR.forEach(([id, ic, nm], i) => {
+      const b = h('button', 'hb', `${ico(ic)}<span>${nm}</span><i>${i + 1}</i>`); b.dataset.p = id;
+      b.onclick = () => openPanel(id);
+      tip(b, () => locked(id) ? '도리를 구조하면 열린다' : `${nm} <span class="dim">(${i + 1})</span>`);
+      bar.appendChild(b);
+    });
+    $('#hg-goal').onclick = () => openPanel('contracts');
+    $('#hg-panel').addEventListener('mousedown', (e) => { if (e.target.id === 'hg-panel') closePanel(); });
+    $('#hg-panel .x').onclick = closePanel;
+    addEventListener('keydown', onKey);
+  };
+  const visibleNow = () => $('#hangar').style.display !== 'none' && $('#settings').style.display !== 'flex' && $('#result').style.display !== 'flex';
+  const onKey = (e) => {
+    if (!visibleNow() || S().isAnim()) return;
+    if (e.code === 'Escape') {
+      if (document.querySelector('.ctx')) { document.querySelectorAll('.ctx').forEach(x => x.remove()); return; }
+      if (panel) closePanel(); else SA.Main.openSettings(false);
+      return;
+    }
+    const m = /^Digit([1-7])$/.exec(e.code);
+    if (m && !S().guideOn()) openPanel(BAR[+m[1] - 1][0]);
+  };
 
   const open = () => {
-    $('#hangar').style.display = 'flex';
+    init();
+    $('#hangar').style.display = 'block';
     SA.Audio.play('hangar');
     autoRegister();
     SA.Quest.sync();
+    hud();
+    S().load(() => {
+      S().start();
+      const r = lastResult; lastResult = null;
+      if (r) { S().play(r.ok ? 'land' : 'crash'); S().react(r); }
+      else if (P().tutDone && !P().hgGuide && P().deathModeSet) setTimeout(() => S().startGuide(), 400);
+    });
+  };
+  const close = () => { closePanel(); S().stop(); $('#hangar').style.display = 'none'; SA.UI.hideTip(); };
+  const setResult = (r) => { lastResult = r; if (!r.ok) { P().scorched = true; save(); } };   // 격추되면 다음 출격까지 그을린 기체
+
+  // 목표 카드 · 크레딧 · 막대 상태
+  const hud = () => {
+    $('#hg-credits').textContent = '₵' + P().credits;
+    $('#hg-goal').innerHTML = `<span class="k">목표</span>${SA.Quest.label()}`;
+    tip($('#hg-goal'), () => `${SA.Quest.label()}${SA.Quest.rewardText()}<br><span class="dim">누르면 의뢰 게시판</span>`);
+    document.querySelectorAll('#hg-bar .hb').forEach(b => { b.classList.toggle('lock', locked(b.dataset.p)); b.classList.toggle('on', b.dataset.p === panel); });
+  };
+  const barHover = (pid) => document.querySelectorAll('#hg-bar .hb').forEach(b => b.classList.toggle('hi', b.dataset.p === pid));
+
+  // ── 창 ──
+  const isPanelOpen = () => !!panel;
+  const openPanel = (id, arg) => {
+    if (locked(id)) { SA.Audio.sfx('deny'); toast('도리를 구조하면 열린다.', '#ffb3b3'); return; }
+    panel = id; panelArg = arg; SA.Audio.sfx('click');
+    $('#hg-panel').style.display = 'flex';
     render();
   };
-  const close = () => { $('#hangar').style.display = 'none'; SA.UI.hideTip(); };
+  const closePanel = () => { panel = null; $('#hg-panel').style.display = 'none'; document.querySelectorAll('.ctx').forEach(x => x.remove()); SA.UI.hideTip(); if (ready) hud(); };
+  const render = () => {
+    hud();
+    if (!panel) return;
+    const pn = $('#hg-panel .pn'), body = $('#hg-body');
+    pn.className = 'pn p-' + panel;
+    $('#hg-panel .ttl').textContent = TITLE[panel];
+    const who = WHO[panel] && WHO[panel](), por = $('#hg-panel .por');
+    const N = who && SA.HG_NPC[who];
+    por.innerHTML = N ? (N.portrait ? `<img src="${N.portrait}">` : `<span class="ini" style="--c:${N.color}">${N.name[0]}</span>`) : '';
+    por.style.display = N ? '' : 'none';
+    body.innerHTML = '';
+    ({ sortie, stash, bench, contracts, decoder, shop, deliv, rack })[panel](body);
+  };
+  const go = (t) => openPanel(t);   // 예전 호출 호환
 
   // 가져온 설계도는 자동 등록 (스트레스 줄이기). 이미 아는 건 판매용으로 남긴다.
   const autoRegister = () => {
@@ -33,169 +112,172 @@ SA.Hangar = (() => {
     save();
   };
 
-  const render = () => {
-    $('#hg-credits').textContent = '₵' + P().credits;
-    document.querySelectorAll('#hg-tabs button').forEach(b => b.classList.toggle('on', b.dataset.tab === tab));
-    const body = $('#hg-body'); body.innerHTML = '';
-    ({ sortie, stash, bench, shop, contracts, records })[tab](body);
-    { const rb = document.querySelector('#hg-tabs button[data-tab=records]'); if (rb) rb.classList.toggle('has-new', (P().logsNew || []).length > 0); }   // 새 기록이 있으면 탭에 점
-    { const rs = P().rescued || {}; $('#hg-line').textContent = SA.U.pick([...SA.STORY.broker, ...(rs.teo ? SA.STORY.mechanic : SA.STORY.mechanic0), ...(rs.deliv ? SA.STORY.deliv : [])]); }
-    $('#hg-quest').innerHTML = `<b>목표</b>${SA.Quest.label()}${SA.Quest.rewardText()}`;
+  // ── 공용: 부품 그림 · 툴팁 · 비교 ──
+  const KIND_IC = { main: 'pt_main', sub: 'pt_sub', act: 'pt_act', pas: 'pt_pas', obs: 'pt_obs' };
+  const partIcon = (p) => { const d = SA.PARTS[p.id]; return d.img ? `<img class="pimg" src="${d.img}">` : ico(KIND_IC[d.slot] || 'pt_pod', 'pimg'); };
+  const durCol = (r) => r >= 0.5 ? '#5dffb0' : r > 0 ? '#ffd166' : '#ff4d6d';
+  const partTipHtml = (p) => `<b>${SA.partHtml(p)}</b> <span class="dim">${SA.partTier(p)}</span><br><span class="desc">${SA.partFullDesc(p)}</span><br>내구도 ${Math.round(p.dur)} / ${Math.round(p.max)} · 성능 ${Math.round(SA.Combat.eff(p) * 100)}%`;
+  const partTip = (e, p) => SA.UI.showTipHtml(e, partTipHtml(p));
+  const stat = (p) => {   // 비교용 수치 하나: [이름, 값, 클수록 좋은가]
+    if (!p) return null;
+    const d = SA.PARTS[p.id], m = SA.LV_MUL[p.lv || 0];
+    if (d.slot === 'main') return ['피해', Math.round((d.dmg || 0) * (d.rate || 0) * (d.shots || 1) * m), true];
+    if (d.slot === 'sub') return ['피해', Math.round((d.dmg || 0) * (d.rate || 0) * m * 10) / 10, true];
+    if (d.slot === 'act' && d.cd) return ['쿨', Math.round(d.cd / m * 10) / 10, false];
+    return null;
   };
-  const go = (t) => { tab = t; SA.Audio.sfx('click'); render(); };
+  const cmpHtml = (p, cur) => {
+    const a = stat(p), b = stat(cur); let s = '';
+    if (a && b && a[0] === b[0]) { const dv = Math.round((a[1] - b[1]) * 10) / 10; if (dv) { const good = a[2] ? dv > 0 : dv < 0; s += `<span class="${good ? 'up' : 'dn'}">${a[0]} ${dv > 0 ? '▲' : '▼'} ${dv > 0 ? '+' : ''}${dv}</span>`; } else s += `<span class="dim">${a[0]} =</span>`; }
+    else if (a) s += `<span class="dim">${a[0]} ${a[1]}</span>`;
+    if (cur) { const dd = Math.round(p.dur - cur.dur); if (dd) s += ` <span class="${dd > 0 ? 'up' : 'dn'}">내구 ${dd > 0 ? '▲' : '▼'}</span>`; }
+    return s;
+  };
 
-  // ── 출격 준비 ──
+  // ── 출격 준비: 파일럿 | 기체 둘레 장착 칸 | 지역·소모품·출격 ──
   const sortie = (body) => {
     const prof = P();
-    const col1 = h('div', 'col'), col2 = h('div', 'col wide'), col3 = h('div', 'col');
-    col1.appendChild(h('h3', '', '파일럿'));
-    // 전원 부상이면 단장이 직접 나간다. 한 명이라도 회복하면 원래대로.
     const healthy = Object.keys(prof.pilots).filter(id => !prof.pilots[id].injury);
     if (!healthy.length) prof.pilot = 'cmdr';
     else if (prof.pilot === 'cmdr' || prof.pilots[prof.pilot].injury) prof.pilot = healthy[0];
-    const portrait = (pl, id, inj) => `<div class="portrait" style="--pc:${pl.color}"><img src="assets/pilot_${id}.png" onerror="this.remove()"><span>${pl.name[0]}</span>${inj ? '<i class="x"></i>' : ''}</div>`;
-    const cardOf = (id, pl, inj) => {
-      const c = h('div', 'card pilot' + (prof.pilot === id ? ' on' : '') + (inj ? ' off' : ''),
-        `${portrait(pl, id, inj)}<div class="pinfo"><b>${pl.name}</b> <span class="dim">${pl.title}</span>${inj ? ` <span class="bad">부상 · ${inj}회 휴식</span>` : ''}<div class="quote">“${pl.quote}”</div></div>`);
-      c.title = pl.skill ? `${pl.desc} (쿨타임 ${pl.cd}초 · Space)` : pl.desc;
+    const L = h('div', 'sx-l'), C = h('div', 'sx-c'), R = h('div', 'sx-r');
+    // 파일럿
+    L.appendChild(h('h4', '', '파일럿'));
+    const chip = (id, inj) => {
+      const pl = SA.PILOTS[id], c = h('div', 'pchip' + (prof.pilot === id ? ' on' : '') + (inj ? ' off' : ''),
+        `<span class="ini" style="--c:${pl.color}">${pl.name[0]}</span><span><b>${pl.name}</b> <span class="dim">${pl.title}</span>${inj ? `<br><span class="bad small">휴식 ${inj}</span>` : ''}</span>`);
+      tip(c, `“${pl.quote}”<br><span class="desc">${pl.desc}</span>${pl.skill ? `<br><span class="dim">쿨타임 ${pl.cd}초 · Space</span>` : ''}`);
+      c.onclick = () => { if (inj) { SA.Audio.sfx('deny'); return; } prof.pilot = id; save(); render(); };
       return c;
     };
-    if (!healthy.length) {
-      col1.appendChild(h('div', 'warn small', '파일럿이 모두 부상이다. 단장이 직접 출격한다.'));
-      col1.appendChild(cardOf('cmdr', SA.PILOTS.cmdr, 0));
+    if (!healthy.length) L.appendChild(chip('cmdr', 0));
+    for (const id in prof.pilots) L.appendChild(chip(id, prof.pilots[id].injury));
+    // 보유 기체 바꾸기
+    if (prof.ships.length > 1) {
+      L.appendChild(h('h4', '', '기체'));
+      const row = h('div', 'shiprow');
+      for (const id of prof.ships) { const c = h('div', 'shipchip' + (prof.ship === id ? ' on' : '')); c.appendChild(shipCanvas(id, 44)); tip(c, `<b>${SA.SHIPS[id].name}</b> ${SA.SHIPS[id].role}`); c.onclick = () => { prof.ship = id; save(); render(); }; row.appendChild(c); }
+      L.appendChild(row);
     }
-    for (const id in prof.pilots) {
-      const pl = SA.PILOTS[id], inj = prof.pilots[id].injury, c = cardOf(id, pl, inj);
-      c.onclick = () => { if (inj) { SA.Audio.sfx('deny'); toast(`${pl.name}은(는) 부상 중이다. ${inj}회 출격 동안 쉬어야 한다.`, '#ffb3b3'); return; } prof.pilot = id; save(); go('sortie'); };
-      col1.appendChild(c);
-    }
-    const cur = SA.PILOTS[prof.pilot];
-    col1.appendChild(h('div', 'small pskill', `<b>${cur.name}</b> — ${cur.desc}${cur.skill ? `<div class="dim">쿨타임 ${cur.cd}초 · Space</div>` : ''}`));
-    const unhired = Object.keys(SA.PILOTS).filter(id => !prof.pilots[id] && !SA.PILOTS[id].hidden);
-    if (unhired.length) col1.appendChild(h('div', 'dim small', `조난 신호를 구조하면 합류할 파일럿 ${unhired.length}명`));
-
-    col2.appendChild(h('h3', '', '기체'));
-    const ships = h('div', 'ships');
-    for (const id of prof.ships) {
-      const s = SA.SHIPS[id];
-      const c = h('div', 'card ship' + (prof.ship === id ? ' on' : ''));
-      c.appendChild(shipImg(id));
-      c.appendChild(h('div', '', `<b>${s.name}</b> <span class="dim">${s.role}</span><div class="small dim">HP ${s.hp} · 속도 ${s.speed} · 화물 ${s.cargo[0]}×${s.cargo[1]}</div>`));
-      c.onclick = () => { prof.ship = id; save(); go('sortie'); };
-      ships.appendChild(c);
-    }
-    col2.appendChild(ships);
+    // 기체 둘레 장착 칸
     const sh = SA.SHIPS[prof.ship], lo = prof.loadouts[prof.ship];
-    col2.appendChild(h('div', 'small', sh.desc));
-    col2.appendChild(h('h3', '', `장착 — ${sh.name}`));
-    const slotRow = (label, kind, idx, uid) => {
-      const p = uid && part(uid), d = p && SA.PARTS[p.id];
-      const r = h('div', 'slot' + (p ? '' : ' empty'));
-      r.innerHTML = `<span class="k">${label}</span><span>${d ? `${SA.partHtml(p)} <span class="dim">${SA.partTier(p)}</span>` : '<span class="dim">비어 있음 — 클릭</span>'}</span>` +
-        (p ? `<span class="bar"><i style="width:${p.dur / p.max * 100}%;background:${p.dur / p.max >= 0.5 ? '#5dffb0' : p.dur > 0 ? '#ffd166' : '#ff4d6d'}"></i></span>` : '');
-      r.onclick = (e) => pickPart(e, kind, idx);
-      if (p) { r.onmouseenter = (e) => partTip(e, p); r.onmouseleave = SA.UI.hideTip; }
-      return r;
+    C.appendChild(h('div', 'shipname', `<b>${sh.name}</b> <span class="dim">${sh.role}</span>`));
+    tip(C.lastChild, `${sh.desc}<br><span class="dim">HP ${sh.hp} · 속도 ${sh.speed} · 화물 ${sh.cargo[0]}×${sh.cargo[1]}</span>`);
+    const fig = h('div', 'shipfig'), colL = h('div', 'scol'), colR = h('div', 'scol'), bot = h('div', 'srow');
+    const mid = h('div', 'smid'); mid.appendChild(shipCanvas(prof.ship, 200));
+    const slot = (key, kind, idx, uid) => {
+      const p = uid && part(uid), r = p ? p.dur / p.max : 0;
+      const s = h('div', 'ps' + (p ? ' t-' + SA.partTier(p) : ' empty'), `${p ? partIcon(p) : '<span class="plus">+</span>'}<span class="kk">${key}</span>${p ? `<span class="db"><i style="width:${r * 100}%;background:${durCol(r)}"></i></span>` : ''}`);
+      s.onmouseenter = (e) => SA.UI.showTipHtml(e, p ? partTipHtml(p) : `${key} — 비어 있음`); s.onmouseleave = SA.UI.hideTip;
+      s.onclick = (e) => pickPart(e, kind, idx);
+      s.oncontextmenu = (e) => { e.preventDefault(); if (p) { setSlot(kind, idx, null); } };
+      return s;
     };
-    col2.appendChild(slotRow('주무기 1', 'main', 0, lo.main));
-    col2.appendChild(slotRow('주무기 2 (휠)', 'main', 1, lo.main2));
-    // 동력원: 창고에 있는 등급 중 하나를 꽂고 나간다 (예비는 아래 '가져갈 소모품'에서)
-    {
-      const cells = ['cell1', 'cell2', 'cell3', 'cell4'], cnt = (c) => SA.Grid.count(prof.stash, c);
-      if (lo.cell && !cnt(lo.cell)) lo.cell = cells.slice().reverse().find(cnt) || lo.cell;
-      const d = lo.cell && SA.ITEMS[lo.cell], has = d && cnt(lo.cell);
-      const r = h('div', 'slot' + (has ? '' : ' empty'), `<span class="k">동력원</span><span>${has ? `${d.name} <span class="dim">창고 ${cnt(lo.cell)}개</span>` : '<span class="bad">없음 — 비상 발전만 (작업대에서 제작)</span>'}</span>`);
-      r.onclick = () => { const own = cells.filter(cnt); if (!own.length) { SA.Audio.sfx('deny'); toast('창고에 동력원이 없다. 작업대에서 만들 수 있다 (고철 1 + 전선 1).', '#ffb3b3'); return; }
-        lo.cell = own[(own.indexOf(lo.cell) + 1) % own.length]; save(); go('sortie'); };
-      r.onmouseenter = (e) => SA.UI.showTipHtml(e, '클릭해서 등급을 바꾼다.<br>주무기는 동력원 에너지로 쏜다. 다 쓰면 R로 화물칸의 예비와 교체한다.<br>예비가 없으면 비상 발전(아주 느림)으로만 쏜다.'); r.onmouseleave = SA.UI.hideTip;
-      col2.appendChild(r);
-    }
-    for (let i = 0; i < sh.sub; i++) col2.appendChild(slotRow(`서브웨폰 ${i + 1} (자동)`, 'sub', i, lo.sub[i]));
-    col2.appendChild(slotRow('Q 액티브', 'act', 0, lo.act[0]));
-    col2.appendChild(slotRow('E 액티브', 'act', 1, lo.act[1]));
-    for (let i = 0; i < sh.pas; i++) col2.appendChild(slotRow(`패시브 ${i + 1}`, 'pas', i, lo.pas[i]));
-    col2.appendChild(slotRow('관측 장비 (Z)', 'obs', 0, lo.obs));
-    const auto = h('button', 'btn small', '빈 칸 자동 장착'); auto.onclick = () => { autoEquip(prof.ship); go('sortie'); };
-    col2.appendChild(auto);
-
-    col3.appendChild(h('h3', '', '작전 구역'));
+    colL.appendChild(slot('주무기 1', 'main', 0, lo.main));
+    colL.appendChild(slot('주무기 2', 'main', 1, lo.main2));
+    colL.appendChild(cellSlot(lo));
+    colL.appendChild(slot('관측 Z', 'obs', 0, lo.obs));
+    for (let i = 0; i < sh.sub; i++) colR.appendChild(slot(`서브 ${i + 1}`, 'sub', i, lo.sub[i]));
+    colR.appendChild(slot('Q', 'act', 0, lo.act[0]));
+    colR.appendChild(slot('E', 'act', 1, lo.act[1]));
+    for (let i = 0; i < sh.pas; i++) bot.appendChild(slot(`패시브 ${i + 1}`, 'pas', i, lo.pas[i]));
+    fig.append(colL, mid, colR); C.append(fig, bot);
+    // 지역 (작은 항로 지도)
+    R.appendChild(h('h4', '', '작전 지역'));
+    const map = h('div', 'routemap', `<img src="assets/hangar/route_map.png">`);
+    const NODES = { mine: [15, 75], front: [38, 55], grave: [62, 40], abyss: [85, 22] };
     for (const id in SA.MAPS) {
-      const m = SA.MAPS[id];
-      col3.appendChild(h('div', 'card' + (m.locked ? ' off' : ' on'), `<b>${m.name}</b> <span class="dim">${m.act}막</span><div class="small dim">${m.locked ? `${m.act}막에서 열린다` : m.desc}</div>`));
+      const m = SA.MAPS[id], [x, y] = NODES[id] || [50, 50];
+      const n = h('div', 'node' + (m.locked ? ' lock' : ' on'), m.locked ? ico('ic_lock') : ''); n.style.left = x + '%'; n.style.top = y + '%';
+      tip(n, `<b>${m.name}</b> <span class="dim">${m.act}막</span><br>${m.locked ? `<span class="dim">${m.act}막에서 열린다</span>` : `<span class="desc">${m.desc}</span>`}`);
+      map.appendChild(n);
     }
-    // 가져갈 소모품 (직접 고른다. 격추되면 잃는다)
-    col3.appendChild(h('h3', '', '가져갈 소모품'));
+    R.appendChild(map);
+    // 소모품
+    R.appendChild(h('h4', '', '소모품'));
     prof.bring = prof.bring || {};
-    const cg = SA.SHIPS[prof.ship].cargo, cap = cg[0] * cg[1];
+    const cg = sh.cargo, cap = cg[0] * cg[1];
     const usedCells = () => Object.keys(prof.bring).reduce((n, k) => n + prof.bring[k] * SA.ITEMS[k].w * SA.ITEMS[k].h, 0);
-    let anyUse = false;
+    let any = false;
     for (const id of [...SA.SHOP.consumables.map(x => x[0]), 'cell1', 'cell2', 'cell3', 'cell4']) {
-      const d = SA.ITEMS[id], have = SA.Grid.count(prof.stash, id) - (lo.cell === id ? 1 : 0);   // 장착할 동력원 하나는 빼고 센다
-      if (!have) continue;
-      anyUse = true;
-      if (prof.bring[id] === undefined && id === lo.cell && have > 0) prof.bring[id] = 1;   // 예비 동력원은 기본 1개
+      const d = SA.ITEMS[id], have = SA.Grid.count(prof.stash, id) - (lo.cell === id ? 1 : 0);
+      if (have <= 0) continue;
+      any = true;
+      if (prof.bring[id] === undefined && id === lo.cell) prof.bring[id] = 1;   // 예비 동력원은 기본 1개
       const n = Math.min(prof.bring[id] || 0, have); prof.bring[id] = n;
-      const r = h('div', 'sellrow', `<img src="${SA.Render.iconSrc(id)}" style="width:${d.w * 16}px;height:${d.h * 16}px"><span>${d.name} <b>${n}</b> / ${have}<br><span class="dim small">${d.desc}</span></span>`);
+      const r = h('div', 'cons', `<img src="${SA.Render.iconSrc(id)}"><span>${d.name}</span><b>${n}</b><span class="dim">/${have}</span>`);
+      tip(r, `<b>${d.name}</b><br><span class="desc">${d.desc}</span><br><span class="dim">격추되면 잃는다</span>`);
       const minus = h('button', 'btn tiny', '−'), plus = h('button', 'btn tiny', '+');
-      minus.onclick = () => { if (prof.bring[id] > 0) { prof.bring[id]--; save(); go('sortie'); } };
+      minus.onclick = () => { if (prof.bring[id] > 0) { prof.bring[id]--; save(); render(); } };
       plus.onclick = () => {
         if (prof.bring[id] >= have) return SA.Audio.sfx('deny');
         if (usedCells() + d.w * d.h > cap) { toast('화물칸에 더 실을 자리가 없다.', '#ffb3b3'); return SA.Audio.sfx('deny'); }
-        prof.bring[id]++; save(); go('sortie');
+        prof.bring[id]++; save(); render();
       };
-      r.append(minus, plus); col3.appendChild(r);
+      r.append(minus, plus); R.appendChild(r);
     }
-    if (!anyUse) col3.appendChild(h('div', 'dim small', '창고에 소모품이 없다. 상점에서 살 수 있다.'));
-    else col3.appendChild(h('div', 'dim small', `화물칸 ${usedCells()}/${cap}칸 차지 · 격추되면 잃는다`));
-
-    const warn = (!lo.main && !lo.main2 ? '<div class="bad small">주무기가 없다.</div>' : '') + (!(lo.cell && SA.Grid.count(prof.stash, lo.cell)) ? '<div class="warn small">장착할 동력원이 없다 — 비상 발전으로만 쏜다.</div>' : '');
+    if (!any) R.appendChild(h('div', 'dim small', '창고에 소모품이 없다.'));
+    else R.appendChild(h('div', 'dim small', `화물칸 ${usedCells()}/${cap}칸`));
+    // 경고 (짧게)
+    const warn = [];
+    if (!lo.main && !lo.main2) warn.push('<span class="bad">주무기 없음</span>');
+    if (!(lo.cell && SA.Grid.count(prof.stash, lo.cell))) warn.push('<span class="warn">동력원 없음</span>');
     const dmg = SA.loUids(lo).map(part).filter(p => p && p.dur / p.max < 0.5).length;
-    col3.appendChild(h('div', '', warn + (dmg ? `<div class="warn small">내구도 50% 미만 부품 ${dmg}개 — 작업대에서 수리</div>` : '')));
+    if (dmg) warn.push(`<span class="warn">닳은 부품 ${dmg}</span>`);
+    if (warn.length) R.appendChild(h('div', 'small warns', warn.join(' · ')));
+    // 출격
+    const go = h('div', 'gorow');
+    const dm = SA.DEATH_MODES[prof.deathMode] || SA.DEATH_MODES.normal;
+    const rule = tip(h('span', 'rule', `<span class="sk">✕</span>${dm.name}`), `<b>격추되면 [${dm.name}]</b><br><span class="desc">${dm.desc}</span><br>파일럿 부상 ${SA.INJURY_RAIDS}회 휴식 · <span class="dim">설정에서 바꿀 수 있다</span>`);
     const b = h('button', 'btn big', '출격'); b.onclick = sortieGo;
-    col3.appendChild(b);
-    const rg = h('button', 'btn small', '연습장 (지금 장착으로 시험)'); rg.onclick = () => { const l = prof.loadouts[prof.ship]; if (!l.main && !l.main2) { toast('주무기를 장착해야 한다.', '#ffb3b3'); return; } close(); SA.Main.startRange(); };
-    col3.appendChild(rg);
-    { const dm = SA.DEATH_MODES[prof.deathMode] || SA.DEATH_MODES.normal; col3.appendChild(h('div', 'dim small', `격추되면 [${dm.name}]: ${dm.desc} 파일럿 부상 2회. (설정에서 변경)`)); }
-    body.append(col1, col2, col3);
+    const rg = h('button', 'btn small', '시험 비행'); rg.onclick = () => { const l = prof.loadouts[prof.ship]; if (!l.main && !l.main2) { toast('주무기를 장착해야 한다.', '#ffb3b3'); return; } close(); SA.Main.startRange(); };
+    tip(rg, '연습장에서 지금 장착으로 시험한다');
+    go.append(rule, rg, b); R.appendChild(go);
+    body.append(L, C, R);
   };
-  const shipImg = (id) => {
+  // 동력원 칸: 누르면 창고에 있는 등급을 돌려 가며 고른다
+  const cellSlot = (lo) => {
+    const prof = P(), cells = ['cell1', 'cell2', 'cell3', 'cell4'], cnt = (c) => SA.Grid.count(prof.stash, c);
+    if (lo.cell && !cnt(lo.cell)) lo.cell = cells.slice().reverse().find(cnt) || lo.cell;
+    const d = lo.cell && SA.ITEMS[lo.cell], has = d && cnt(lo.cell);
+    const s = h('div', 'ps' + (has ? ' t-' + (d.tier || '일반') : ' empty'), `${has ? `<img class="pimg" src="${SA.Render.iconSrc(lo.cell)}">` : '<span class="plus">!</span>'}<span class="kk">동력원</span>${has ? `<span class="cnt">${cnt(lo.cell)}</span>` : ''}`);
+    tip(s, has ? `<b>${d.name}</b> <span class="dim">창고 ${cnt(lo.cell)}개</span><br><span class="desc">주무기 에너지. 다 쓰면 R로 예비와 교체.</span><br><span class="dim">누르면 등급을 바꾼다</span>` : '<span class="bad">동력원 없음</span> — 비상 발전으로만 쏜다<br><span class="dim">작업대에서 만든다 (고철 1 + 전선 1)</span>');
+    s.onclick = () => { const own = cells.filter(cnt); if (!own.length) { SA.Audio.sfx('deny'); return; } lo.cell = own[(own.indexOf(lo.cell) + 1) % own.length]; save(); render(); };
+    return s;
+  };
+  const shipCanvas = (id, size) => {
     const s = SA.SHIPS[id], c = document.createElement('canvas');
-    c.width = 72; c.height = 72; c.className = 'shipimg';
-    const x = c.getContext('2d'); x.imageSmoothingEnabled = false;
-    const k = id === 'hex' ? 2 : Math.min(66 / s.size[0], 66 / s.size[1]);
-    const w = s.size[0] * k, hh = s.size[1] * k;
-    if (id === 'hex' && SA.Render.IMG.hex) x.drawImage(SA.Render.IMG.hex, (72 - w) / 2, (72 - hh) / 2, w, hh);
-    else if (SA.Render.pre[id]) { x.imageSmoothingEnabled = true; x.drawImage(SA.Render.pre[id], (72 - w) / 2, (72 - hh) / 2, w, hh); }
-    else { x.fillStyle = '#3b4050'; x.beginPath(); x.moveTo(36, 12); x.lineTo(60, 46); x.lineTo(36, 56); x.lineTo(12, 46); x.closePath(); x.fill(); x.fillStyle = '#ffb347'; x.fillRect(34, 24, 4, 4); }
+    c.width = size; c.height = size; c.className = 'shipimg';
+    const x = c.getContext('2d');
+    const k = Math.min(size * 0.9 / s.size[0], size * 0.9 / s.size[1]), w = s.size[0] * k, hh = s.size[1] * k;
+    const im = id === 'hex' ? SA.Render.IMG.hex : SA.Render.IMG[id];
+    x.imageSmoothingEnabled = id !== 'hex';
+    if (im) x.drawImage(im, (size - w) / 2, (size - hh) / 2, w, hh);
+    if (id === 'hex' && SA.Render.IMG.hexTurret) { x.imageSmoothingEnabled = false; const m = 13 * k; x.drawImage(SA.Render.IMG.hexTurret, (size - w) / 2 + s.mount[0] * w - m / 2, (size - hh) / 2 + s.mount[1] * hh - m / 2, m, m); }
     return c;
   };
-  const pimg = (d) => d.img ? `<img src="${d.img}" style="height:34px;float:left;margin:0 8px 0 0">` : '';   // 도트 원본이 있는 부품은 그림을 같이 보여준다
-  const partTip = (e, p) => {
-    const d = SA.PARTS[p.id];
-    SA.UI.showTipHtml(e, `${pimg(d)}<b>${SA.partHtml(p)}</b> <span class="dim">${SA.partTier(p)}</span><br><span class="desc">${SA.partFullDesc(p)}</span><br>내구도 ${Math.round(p.dur)} / ${Math.round(p.max)} · 성능 ${Math.round(SA.Combat.eff(p) * 100)}%`);
+  const curUid = (lo, kind, idx) => kind === 'main' ? lo[idx ? 'main2' : 'main'] : kind === 'obs' ? lo.obs : lo[kind][idx];
+  const setSlot = (kind, idx, uid) => {
+    const lo = P().loadouts[P().ship];
+    if (kind === 'main') lo[idx ? 'main2' : 'main'] = uid; else if (kind === 'obs') lo.obs = uid; else lo[kind][idx] = uid;
+    save(); document.querySelectorAll('.ctx').forEach(x => x.remove()); SA.UI.hideTip(); render();
   };
+  // 칸을 누르면 옆에 끼울 수 있는 부품 목록 (비교 화살표)
   const pickPart = (e, kind, idx) => {
-    const prof = P(), lo = prof.loadouts[prof.ship], sh = SA.SHIPS[prof.ship];
-    const used = new Set(SA.loUids(lo));
-    const opts = prof.parts.filter(p => {
-      const d = SA.PARTS[p.id];
-      if (d.slot !== kind || used.has(p.uid)) return false;
-      if (d.onlyShip && d.onlyShip !== prof.ship) return false;
-      return true;
-    });
-    const m = h('div', 'ctx wide');
-    const set = (uid) => {
-      if (kind === 'main') lo[idx ? 'main2' : 'main'] = uid; else if (kind === 'obs') lo.obs = uid; else lo[kind][idx] = uid;
-      save(); document.querySelectorAll('.ctx').forEach(x => x.remove()); go('sortie');
-    };
-    if (!opts.length) m.appendChild(h('div', 'dim small pad', '장착할 수 있는 부품이 없다. 작업대에서 제작하자.'));
+    const prof = P(), lo = prof.loadouts[prof.ship];
+    const used = new Set(SA.loUids(lo)), cur = part(curUid(lo, kind, idx));
+    const opts = prof.parts.filter(p => { const d = SA.PARTS[p.id]; return d.slot === kind && !used.has(p.uid) && (!d.onlyShip || d.onlyShip === prof.ship); })
+      .sort((a, b) => ((stat(b) || [0, 0])[1] - (stat(a) || [0, 0])[1]) * ((stat(a) || [0, 0, true])[2] ? 1 : -1) || b.dur - a.dur);
+    const m = h('div', 'ctx wide pick');
+    if (!opts.length) m.appendChild(h('div', 'dim small pad', '끼울 부품이 없다 — 작업대에서 만든다'));
     for (const p of opts) {
-      const d = SA.PARTS[p.id], b = h('button', '', `${pimg(d)}${SA.partHtml(p)} <span class="dim">${SA.partTier(p)} · ${Math.round(p.dur)}/${Math.round(p.max)}</span><div class="small dim">${SA.partFullDesc(p)}</div>`);
-      b.onclick = () => set(p.uid); m.appendChild(b);
+      const r = p.dur / p.max, b = h('button', 'prow', `${partIcon(p)}<span class="nm">${SA.partHtml(p)}</span><span class="cmp">${cmpHtml(p, cur)}</span><span class="db"><i style="width:${r * 100}%;background:${durCol(r)}"></i></span>`);
+      b.onmouseenter = (ev) => partTip(ev, p); b.onmouseleave = SA.UI.hideTip;
+      b.onclick = () => setSlot(kind, idx, p.uid); m.appendChild(b);
     }
-    const cur = kind === 'main' ? lo[idx ? 'main2' : 'main'] : kind === 'obs' ? lo.obs : lo[kind][idx];
-    if (cur) { const b = h('button', '', '<span class="bad">비우기</span>'); b.onclick = () => set(null); m.appendChild(b); }
-    m.style.left = Math.min(innerWidth - 320, e.clientX) + 'px'; m.style.top = Math.min(innerHeight - 300, e.clientY) + 'px';
+    if (cur) { const b = h('button', 'prow', '<span class="bad">비우기</span> <span class="dim small">(우클릭으로도)</span>'); b.onclick = () => setSlot(kind, idx, null); m.appendChild(b); }
+    const rc = e.currentTarget.getBoundingClientRect();
+    m.style.left = Math.min(innerWidth - 360, rc.right + 8) + 'px'; m.style.top = Math.max(8, Math.min(innerHeight - 340, rc.top - 8)) + 'px';
     document.querySelectorAll('.ctx').forEach(x => x.remove());
     document.body.appendChild(m);
     setTimeout(() => addEventListener('mousedown', function off(ev) { if (!m.contains(ev.target)) { m.remove(); removeEventListener('mousedown', off); } }), 0);
@@ -203,7 +285,7 @@ SA.Hangar = (() => {
   const autoEquip = (shipId) => {
     const prof = P(), lo = prof.loadouts[shipId], sh = SA.SHIPS[shipId];
     const used = () => new Set(SA.loUids(lo));
-    const best = (kind, filt = () => true) => prof.parts.filter(p => SA.PARTS[p.id].slot === kind && !used().has(p.uid) && filt(p) && (!SA.PARTS[p.id].onlyShip || SA.PARTS[p.id].onlyShip === shipId))
+    const best = (kind) => prof.parts.filter(p => SA.PARTS[p.id].slot === kind && !used().has(p.uid) && (!SA.PARTS[p.id].onlyShip || SA.PARTS[p.id].onlyShip === shipId))
       .sort((a, b) => SA.PARTS[b.id].val - SA.PARTS[a.id].val || b.dur - a.dur)[0];
     if (!lo.main) { const p = best('main'); if (p) lo.main = p.uid; }
     if (!lo.main2) { const p = best('main'); if (p) lo.main2 = p.uid; }
@@ -218,65 +300,85 @@ SA.Hangar = (() => {
     const prof = P(), lo = prof.loadouts[prof.ship];
     if (prof.pilot !== 'cmdr' && prof.pilots[prof.pilot].injury) { toast('선택한 파일럿이 부상 중이다.', '#ffb3b3'); SA.Audio.sfx('deny'); return; }
     if (!lo.main && !lo.main2) { toast('주무기를 장착해야 출격할 수 있다.', '#ffb3b3'); SA.Audio.sfx('deny'); return; }
-    close(); SA.Main.startRaid();
+    closePanel(); SA.Audio.sfx('launch');
+    prof.scorched = false; save();
+    S().play('launch', () => { close(); SA.Main.startRaid(); });
   };
 
-  // ── 창고 ──
+  // ── 거치대 (뒷줄): 보유 기체는 바로 교체, 안 산 기체는 구매 ──
+  const openRack = (id) => {
+    if (P().ships.includes(id)) { P().ship = id; save(); toast(`출격 기체: ${SA.SHIPS[id].name}`, '#5dffb0'); hud(); return; }
+    openPanel('rack', id);
+  };
+  const rack = (body) => {
+    const prof = P(), id = panelArg, s = SA.SHIPS[id];
+    const box = h('div', 'rackbox'); box.appendChild(shipCanvas(id, 220));
+    const info = h('div', 'rackinfo', `<h3>${s.name} <span class="dim">${s.role}</span></h3><div class="small">${s.desc}</div>
+      <div class="chips"><span>HP ${s.hp}</span><span>속도 ${s.speed}</span><span>서브 ${s.sub}</span><span>패시브 ${s.pas}</span><span>화물 ${s.cargo[0]}×${s.cargo[1]}</span></div>`);
+    const b = h('button', 'btn', `구매 ₵${s.price}`);
+    b.onclick = () => {
+      if (prof.credits < s.price) { toast('크레딧이 부족하다.', '#ffb3b3'); SA.Audio.sfx('deny'); return; }
+      prof.credits -= s.price; prof.ships.push(id);
+      const cur = prof.loadouts[prof.ship];   // 지금 기체의 장착을 최대한 그대로 옮긴다
+      prof.loadouts[id] = { main: cur.main, main2: cur.main2 || null, sub: cur.sub.slice(0, s.sub), act: cur.act.slice(), pas: cur.pas.slice(0, s.pas), obs: cur.obs || null, cell: cur.cell || null };
+      autoEquip(id); prof.ship = id; toast(`${s.name} 구매 — 가진 부품으로 자동 장착했다`, '#5dffb0'); SA.Audio.sfx('buy'); save(); closePanel();
+    };
+    info.appendChild(b); box.appendChild(info); body.appendChild(box);
+  };
+
+  // ── 창고: 격자 + 고른 것 정보칸 ──
+  let stashSel = null;
   const stash = (body) => {
-    const prof = P(), left = h('div', 'col'), right = h('div', 'col');
-    left.appendChild(h('h3', '', `창고 <span class="dim small">${SA.Grid.used(prof.stash)}/${prof.stash.w * prof.stash.h}칸 · 총 ₵${SA.Grid.value(prof.stash)}</span>`));
+    const prof = P(), left = h('div', 'st-l'), right = h('div', 'st-r');
+    left.appendChild(h('div', 'small dim', `${SA.Grid.used(prof.stash)}/${prof.stash.w * prof.stash.h}칸 · 총 ₵${SA.Grid.value(prof.stash)}`));
     const g = h('div'); left.appendChild(g);
-    SA.UI.gridView('stash', g, prof.stash, {
-      menu: (it, grid) => {
-        const d = SA.ITEMS[it.id];
-        if (d.kind === 'ticket') return [['고용하기', () => hireRaven(it, grid)]];
-        const a = [[`판매 ₵${SA.itemVal(it)}`, () => { SA.Grid.remove(grid, it.uid); prof.credits += SA.itemVal(it); SA.Audio.sfx('buy'); save(); render(); }]];
-        if (it.id === 'bb_reward' || SA.Decode.srcOf(it.id)) {
-          a.unshift([`즉시 해독 ₵${SA.DECODE.instant}`, () => decode(it, true)]);
-          const q = (prof.decoding || []).length;
-          if (q < SA.DECODE.slots) a.unshift([`해독 맡기기 (${q}/${SA.DECODE.slots}, 다음 출격 뒤 완료)`, () => decode(it, false)]);
-        }
-        if (d.kind === 'key') a.unshift([`해독기에 등록 (+${SA.CODES[d.code].uses}회)`, () => registerKey(it)]);
-        if (d.kind === 'part') a.unshift(['부품함으로 옮기기', () => { SA.Grid.remove(prof.stash, it.uid); prof.parts.push(SA.Save.fromItem(it)); save(); render(); }]);
-        if (d.kind === 'bp' && prof.recipes.includes(d.recipe)) a.push(['(이미 아는 설계도 — 판매)', () => {}]);
-        return a;
-      },
-      onQuickDiscard: null,
-    });
+    if (stashSel && !prof.stash.items.includes(stashSel)) stashSel = null;
+    SA.UI.gridView('stash', g, prof.stash, { menu: (it) => itemActs(it), onSelect: (it) => { stashSel = it; render(); }, sel: stashSel && stashSel.uid });
     const sortB = h('button', 'btn small', '정렬'); sortB.onclick = () => { SA.Grid.autoSort(prof.stash); save(); render(); };
     left.appendChild(sortB);
-    right.appendChild(h('h3', '', '빠른 판매'));
-    const groups = {};
-    for (const it of prof.stash.items) groups[it.id] = (groups[it.id] || 0) + 1;
-    const ids = Object.keys(groups).sort((a, b) => SA.ITEMS[b].val - SA.ITEMS[a].val);
-    if (!ids.length) right.appendChild(h('div', 'dim', '창고가 비어 있다. 출격해서 채워 오자.'));
-    for (const id of ids) {
-      const d = SA.ITEMS[id], need = neededFor(id);
-      const r = h('div', 'sellrow');
-      if (d.kind === 'ticket') {   // 고용권은 팔지 않고 쓴다
-        r.innerHTML = `<img src="${SA.Render.iconSrc(id)}" style="width:${d.w * 16}px;height:${d.h * 16}px"><span>${d.name}<br><span class="dim small">${d.desc}</span></span>`;
-        const hb = h('button', 'btn small', '고용하기'); hb.onclick = () => hireRaven(prof.stash.items.find(x => x.id === id), prof.stash);
-        r.appendChild(hb); right.appendChild(r); continue;
-      }
-      r.innerHTML = `<img src="${SA.Render.iconSrc(id)}" style="width:${d.w * 16}px;height:${d.h * 16}px"><span>${d.name} ×${groups[id]}<br><span class="dim small">${d.kind === 'use' ? '출격 준비에서 골라 가져간다' : need ? `제작·의뢰에 ${need}개 필요` : '쓸 곳 없음'}</span></span>`;
-      const b1 = h('button', 'btn small', `1개 ₵${d.val}`), b2 = h('button', 'btn small', `전부 ₵${d.val * groups[id]}`);
-      b1.onclick = () => sell(id, 1); b2.onclick = () => sell(id, groups[id]);
-      r.append(b1, b2); right.appendChild(r);
+    // 정보칸
+    if (!stashSel) right.appendChild(h('div', 'dim small pad', '아이템을 누르면 여기에 나온다.<br>끌어서 옮기고, 우클릭하면 바로 판다.'));
+    else {
+      const it = stashSel, d = SA.ITEMS[it.id], need = neededFor(it.id);
+      right.appendChild(h('div', 'iinfo', `<img src="${SA.Render.iconSrc(it.id)}"><div><b style="color:${d.color}">${d.name}</b><div class="small dim">${SA.KIND_NAME[d.kind] || ''} · ₵${SA.itemVal(it)}</div></div>`));
+      right.appendChild(h('div', 'small use', d.kind === 'use' ? '출격 준비에서 골라 가져간다' : need ? `<span class="warn">제작·의뢰에 ${need}개 필요</span>` : SA.Decode.srcOf(it.id) || it.id === 'bb_reward' ? '해독기에 맡기면 기록이 열린다' : '<span class="dim">쓸 곳 없음</span>'));
+      right.appendChild(h('div', 'small desc', d.desc));
+      const row = h('div', 'acts');
+      for (const [lab, fn] of itemActs(it)) { const b = h('button', 'btn small', lab); b.onclick = () => { fn(); SA.Audio.sfx('click'); }; row.appendChild(b); }
+      right.appendChild(row);
     }
-    right.appendChild(h('div', 'dim small', '우클릭: 판매 · 블랙박스는 해독하면 기록이 열리지만 팔 수 없게 된다.'));
+    // 쓸 곳 없는 것 모두 팔기
+    const junk = prof.stash.items.filter(isJunk), tot = junk.reduce((n, it) => n + SA.itemVal(it), 0);
+    const jb = h('button', 'btn small' + (junk.length ? '' : ' dis'), junk.length ? `쓸 곳 없는 것 모두 팔기 ₵${tot}` : '팔 것 없음');
+    tip(jb, () => junk.length ? junk.map(it => SA.ITEMS[it.id].name).filter((v, i, a) => a.indexOf(v) === i).join(', ') : '');
+    jb.onclick = () => { if (!junk.length) return; junk.forEach(it => { SA.Grid.remove(prof.stash, it.uid); prof.credits += SA.itemVal(it); }); stashSel = null; SA.Audio.sfx('buy'); save(); render(); };
+    right.appendChild(h('div', 'grow')); right.appendChild(jb);
     body.append(left, right);
   };
-  // 해독키 등록: 기지 기록에 코드가 남고(해독기를 잃어도 유지) 사용 횟수가 생긴다. 이후 상점에서 충전할 수 있다
+  const isJunk = (it) => { const d = SA.ITEMS[it.id]; if (SA.Decode.srcOf(it.id) || it.id === 'bb_reward') return false; if (d.kind === 'bp') return P().recipes.includes(d.recipe); return ['mat', 'lore', 'data'].includes(d.kind) && !neededFor(it.id); };   // 이미 아는 설계도 · 안 쓰는 기본 재료 · 정보
+  const itemActs = (it) => {
+    const prof = P(), d = SA.ITEMS[it.id], grid = prof.stash;
+    if (d.kind === 'ticket') return [['고용하기', () => hireRaven(it, grid)]];
+    const a = [[`판매 ₵${SA.itemVal(it)}`, () => { SA.Grid.remove(grid, it.uid); prof.credits += SA.itemVal(it); SA.Audio.sfx('buy'); stashSel = null; save(); render(); }]];
+    if (it.id === 'bb_reward' || SA.Decode.srcOf(it.id)) {
+      a.unshift([`즉시 해독 ₵${SA.DECODE.instant}`, () => decode(it, true)]);
+      if ((prof.decoding || []).length < SA.DECODE.slots) a.unshift(['해독기에 맡기기', () => decode(it, false)]);
+    }
+    if (d.kind === 'key') a.unshift([`해독 코드 등록 (+${SA.CODES[d.code].uses}회)`, () => registerKey(it)]);
+    if (d.kind === 'part') a.unshift(['부품함으로', () => { SA.Grid.remove(prof.stash, it.uid); prof.parts.push(SA.Save.fromItem(it)); stashSel = null; save(); render(); }]);
+    return a;
+  };
   const registerKey = (it) => {
     const prof = P(), d = SA.ITEMS[it.id], c = SA.CODES[d.code];
     prof.codes = prof.codes || {}; prof.codeKnown = prof.codeKnown || {};
     SA.Grid.remove(prof.stash, it.uid);
     prof.codes[d.code] = (prof.codes[d.code] || 0) + c.uses; prof.codeKnown[d.code] = true;
-    SA.Audio.sfx('unlock'); toast(`${c.name} 등록 — 남은 ${prof.codes[d.code]}회. 이제 상점에서 충전할 수 있다`, '#5dffb0'); save(); render();
+    SA.Audio.sfx('unlock'); toast(`${c.name} 등록 — 남은 ${prof.codes[d.code]}회. 상점에서 충전할 수 있다`, '#5dffb0'); stashSel = null; save(); render();
   };
   const neededFor = (id) => {
     let n = 0;
     for (const r of P().recipes) { const m = (SA.RECIPES[r] || {}).mats || {}; n = Math.max(n, m[id] || 0); }
+    for (const id2 in SA.CRAFT) n = Math.max(n, (SA.CRAFT[id2].mats || {})[id] && SA.ITEMS[id].kind !== 'mat' ? SA.CRAFT[id2].mats[id] : 0);
     for (const c of SA.STORY.contracts) if (c.mats && !(P().contracts[c.id] || {}).done) n = Math.max(n, c.mats[id] || 0);
     return n;
   };
@@ -284,12 +386,7 @@ SA.Hangar = (() => {
     const prof = P();
     if (prof.pilots.raven) { SA.Audio.sfx('deny'); toast('레이븐은 이미 용병단에 있다.', '#ffb3b3'); return; }
     SA.Grid.remove(grid, it.uid); prof.pilots.raven = { injury: 0 };
-    SA.Audio.sfx('buy'); toast('레이븐이 용병단에 합류했다 — 파일럿으로 고를 수 있다', '#ffd166'); save(); render();
-  };
-  const sell = (id, n) => {
-    const prof = P();
-    for (let i = 0; i < n; i++) { const it = prof.stash.items.find(x => x.id === id); if (!it) break; SA.Grid.remove(prof.stash, it.uid); prof.credits += SA.ITEMS[id].val; }
-    SA.Audio.sfx('buy'); save(); render();
+    SA.Audio.sfx('buy'); toast('레이븐이 용병단에 합류했다 — 파일럿으로 고를 수 있다', '#ffd166'); stashSel = null; save(); render();
   };
   const decode = (it, instant) => {
     const prof = P();
@@ -297,92 +394,97 @@ SA.Hangar = (() => {
     if (!instant && (prof.decoding || []).length >= SA.DECODE.slots) { toast(`해독은 ${SA.DECODE.slots}개까지 맡길 수 있다.`, '#ffb3b3'); SA.Audio.sfx('deny'); return; }
     SA.Grid.remove(prof.stash, it.uid);
     const r = SA.Decode.start(prof, it.id, instant);
-    toast(r.text, '#ff8f3d'); SA.Audio.sfx('unlock'); save(); render();
+    toast(r.text, '#ff8f3d'); SA.Audio.sfx('unlock'); stashSel = null; save(); render();
   };
 
-  // ── 작업대: 종류 탭 + 등급 탭 ──
-  let benchKind = 'main', benchTier = '전체';
-  const KINDS = [['main', '주무기'], ['sub', '서브웨폰'], ['act', '액티브'], ['pas', '패시브'], ['obs', '관측'], ['item', '동력원·소모품'], ['mat', '상위 재료']];
-  const TIERS = ['전체', '일반', '강화', '행성', '은하'];
+  // ── 작업대: [부품] 고르면 할 수 있는 것만 · [제작] 만들 수 있는 것부터 ──
+  let benchTab = 'parts', benchKind = 'all', benchSel = null;
+  const KINDS = [['all', '전체', 'pt_emblem'], ['main', '주무기', 'pt_main'], ['sub', '서브', 'pt_sub'], ['act', '액티브', 'pt_act'], ['pas', '패시브', 'pt_pas'], ['obs', '관측', 'pt_obs']];
+  const CKINDS = [...KINDS, ['item', '동력원·소모품', 'pt_cell'], ['mat', '상위 재료', 'pt_pod']];
+  const TIERS = ['일반', '강화', '행성', '은하'];
   const tierOf = (id) => (SA.PARTS[id] || SA.ITEMS[id] || {}).tier || '일반';
-  const matLine = (mats, have) => Object.keys(mats).map(k => `<span class="${have(k) >= mats[k] ? 'ok' : 'bad'}">${SA.ITEMS[k].name} ${have(k)}/${mats[k]}</span>`).join(' · ');
+  const matIcons = (mats, have) => Object.keys(mats).map(k => `<span class="mat ${have(k) >= mats[k] ? 'ok' : 'bad'}" title="${SA.ITEMS[k].name}"><img src="${SA.Render.iconSrc(k)}">${have(k)}/${mats[k]}</span>`).join('');
   const bench = (body) => {
-    const prof = P(), wrap = h('div', 'col wide benchwrap'), left = h('div', 'col wide'), right = h('div', 'col wide');
-    const tabs = h('div', 'subtabs');
-    for (const [k, nm] of KINDS) { const b = h('button', benchKind === k ? 'on' : '', nm); b.onclick = () => { benchKind = k; render(); }; tabs.appendChild(b); }
-    const tiers = h('div', 'subtabs tiers');
-    for (const t of TIERS) { const b = h('button', (benchTier === t ? 'on ' : '') + 't-' + t, t); b.onclick = () => { benchTier = t; render(); }; tiers.appendChild(b); }
-    wrap.append(tabs, tiers);
-    const tierOk = (id) => benchTier === '전체' || tierOf(id) === benchTier;
-    const have = (k) => SA.Grid.count(prof.stash, k);
-    const isPart = !['item', 'mat'].includes(benchKind);
-    left.appendChild(h('h3', '', '제작'));
-    if (isPart) {
-      const ids = prof.recipes.filter(r => SA.RECIPES[r] && SA.PARTS[r] && SA.PARTS[r].slot === benchKind && tierOk(r))
-        .sort((a, b) => TIERS.indexOf(tierOf(a)) - TIERS.indexOf(tierOf(b)));
-      if (!ids.length) left.appendChild(h('div', 'dim small', '아는 설계도가 없다. 설계도는 필드에서 줍는다.'));
-      for (const rid of ids) {
-        const r = SA.RECIPES[rid], d = SA.PARTS[rid];
-        const fromOk = !r.from || prof.parts.some(p => p.id === r.from);
-        const locked = d.tier !== '일반' && !prof.rescued.teo;   // 정비사 테오를 구조해야 강화 등급 이상 제작 가능
-        const ok = !locked && fromOk && Object.keys(r.mats).every(k => have(k) >= r.mats[k]);
-        const row = h('div', 'recipe t-' + d.tier, `${pimg(d)}<b>${d.name}</b> <span class="tier">${d.tier}</span><div class="small">${d.desc}</div><div class="small">${r.from ? `<span class="${fromOk ? 'ok' : 'bad'}">${SA.PARTS[r.from].name} 1개</span> + ` : ''}${matLine(r.mats, have)}</div>`);
-        const b = h('button', 'btn small' + (ok ? '' : ' dis'), locked ? '잠김' : '제작');
-        if (locked) row.appendChild(h('div', 'small bad', '정비사 테오를 구조하면 제작할 수 있다'));
-        b.onclick = () => craft(rid);
-        row.appendChild(b); left.appendChild(row);
-      }
-    } else {
-      const ids = Object.keys(SA.CRAFT).filter(id => { const k = SA.ITEMS[id].kind; return (benchKind === 'mat' ? k === 'umat' : k !== 'umat') && tierOk(id); });
-      if (!ids.length) left.appendChild(h('div', 'dim small', '이 등급에는 만들 것이 없다.'));
-      for (const id of ids) {
-        const r = SA.CRAFT[id], d = SA.ITEMS[id], ok = Object.keys(r.mats).every(k => have(k) >= r.mats[k]);
-        const row = h('div', 'recipe t-' + tierOf(id), `<img src="${SA.Render.iconSrc(id)}" style="height:34px;float:left;margin:0 8px 0 0"><b>${d.name}</b> <span class="tier">${tierOf(id)}</span> <span class="dim small">창고 ${have(id)}개</span><div class="small">${d.desc}</div><div class="small">${matLine(r.mats, have)}</div>`);
-        const b = h('button', 'btn small' + (ok ? '' : ' dis'), '제작');
-        b.onclick = () => craftItem(id);
-        row.appendChild(b); left.appendChild(row);
-      }
-      if (benchKind === 'mat') left.appendChild(h('div', 'dim small', '상위 재료는 설계도 없이 만들 수 있고, 필드에서 줍기도 한다. 강화 부품 제작과 행성·은하 강화에 들어간다. 비행 기록 칩·심연 핵은 보스에게서만 나온다.'));
-    }
-    if (isPart) {
-      right.appendChild(h('h3', '', '보유 부품'));
-      const needRep = prof.parts.filter(p => p.dur < p.max);
-      const cost = needRep.reduce((n, p) => n + repairCost(p), 0);
-      const all = h('button', 'btn' + (needRep.length ? '' : ' dis'), needRep.length ? `전부 수리 ₵${cost}` : '수리할 부품 없음');
+    const prof = P(), top = h('div', 'bn-top');
+    for (const [k, nm] of [['parts', '부품'], ['craft', '제작']]) { const b = h('button', 'tabb' + (benchTab === k ? ' on' : ''), nm); b.onclick = () => { benchTab = k; render(); }; top.appendChild(b); }
+    const kinds = h('div', 'kinds');
+    for (const [k, nm, ic] of (benchTab === 'craft' ? CKINDS : KINDS)) { const b = h('button', 'kb' + (benchKind === k ? ' on' : ''), `${ico(ic)}`); tip(b, nm); b.onclick = () => { benchKind = k; render(); }; kinds.appendChild(b); }
+    top.appendChild(kinds);
+    if (benchTab === 'parts') {
+      const needRep = prof.parts.filter(p => p.dur < p.max), cost = needRep.reduce((n, p) => n + repairCost(p), 0);
+      const all = h('button', 'btn small' + (needRep.length ? '' : ' dis'), needRep.length ? `전부 수리 ₵${cost}` : '수리할 것 없음');
+      tip(all, '수리하면 내구도가 가득 차지만 최대 내구도가 3씩 준다');
       all.onclick = () => { if (!needRep.length) return; if (prof.credits < cost) { toast('크레딧이 부족하다.', '#ffb3b3'); SA.Audio.sfx('deny'); return; } prof.credits -= cost; needRep.forEach(repair); SA.Audio.sfx('repair'); save(); render(); };
-      right.appendChild(all);
-      right.appendChild(h('div', 'dim small', '수리하면 내구도가 가득 차지만 최대 내구도가 3씩 줄어든다. 분해하면 제작 재료의 절반을 돌려받는다.<br>행성 강화: 주 스탯 +30% + 개조 1개 · 은하 강화: +60% + 보스 각성 1개 (설계도 필요 없음).'));
-      const equipped = new Set(); for (const s in prof.loadouts) SA.loUids(prof.loadouts[s]).forEach(u => equipped.add(u));
-      const mine = prof.parts.filter(p => SA.PARTS[p.id].slot === benchKind && (benchTier === '전체' || SA.partTier(p) === benchTier)).sort((a, b) => TIERS.indexOf(SA.partTier(b)) - TIERS.indexOf(SA.partTier(a)) || a.id.localeCompare(b.id));
-      if (!mine.length) right.appendChild(h('div', 'dim small', '이 칸의 부품이 없다.'));
-      for (const p of mine) {
-        const d = SA.PARTS[p.id], r = p.dur / p.max;
-        const row = h('div', 'slot t-' + SA.partTier(p), `<span>${SA.partHtml(p)} <span class="tier">${SA.partTier(p)}</span><span class="dim">${equipped.has(p.uid) ? ' · 장착 중' : ''}</span></span><span class="bar"><i style="width:${r * 100}%;background:${r >= 0.5 ? '#5dffb0' : r > 0 ? '#ffd166' : '#ff4d6d'}"></i></span><span class="dim small">${Math.round(p.dur)}/${Math.round(p.max)}</span>`);
-        row.onmouseenter = (e) => partTip(e, p); row.onmouseleave = SA.UI.hideTip;
-        if (p.dur < p.max) { const b = h('button', 'btn tiny', `수리 ₵${repairCost(p)}`); b.onclick = (e) => { e.stopPropagation(); if (prof.credits < repairCost(p)) { SA.Audio.sfx('deny'); return; } prof.credits -= repairCost(p); repair(p); SA.Audio.sfx('repair'); save(); render(); }; row.appendChild(b); }
-        if (SA.canUp(p.id) && (p.lv || 0) < 2) { const b = h('button', 'btn tiny up', p.lv ? '은하 강화' : '행성 강화'); b.onclick = (e) => { e.stopPropagation(); upMenu(e, p, 'up'); }; row.appendChild(b); }
-        if (p.lv && SA.modsFor(p.id).length > 1) { const b = h('button', 'btn tiny', '개조 교체'); b.onclick = (e) => { e.stopPropagation(); upMenu(e, p, 'mod'); }; row.appendChild(b); }
-        if (!equipped.has(p.uid)) { const b = h('button', 'btn tiny', '분해'); b.title = salvageText(p); b.onclick = (e) => { e.stopPropagation(); salvage(p); }; row.appendChild(b); }
-        right.appendChild(row);
-      }
-    } else {
-      right.appendChild(h('h3', '', '창고 재료'));
-      const ids = [...new Set(prof.stash.items.map(it => it.id))].filter(id => { const k = SA.ITEMS[id].kind; return benchKind === 'mat' ? (k === 'mat' || k === 'umat') : (k === 'cell' || k === 'use'); });
-      if (!ids.length) right.appendChild(h('div', 'dim small', '없다.'));
-      for (const id of ids) right.appendChild(h('div', 'slot t-' + tierOf(id), `<span><img src="${SA.Render.iconSrc(id)}" style="height:18px;vertical-align:middle"> ${SA.ITEMS[id].name}</span><span class="dim">${have(id)}개</span>`));
+      top.appendChild(all);
     }
-    const cols = h('div', 'benchcols'); cols.append(left, right); wrap.appendChild(cols);
-    body.append(wrap);
+    body.appendChild(top);
+    const wrap = h('div', 'bn-wrap'); body.appendChild(wrap);
+    if (benchTab === 'parts') benchParts(wrap); else benchCraft(wrap);
+  };
+  const benchParts = (wrap) => {
+    const prof = P(), left = h('div', 'bn-grid'), right = h('div', 'bn-info');
+    const equipped = new Set(); for (const s in prof.loadouts) SA.loUids(prof.loadouts[s]).forEach(u => equipped.add(u));
+    const list = prof.parts.filter(p => benchKind === 'all' || SA.PARTS[p.id].slot === benchKind)
+      .sort((a, b) => TIERS.indexOf(SA.partTier(b)) - TIERS.indexOf(SA.partTier(a)) || a.id.localeCompare(b.id));
+    if (benchSel && !prof.parts.includes(benchSel)) benchSel = null;
+    if (!benchSel) benchSel = list[0] || null;
+    if (!list.length) left.appendChild(h('div', 'dim small pad', '부품이 없다.'));
+    for (const p of list) {
+      const r = p.dur / p.max, tl = h('div', 'ptile t-' + SA.partTier(p) + (benchSel === p ? ' on' : ''), `${partIcon(p)}${equipped.has(p.uid) ? '<span class="eq">장착</span>' : ''}${p.lv ? `<span class="lv">${'★'.repeat(p.lv)}</span>` : ''}<span class="db"><i style="width:${r * 100}%;background:${durCol(r)}"></i></span>`);
+      tl.onmouseenter = (e) => SA.UI.showTipHtml(e, `<b>${SA.partHtml(p)}</b>`); tl.onmouseleave = SA.UI.hideTip;
+      tl.onclick = () => { benchSel = p; render(); };
+      left.appendChild(tl);
+    }
+    if (benchSel) {
+      const p = benchSel, d = SA.PARTS[p.id], r = p.dur / p.max;
+      right.appendChild(h('div', 'iinfo', `${partIcon(p)}<div><b>${SA.partHtml(p)}</b><div class="small"><span class="tier t-${SA.partTier(p)}">${SA.partTier(p)}</span> ${equipped.has(p.uid) ? '<span class="dim">· 장착 중</span>' : ''}</div></div>`));
+      right.appendChild(h('div', 'small', `내구도 <span class="db wide"><i style="width:${r * 100}%;background:${durCol(r)}"></i></span> ${Math.round(p.dur)}/${Math.round(p.max)} · 성능 ${Math.round(SA.Combat.eff(p) * 100)}%`));
+      right.appendChild(h('div', 'small desc', SA.partFullDesc(p)));
+      const acts = h('div', 'acts');
+      if (p.dur < p.max) { const b = h('button', 'btn small', `수리 ₵${repairCost(p)}`); tip(b, '최대 내구도가 3 준다'); b.onclick = () => { if (prof.credits < repairCost(p)) { SA.Audio.sfx('deny'); toast('크레딧이 부족하다.', '#ffb3b3'); return; } prof.credits -= repairCost(p); repair(p); SA.Audio.sfx('repair'); save(); render(); }; acts.appendChild(b); }
+      if (SA.canUp(p.id) && (p.lv || 0) < 2) { const b = h('button', 'btn small up', p.lv ? '은하 강화' : '행성 강화'); tip(b, p.lv ? '주 스탯 +60% + 보스 각성 1개' : '주 스탯 +30% + 개조 1개'); b.onclick = (e) => upMenu(e, p, 'up'); acts.appendChild(b); }
+      if (p.lv && SA.modsFor(p.id).length > 1) { const b = h('button', 'btn small', '개조 교체'); b.onclick = (e) => upMenu(e, p, 'mod'); acts.appendChild(b); }
+      if (!equipped.has(p.uid)) { const b = h('button', 'btn small', '분해'); tip(b, salvageText(p)); b.onclick = () => salvage(p); acts.appendChild(b); }
+      if (!prof.rescued.teo && (SA.canUp(p.id) && (p.lv || 0) < 2)) acts.appendChild(h('div', 'small dim', '강화는 테오를 구조하면'));
+      right.appendChild(acts);
+    }
+    wrap.append(left, right);
+  };
+  const benchCraft = (wrap) => {
+    const prof = P(), list = h('div', 'bn-list'), have = (k) => SA.Grid.count(prof.stash, k);
+    const rows = [];
+    // 부품 (아는 설계도)
+    if (!['item', 'mat'].includes(benchKind)) for (const rid of prof.recipes) {
+      const r = SA.RECIPES[rid], d = SA.PARTS[rid]; if (!r || !d || (benchKind !== 'all' && d.slot !== benchKind)) continue;
+      const fromOk = !r.from || prof.parts.some(p => p.id === r.from), lock = d.tier !== '일반' && !prof.rescued.teo;
+      const ok = !lock && fromOk && Object.keys(r.mats).every(k => have(k) >= r.mats[k]);
+      rows.push({ ok, lock, tier: d.tier, html: `${d.img ? `<img class="pimg" src="${d.img}">` : ico(KIND_IC[d.slot], 'pimg')}<span class="nm" style="color:${SA.TIER_COL[d.tier]}">${d.name}</span><span class="mats">${r.from ? `<span class="mat ${fromOk ? 'ok' : 'bad'}">${SA.PARTS[r.from].name}</span>` : ''}${matIcons(r.mats, have)}</span>`, tip: `<b>${d.name}</b> <span class="dim">${d.tier}</span><br><span class="desc">${d.desc}</span>${lock ? '<br><span class="bad">테오를 구조하면 만들 수 있다</span>' : ''}`, fn: () => craft(rid) });
+    }
+    // 동력원·소모품·상위 재료
+    if (['all', 'item', 'mat'].includes(benchKind)) for (const id in SA.CRAFT) {
+      const k = SA.ITEMS[id].kind; if (benchKind === 'mat' && k !== 'umat') continue; if (benchKind === 'item' && k === 'umat') continue;
+      const r = SA.CRAFT[id], d = SA.ITEMS[id], ok = Object.keys(r.mats).every(m => have(m) >= r.mats[m]);
+      rows.push({ ok, tier: tierOf(id), html: `<img class="pimg" src="${SA.Render.iconSrc(id)}"><span class="nm">${d.name} <span class="dim small">${have(id)}개</span></span><span class="mats">${matIcons(r.mats, have)}</span>`, tip: `<b>${d.name}</b><br><span class="desc">${d.desc}</span>`, fn: () => craftItem(id) });
+    }
+    rows.sort((a, b) => (b.ok - a.ok) || TIERS.indexOf(a.tier) - TIERS.indexOf(b.tier));
+    if (!rows.length) list.appendChild(h('div', 'dim small pad', '만들 수 있는 것이 없다. 설계도는 필드에서 줍는다.'));
+    for (const r of rows) {
+      const row = h('div', 'crow2' + (r.ok ? '' : ' no') + (r.lock ? ' lock' : ''), r.html + (r.lock ? ico('ic_lock', 'lk') : ''));
+      tip(row, r.tip);
+      const b = h('button', 'btn small' + (r.ok ? '' : ' dis'), '제작'); b.onclick = r.fn; row.appendChild(b);
+      list.appendChild(row);
+    }
+    wrap.appendChild(list);
   };
   // 분해: 제작 재료의 절반(내림)을 돌려준다. 레시피가 없는 부품은 고철 1
-  const salvageMats = (p) => { const r = SA.RECIPES[p.id], out = {}; if (!r) return { scrap: 1 }; for (const k in r.mats) { const n = Math.floor(r.mats[k] / 2); if (n) out[k] = n; } if (p.lv) out.qcircuit = p.lv; if (!Object.keys(out).length) out.scrap = 1; return out; };   // 행성·은하는 양자 회로도 돌려준다
+  const salvageMats = (p) => { const r = SA.RECIPES[p.id], out = {}; if (!r) return { scrap: 1 }; for (const k in r.mats) { const n = Math.floor(r.mats[k] / 2); if (n) out[k] = n; } if (p.lv) out.qcircuit = p.lv; if (!Object.keys(out).length) out.scrap = 1; return out; };
   const salvageText = (p) => '분해하면: ' + Object.entries(salvageMats(p)).map(([k, n]) => `${SA.ITEMS[k].name} ${n}`).join(', ');
   const salvage = (p) => {
     const prof = P(), out = salvageMats(p), ids = []; for (const k in out) for (let i = 0; i < out[k]; i++) ids.push(k);
     const tmp = SA.Grid.make(prof.stash.w, prof.stash.h, prof.stash.items.slice());
     if (!ids.every(id => SA.Grid.add(tmp, id))) { toast('창고에 재료를 넣을 자리가 없다.', '#ffb3b3'); SA.Audio.sfx('deny'); return; }
     ids.forEach(id => SA.Grid.add(prof.stash, id));
-    prof.parts = prof.parts.filter(x => x !== p);
+    prof.parts = prof.parts.filter(x => x !== p); benchSel = null;
     toast(`분해: ${SA.partName(p)} → ${salvageText(p).slice(6)}`, '#cfe3ff'); SA.Audio.sfx('salvage', 1); save(); render();
   };
   const craftItem = (id) => {
@@ -396,17 +498,17 @@ SA.Hangar = (() => {
   const repairCost = (p) => Math.ceil((p.max - p.dur) * SA.partVal(p) / 250);
   // ── 행성·은하 강화 / 개조 교체 ──
   const upMenu = (e, p, mode) => {
-    const prof = P(), d = SA.PARTS[p.id], have = (k) => SA.Grid.count(prof.stash, k);
+    const prof = P(), have = (k) => SA.Grid.count(prof.stash, k);
     if (!prof.rescued.teo) { SA.Audio.sfx('deny'); toast('정비사 테오를 구조해야 강화할 수 있다.', '#ffb3b3'); return; }
     const m = h('div', 'ctx wide');
-    const close = () => document.querySelectorAll('.ctx').forEach(x => x.remove());
+    const closeM = () => document.querySelectorAll('.ctx').forEach(x => x.remove());
     const can = (c) => prof.credits >= c.cr && Object.keys(c.mats).every(k => have(k) >= c.mats[k]);
-    const costLine = (c) => matLine(c.mats, have) + ` · <span class="${prof.credits >= c.cr ? 'ok' : 'bad'}">₵${c.cr}</span>`;
+    const costLine = (c) => matIcons(c.mats, have) + ` <span class="${prof.credits >= c.cr ? 'ok' : 'bad'}">₵${c.cr}</span>`;
     const opt = (title, desc, c, fn) => {
-      const b = h('button', can(c) ? '' : 'dis', `<b>${title}</b><div class="small dim">${desc}</div><div class="small">${costLine(c)}</div>`);
+      const b = h('button', can(c) ? '' : 'dis', `<b>${title}</b><div class="small dim">${desc}</div><div class="small mats">${costLine(c)}</div>`);
       b.onclick = () => {
         if (!can(c)) { SA.Audio.sfx('deny'); toast('재료나 크레딧이 부족하다.', '#ffb3b3'); return; }
-        SA.Grid.takeMats(prof.stash, c.mats); prof.credits -= c.cr; fn(); close(); SA.Audio.sfx('buy'); save(); render();
+        SA.Grid.takeMats(prof.stash, c.mats); prof.credits -= c.cr; fn(); closeM(); SA.Audio.sfx('buy'); save(); render();
       };
       m.appendChild(b);
     };
@@ -421,15 +523,15 @@ SA.Hangar = (() => {
       for (const k of SA.modsFor(p.id)) if (k !== p.mod) opt(SA.MODS[k].name + (SA.MODS[k].only ? ' <span class="g-mod">전용</span>' : ''), SA.MODS[k].desc, c, () => { p.mod = k; toast(`개조 교체: ${SA.partName(p)}`, '#ffd166'); });
     } else if (!p.lv) {
       const c = SA.UPGRADE.cost(p), mods = SA.modsFor(p.id);
-      m.appendChild(h('div', 'pad small', `${SA.partHtml(p)} → <span style="color:${SA.TIER_COL['행성']}">행성</span> · 주 스탯 +30%${mods.length ? ' + 개조 1개 (고른다)' : ''} · 최대 내구도 120`));
+      m.appendChild(h('div', 'pad small', `${SA.partHtml(p)} → <span style="color:${SA.TIER_COL['행성']}">행성</span> · 주 스탯 +30%${mods.length ? ' + 개조 1개 (고른다)' : ''}`));
       if (mods.length) for (const k of mods) opt('개조: ' + SA.MODS[k].name + (SA.MODS[k].only ? ' <span class="g-mod">전용</span>' : ''), SA.MODS[k].desc, c, () => up(1, { mod: k }));
       else opt('행성으로 강화', SA.partDesc(p.id, 1), c, () => up(1, {}));
     } else {
-      m.appendChild(h('div', 'pad small', `${SA.partHtml(p)} → <span style="color:${SA.TIER_COL['은하']}">은하</span> · 주 스탯 +60% + 보스 각성 1개 · 최대 내구도 150${p.mod ? ' · 개조 유지' : ''}`));
+      m.appendChild(h('div', 'pad small', `${SA.partHtml(p)} → <span style="color:${SA.TIER_COL['은하']}">은하</span> · 주 스탯 +60% + 보스 각성 1개`));
       for (const k in SA.AWAKEN) { const A = SA.AWAKEN[k]; opt(`${A.name} <span class="dim">(${SA.ITEMS[A.mat].name})</span>`, A.desc, SA.UPGRADE.cost(p, k), () => up(2, { awk: k })); }
     }
     m.style.left = Math.min(innerWidth - 340, e.clientX) + 'px'; m.style.top = Math.min(innerHeight - 360, e.clientY) + 'px';
-    close(); document.body.appendChild(m);
+    closeM(); document.body.appendChild(m);
     setTimeout(() => addEventListener('mousedown', function off(ev) { if (!m.contains(ev.target)) { m.remove(); removeEventListener('mousedown', off); } }), 0);
   };
   const repair = (p) => { p.max = Math.max(40, p.max - 3); p.dur = p.max; };
@@ -445,67 +547,46 @@ SA.Hangar = (() => {
       const np = SA.Save.newPart(rid); prof.parts.push(np);
       for (const s in prof.loadouts) { const l = prof.loadouts[s]; for (const k of ['main', 'main2', 'obs']) if (l[k] === src.uid) l[k] = np.uid; for (const k of ['sub', 'act', 'pas']) l[k] = l[k].map(u => u === src.uid ? np.uid : u); }   // 장착 중이면 그대로 교체
     } else {
-      if (!SA.Grid.takeMats(prof.stash, r.mats)) { SA.Audio.sfx('deny'); toast('재료가 부족하다.', '#ffb3b3'); return; }
+      if (!Object.keys(r.mats).every(k => SA.Grid.count(prof.stash, k) >= r.mats[k])) { SA.Audio.sfx('deny'); toast('재료가 부족하다.', '#ffb3b3'); return; }
+      SA.Grid.takeMats(prof.stash, r.mats);
       prof.parts.push(SA.Save.newPart(rid));
     }
     toast(`제작 완료: ${SA.PARTS[rid].name}`, '#5dffb0'); SA.Audio.sfx('buy'); SA.Quest.event('craft'); save(); render();
   };
 
-  // ── 상점 ──
+  // ── 상점 (오스의 단말): 소모품 · 해독 코드 충전 ──
   const shop = (body) => {
-    const prof = P(), c1 = h('div', 'col wide'), c2 = h('div', 'col');
-    c1.appendChild(h('h3', '', '기체'));
-    for (const id in SA.SHIPS) {
-      if (SA.SHIPS[id].hidden) continue;   // 단장 전용기 등 숨은 기체
-      const s = SA.SHIPS[id], own = prof.ships.includes(id);
-      const c = h('div', 'card ship');
-      c.appendChild(shipImg(id));
-      c.appendChild(h('div', '', `<b>${s.name}</b> <span class="dim">${s.role}</span><div class="small">${s.desc}</div><div class="small dim">HP ${s.hp} · 속도 ${s.speed} · 서브 ${s.sub} · 패시브 ${s.pas} · 화물 ${s.cargo[0]}×${s.cargo[1]}</div>`));
-      const b = h('button', 'btn small' + (own ? ' dis' : ''), own ? '보유' : `구매 ₵${s.price}`);
-      b.onclick = () => {
-        if (own) return;
-        if (prof.credits < s.price) { toast('크레딧이 부족하다.', '#ffb3b3'); SA.Audio.sfx('deny'); return; }
-        prof.credits -= s.price; prof.ships.push(id);
-        const cur = prof.loadouts[prof.ship];   // 지금 기체의 장착을 최대한 그대로 옮긴다
-        prof.loadouts[id] = { main: cur.main, main2: cur.main2 || null, sub: cur.sub.slice(0, s.sub), act: cur.act.slice(), pas: cur.pas.slice(0, s.pas), obs: cur.obs || null, cell: cur.cell || null };
-        autoEquip(id); prof.ship = id; toast(`${s.name} 구매 — 가진 부품으로 자동 장착했다`, '#5dffb0'); SA.Audio.sfx('buy'); save(); render();
-      };
-      c.appendChild(b); c1.appendChild(c);
-    }
-    c2.appendChild(h('h3', '', '파일럿'));
-    c2.appendChild(h('div', 'dim small', '파일럿은 이제 고용하지 않는다. 조난 신호를 구조하면 합류한다 (테오를 구한 뒤부터, 탈출을 거듭하면 신호가 뜬다).'));
-    c2.appendChild(h('h3', '', '소모품'));
+    const prof = P(), c = h('div', 'shop');
     for (const [id, price] of SA.SHOP.consumables) {
-      const d = SA.ITEMS[id], c = h('div', 'sellrow', `<img src="${SA.Render.iconSrc(id)}" style="width:${d.w * 16}px;height:${d.h * 16}px"><span>${d.name}<br><span class="dim small">${d.desc}</span></span>`);
+      const d = SA.ITEMS[id], r = h('div', 'srow', `<img src="${SA.Render.iconSrc(id)}"><span class="nm">${d.name}</span><span class="dim small">창고 ${SA.Grid.count(prof.stash, id)}</span>`);
+      tip(r, `<b>${d.name}</b><br><span class="desc">${d.desc}</span>`);
       const b = h('button', 'btn small', `₵${price}`);
       b.onclick = () => {
-        if (prof.credits < price) { SA.Audio.sfx('deny'); return; }
+        if (prof.credits < price) { SA.Audio.sfx('deny'); toast('크레딧이 부족하다.', '#ffb3b3'); return; }
         if (!SA.Grid.add(prof.stash, id)) { toast('창고가 가득 찼다.', '#ffb3b3'); return; }
-        prof.credits -= price; SA.Audio.sfx('buy'); toast(`${d.name} 구매 — 창고로. 출격 준비에서 가져갈 개수를 고른다.`); save(); render();
+        prof.credits -= price; SA.Audio.sfx('buy'); save(); render();
       };
-      c.appendChild(b); c2.appendChild(c);
+      r.appendChild(b); c.appendChild(r);
     }
-    // 해독 코드 충전 (등록한 코드만)
-    c2.appendChild(h('h3', '', '해독 코드 충전'));
     const known = Object.keys(SA.CODES).filter(k => (prof.codeKnown || {})[k]);
-    if (!known.length) c2.appendChild(h('div', 'dim small', '필드에서 해독키를 주워 창고에서 등록하면 여기서 충전할 수 있다. 여는 데는 보안해독기(패시브) 장착이 필요하다.'));
+    if (known.length) c.appendChild(h('h4', '', '해독 코드 충전'));
     for (const k of known) {
-      const c = SA.CODES[k], cur = (prof.codes || {})[k] || 0, full = cur >= c.uses;
-      const r = h('div', 'sellrow', `<span>${c.name} <b>${cur}</b>/${c.uses}회<br><span class="dim small">가득 채운다</span></span>`);
-      const b = h('button', 'btn small' + (full ? ' dis' : ''), full ? '가득' : `₵${c.price}`);
-      b.onclick = () => { if (full) return; if (prof.credits < c.price) { toast('크레딧이 부족하다.', '#ffb3b3'); SA.Audio.sfx('deny'); return; } prof.credits -= c.price; prof.codes[k] = c.uses; SA.Audio.sfx('buy'); save(); render(); };
-      r.appendChild(b); c2.appendChild(r);
+      const cd = SA.CODES[k], cur = (prof.codes || {})[k] || 0, full = cur >= cd.uses;
+      const r = h('div', 'srow', `${ico('ic_decoder', 'pimg')}<span class="nm">${cd.name}</span><span class="dim small">${cur}/${cd.uses}회</span>`);
+      const b = h('button', 'btn small' + (full ? ' dis' : ''), full ? '가득' : `₵${cd.price}`);
+      b.onclick = () => { if (full) return; if (prof.credits < cd.price) { toast('크레딧이 부족하다.', '#ffb3b3'); SA.Audio.sfx('deny'); return; } prof.credits -= cd.price; prof.codes[k] = cd.uses; SA.Audio.sfx('buy'); save(); render(); };
+      r.appendChild(b); c.appendChild(r);
     }
-    c2.appendChild(h('h3', '', '재료 배달'));
-    if (!prof.rescued.deliv) {
-      c2.appendChild(h('div', 'dim small', prof.rescued.teo ? '배달 상인 도리의 조난 신호를 구조하면 열린다. 다음 출격에 신호가 뜬다.' : '정비사 테오를 구조한 뒤에 도리의 조난 신호가 뜬다. 구조하면 열린다.'));
-      body.append(c1, c2); return;
-    }
-    const D = SA.SHOP.delivery, dv = deliveryStock(), left = D.every - (Date.now() % D.every);
-    c2.appendChild(h('div', 'dim small', `재고는 20분마다 바뀐다. 다음 교체까지 ${Math.floor(left / 60000)}분 ${Math.floor(left / 1000) % 60}초. 판매가의 ${D.mul}배.`));
+    body.appendChild(c);
+  };
+  // ── 배달 (도리) ──
+  const deliv = (body) => {
+    const prof = P(), D = SA.SHOP.delivery, dv = deliveryStock(), left = D.every - (Date.now() % D.every), c = h('div', 'shop');
+    c.appendChild(h('div', 'small dim', `재고 교체까지 ${Math.floor(left / 60000)}분`));
     for (const st of dv.stock) {
       const d = SA.ITEMS[st.id], price = Math.ceil(d.val * D.mul);
-      const c = h('div', 'sellrow', `<img src="${SA.Render.iconSrc(st.id)}" style="width:${d.w * 16}px;height:${d.h * 16}px"><span>${d.name} <b>${st.n}</b>개 남음<br><span class="dim small">${d.desc}</span></span>`);
+      const r = h('div', 'srow', `<img src="${SA.Render.iconSrc(st.id)}"><span class="nm">${d.name}</span><span class="dim small">${st.n}개 남음</span>`);
+      tip(r, `<b>${d.name}</b><br><span class="desc">${d.desc}</span><br><span class="dim">판매가의 ${D.mul}배</span>`);
       const b = h('button', 'btn small' + (st.n ? '' : ' dis'), st.n ? `₵${price}` : '품절');
       b.onclick = () => {
         if (!st.n) return;
@@ -513,9 +594,9 @@ SA.Hangar = (() => {
         if (!SA.Grid.add(prof.stash, st.id)) { toast('창고가 가득 찼다.', '#ffb3b3'); return; }
         prof.credits -= price; st.n--; SA.Audio.sfx('buy'); save(); render();
       };
-      c.appendChild(b); c2.appendChild(c);
+      r.appendChild(b); c.appendChild(r);
     }
-    body.append(c1, c2);
+    body.appendChild(c);
   };
   // 20분 단위 시간 칸마다 재고를 새로 뽑는다 (게임을 꺼 둔 동안에도 흐른다)
   const deliveryStock = () => {
@@ -529,84 +610,85 @@ SA.Hangar = (() => {
     return prof.deliv;
   };
 
-  // ── 의뢰 ── 수주(동시 3개) → 진행 → 보상. 받을 수 있는 것 위로, 완료는 접는다
+  // ── 의뢰: 접힌 한 줄 (색 띠 · 제목 · 진행 막대 · 보상), 누르면 펼침 ──
+  let openC = null;
+  const progOf = (c) => {   // [지금, 목표, 상세 html]
+    const prof = P(), K = SA.Contracts, st = K.st(c.id);
+    if (c.type === 'deliver') { let a = 0, b = 0; const t = Object.keys(c.mats).map(k => { const n = Math.min(SA.Grid.count(prof.stash, k), c.mats[k]); a += n; b += c.mats[k]; return `<span class="mat ${n >= c.mats[k] ? 'ok' : 'bad'}"><img src="${SA.Render.iconSrc(k)}">${n}/${c.mats[k]}</span>`; }).join(''); return [a, b, t]; }
+    if (c.type === 'wing') return [st.progress >= 1 ? 1 : 0, 1, `${SA.NAMED[c.named].name}와 출격해 ${c.goal === 'escort' ? '수송선 호위' : '사냥꾼 격추'} 후 탈출`];
+    if (c.type === 'raven') return [prof.raven.done ? 1 : 0, 1, prof.raven.done ? '붙잡았다' : prof.raven.stage ? '도주한 레이븐과 재대결 → 포드 회수' : '둥지에서 레이븐을 몰아붙여라'];
+    return [Math.min(st.progress, c.need), c.need, st.accepted ? '' : '수주한 뒤부터 센다'];
+  };
   const contracts = (body) => {
-    const prof = P(), K = SA.Contracts, col = h('div', 'col wide'), side = h('div', 'col');
+    const prof = P(), K = SA.Contracts;
     K.sync();
-    col.appendChild(h('h3', '', `의뢰 게시판 <span class="dim small">수주 ${K.active().length}/${SA.REP.maxActive}</span>`));
+    // 진영 줄다리기
+    const kv = prof.rep.kingdom, ev = prof.rep.empire, ln = prof.route || K.lean();
+    const tug = h('div', 'tug', `<span class="rep-kingdom">왕국 ${kv > 0 ? '+' : ''}${kv}</span><div class="track"><i class="k" style="width:${Math.max(0, Math.min(50, kv / 2))}%"></i><i class="e" style="width:${Math.max(0, Math.min(50, ev / 2))}%"></i><b></b></div><span class="rep-empire">제국 ${ev > 0 ? '+' : ''}${ev}</span>`);
+    tip(tug, `왕국·제국 의뢰를 끝내면 그 진영 +${SA.REP.gain}, 반대 -${SA.REP.loss}. 중립은 영향 없음.<br>1막이 끝날 때 높은 쪽의 2막 루트로 간다.<br>${prof.route ? `루트 확정: ${K.FAC[prof.route]}` : `지금 기울어진 쪽: ${ln ? K.FAC[ln] : '없음'}`}`);
+    body.appendChild(tug);
+    body.appendChild(h('div', 'small dim', `수주 ${K.active().length}/${SA.REP.maxActive}`));
     const rank = (c) => { const s = K.st(c.id); return s.done ? 4 : K.canClaim(c) ? 0 : s.accepted ? 1 : 2; };
     const list = SA.STORY.contracts.filter(K.open).sort((a, b) => rank(a) - rank(b) || (b.key ? 1 : 0) - (a.key ? 1 : 0));
     const RV = { kingdom: 'empire', empire: 'kingdom' };
     const done = h('details', 'donebox'); let nDone = 0;
     for (const c of list) {
-      const st = K.st(c.id), can = K.canClaim(c);
-      let prog = '';
-      if (c.type === 'deliver') prog = Object.keys(c.mats).map(k => { const n = SA.Grid.count(prof.stash, k); return `<span class="${n >= c.mats[k] ? 'ok' : 'bad'}">${SA.ITEMS[k].name} ${Math.min(n, c.mats[k])}/${c.mats[k]}</span>`; }).join(' · ');
-      else if (c.type === 'wing') prog = st.progress >= 1 ? '<span class="ok">완료 — 보상을 받아라</span>' : `${SA.NAMED[c.named].name}와 함께 출격해 ${c.goal === 'escort' ? '수송선을 탈출점까지 호위' : '심연의 사냥꾼 격추'} 후 탈출 <span class="dim">(G: 엄호 · 윙맨이 격추되면 그 판은 실패)</span>`;
-      else if (c.type === 'raven') prog = prof.raven.done ? '<span class="ok">레이븐을 붙잡았다</span>' : prof.raven.stage ? '도주한 레이븐과 재대결 → 탈출 포드 회수' : '둥지에서 레이븐을 몰아붙여라';
-      else prog = `${Math.min(st.progress, c.need)}/${c.need}${st.accepted ? '' : ' <span class="dim">(수주 후부터 센다)</span>'}`;
-      const rw = `₵${c.reward.credits}${c.reward.item ? ' + ' + SA.ITEMS[c.reward.item].name : ''}`;
-      const repTxt = RV[c.fac] ? ` · <span class="rep-${c.fac}">${K.FAC[c.fac]} +${SA.REP.gain}</span> <span class="rep-${RV[c.fac]}">${K.FAC[RV[c.fac]]} -${SA.REP.loss}</span>` : '';
-      const state = st.done ? '' : can ? '<span class="ok">보상 받기 가능</span>' : st.accepted ? '<span class="dim">진행 중</span>' : '';
-      const card = h('div', 'card fac-' + (c.fac || 'neutral') + (st.done ? ' off' : '') + (st.accepted && !st.done ? ' taken' : ''),
-        `<span class="ftag">${K.FAC[c.fac || 'neutral']}</span>${c.key ? ' <span class="ftag key">중요</span>' : ''} <b>${c.title}</b> <span class="dim">${c.giver}</span> ${state}<div class="small">"${c.brief}"</div><div class="small">진행: ${prog}</div><div class="small">보상: ${rw}${repTxt}</div>`);
-      if (st.done) { card.appendChild(h('div', 'ok small', '완료')); done.appendChild(card); nDone++; continue; }
-      const row = h('div', 'row');
-      if (!st.accepted) {
-        const b = h('button', 'btn small' + (K.active().length >= SA.REP.maxActive ? ' dis' : ''), '수주');
-        b.onclick = () => { const err = K.accept(c.id); if (err) { toast(err, '#ffb3b3'); SA.Audio.sfx('deny'); return; } SA.Audio.sfx('click'); render(); };
-        row.appendChild(b);
-      } else {
-        const b = h('button', 'btn small' + (can ? '' : ' dis'), c.type === 'deliver' ? '납품' : '보상 받기');
-        b.onclick = () => {
-          const rep = K.claim(c.id);
-          if (rep === null) { SA.Audio.sfx('deny'); return; }
-          autoRegister();
-          toast(`의뢰 완료: ${c.title} — ${rw}${rep}`, '#5dffb0'); SA.Audio.sfx('extract'); SA.Quest.event('contract'); save(); render();
-        };
-        const x = h('button', 'btn tiny', '포기');
-        x.onclick = () => { K.abandon(c.id); SA.Audio.sfx('click'); render(); };
-        row.append(b, x);
+      const st = K.st(c.id), can = K.canClaim(c), [a, b, det] = progOf(c);
+      const rwIc = `<span class="rw">₵${c.reward.credits}${c.reward.item ? `<img src="${SA.Render.iconSrc(c.reward.item)}" title="${SA.ITEMS[c.reward.item].name}">` : ''}</span>`;
+      const chipT = st.done ? '<span class="chip">완료</span>' : can ? `<span class="chip ok">${ico('ic_gift')}보상</span>` : st.accepted ? '<span class="chip">진행 중</span>' : '';
+      const row = h('div', 'cr fac-' + (c.fac || 'neutral') + (st.accepted && !st.done ? ' taken' : '') + (openC === c.id ? ' open' : '') + (st.done ? ' off' : ''),
+        `<div class="hd"><b>${c.key ? '<span class="key">중요</span> ' : ''}${c.title}</b><span class="cbar"><i style="width:${b ? a / b * 100 : 0}%"></i></span><span class="cnum">${a}/${b}</span>${rwIc}${chipT}</div>`);
+      row.querySelector('.hd').onclick = () => { openC = openC === c.id ? null : c.id; render(); };
+      if (openC === c.id) {
+        const rep = RV[c.fac] ? ` · <span class="rep-${c.fac}">${K.FAC[c.fac]} +${SA.REP.gain}</span> <span class="rep-${RV[c.fac]}">${K.FAC[RV[c.fac]]} -${SA.REP.loss}</span>` : '';
+        const dd = h('div', 'dt', `<div class="small"><span class="dim">${c.giver}</span> "${c.brief}"</div>${det ? `<div class="small">${det}</div>` : ''}<div class="small dim">보상 ₵${c.reward.credits}${c.reward.item ? ' + ' + SA.ITEMS[c.reward.item].name : ''}${rep}</div>`);
+        const r2 = h('div', 'acts');
+        if (!st.done && !st.accepted) {
+          const bb = h('button', 'btn small' + (K.active().length >= SA.REP.maxActive ? ' dis' : ''), '수주');
+          bb.onclick = () => { const err = K.accept(c.id); if (err) { toast(err, '#ffb3b3'); SA.Audio.sfx('deny'); return; } SA.Audio.sfx('click'); render(); };
+          r2.appendChild(bb);
+        } else if (!st.done) {
+          const bb = h('button', 'btn small' + (can ? '' : ' dis'), c.type === 'deliver' ? '납품' : '보상 받기');
+          bb.onclick = () => { const rp = K.claim(c.id); if (rp === null) { SA.Audio.sfx('deny'); return; } autoRegister(); toast(`의뢰 완료: ${c.title}${rp}`, '#5dffb0'); SA.Audio.sfx('extract'); SA.Quest.event('contract'); save(); render(); };
+          const x = h('button', 'btn tiny', '포기'); x.onclick = () => { K.abandon(c.id); SA.Audio.sfx('click'); render(); };
+          r2.append(bb, x);
+        }
+        dd.appendChild(r2); row.appendChild(dd);
       }
-      card.appendChild(row); col.appendChild(card);
+      if (st.done) { done.appendChild(row); nDone++; } else body.appendChild(row);
     }
-    if (nDone) { done.insertBefore(h('summary', 'dim', `완료한 의뢰 ${nDone}건`), done.firstChild); col.appendChild(done); }
-    // 진영 호감도
-    side.appendChild(h('h3', '', '진영 호감도'));
-    const bar = (f) => { const v = prof.rep[f], w = Math.min(100, Math.abs(v)); return h('div', 'repbar', `<span class="rep-${f}">${K.FAC[f]}</span><span class="track"><i class="${v >= 0 ? 'pos' : 'neg'} rep-bg-${f}" style="width:${w / 2}%;${v >= 0 ? 'left:50%' : 'right:50%'}"></i></span><b>${v > 0 ? '+' : ''}${v}</b>`); };
-    side.append(bar('kingdom'), bar('empire'));
-    const ln = prof.route || K.lean();
-    side.appendChild(h('div', 'small', prof.route ? `2막 루트 확정: <b class="rep-${prof.route}">${K.FAC[prof.route]}</b>` : `지금 기울어진 쪽: ${ln ? `<b class="rep-${ln}">${K.FAC[ln]}</b>` : '<span class="dim">없음</span>'}`));
-    side.appendChild(h('div', 'dim small', `왕국·제국 의뢰를 끝내면 그 진영 +${SA.REP.gain}, 반대 진영 -${SA.REP.loss}. 중립(중개인 오스) 의뢰는 영향이 없다. 1막이 끝날 때 호감도가 높은 진영의 2막 루트로 간다.`));
-    body.append(col, side);
+    if (nDone) { done.insertBefore(h('summary', 'dim small', `완료 ${nDone}건`), done.firstChild); body.appendChild(done); }
   };
 
-  // ── 기록 ──
-  const records = (body) => {
-    const prof = P(), c1 = h('div', 'col wide'), c2 = h('div', 'col');
-    const ST = SA.STORY;
-    if ((prof.decoding || []).length) c1.appendChild(h('div', 'warn small', `해독 중 (${prof.decoding.length}/${SA.DECODE.slots}): ${prof.decoding.map(d => SA.ITEMS[d.id].name).join(', ')} — 다음 출격이 끝나면 완료`));
-    if ((prof.signals || []).length) {   // 해독한 신호: 다음 출격 맵에 뜬다 (기록에는 안 남는다)
-      for (const i of prof.signals) { const b = ST.bbReward[i]; c1.appendChild(h('div', 'card log', `<span class="dim small">해독한 신호 · ${b.src}</span><br><b>${b.title}</b>${b.lines.map(l => `<div class="small">${l}</div>`).join('')}<div class="small warn">다음 출격: ${b.signal.label}</div>`)); }
+  // ── 해독기: 해독 칸 3 · 창고의 블랙박스 · 출처별 기록 · 구석에 전적 ──
+  const decoder = (body) => {
+    const prof = P(), ST = SA.STORY, top = h('div', 'dc-top'), dec = prof.decoding || [];
+    const slots = h('div', 'dslots');
+    for (let i = 0; i < SA.DECODE.slots; i++) { const d = dec[i]; slots.appendChild(h('div', 'dslot' + (d ? ' busy' : ''), d ? `<img src="${SA.Render.iconSrc(d.id)}"><span class="small">다음 출격 뒤</span>` : '<span class="dim small">빈 칸</span>')); }
+    top.appendChild(slots);
+    const s = prof.stats;
+    top.appendChild(tip(h('div', 'stats small dim', `출격 ${s.raids} · 탈출 ${s.extracts}`), `출격 ${s.raids} · 탈출 ${s.extracts} · 격추당함 ${s.deaths}<br>격추 ${s.kills}기 · 최고 운반 가치 ₵${s.bestValue}`));
+    body.appendChild(top);
+    const boxes = prof.stash.items.filter(it => it.id === 'bb_reward' || SA.Decode.srcOf(it.id));
+    for (const it of boxes) {
+      const r = h('div', 'srow', `<img src="${SA.Render.iconSrc(it.id)}"><span class="nm">${SA.ITEMS[it.id].name}</span>`);
+      if (dec.length < SA.DECODE.slots) { const b = h('button', 'btn small', '맡기기'); tip(b, '다음 출격이 끝나면 열린다'); b.onclick = () => decode(it, false); r.appendChild(b); }
+      const b2 = h('button', 'btn small', `즉시 ₵${SA.DECODE.instant}`); b2.onclick = () => decode(it, true); r.appendChild(b2);
+      body.appendChild(r);
     }
-    c1.appendChild(h('h3', '', `블랙박스 기록 ${prof.logs.length}/${ST.blackbox.length}`));
+    for (const i of prof.signals || []) { const b = ST.bbReward[i]; body.appendChild(h('div', 'card log sig', `<b>${b.title}</b> <span class="warn small">다음 출격: ${b.signal.label}</span>${b.lines.map(l => `<div class="small">${l}</div>`).join('')}`)); }
+    body.appendChild(h('h4', '', `블랙박스 기록 ${prof.logs.length}/${ST.blackbox.length}`));
     const fresh = new Set(prof.logsNew || []);
-    for (const src in ST.bbSrc) {   // 출처별 묶음. 못 찾은 기록은 ??? 칸 (어디서 나오는지만)
-      const S = ST.bbSrc[src], L = ST.blackbox.filter(b => b.src === src), got = L.filter(b => prof.logs.includes(b.id)).length;
-      c1.appendChild(h('div', 'log-src', `<b>${S.name}</b> <span class="dim small">${got}/${L.length}</span>`));
+    for (const src in ST.bbSrc) {
+      const Sx = ST.bbSrc[src], L = ST.blackbox.filter(b => b.src === src), got = L.filter(b => prof.logs.includes(b.id)).length;
+      body.appendChild(h('div', 'log-src', `<b>${Sx.name}</b> <span class="dim small">${got}/${L.length}</span>`));
       for (const b of L) {
-        if (prof.logs.includes(b.id)) c1.appendChild(h('div', 'card log', `${fresh.has(b.id) ? '<span class="new">NEW</span> ' : ''}<b>${b.title}</b>${b.lines.map(l => `<div class="small">${l}</div>`).join('')}`));
-        else c1.appendChild(h('div', 'card log unknown', `<b>???</b> <span class="dim small">— ${S.where}</span>`));
+        if (prof.logs.includes(b.id)) body.appendChild(h('div', 'card log', `${fresh.has(b.id) ? '<span class="new">NEW</span> ' : ''}<b>${b.title}</b>${b.lines.map(l => `<div class="small">${l}</div>`).join('')}`));
+        else body.appendChild(tip(h('div', 'card log unknown', '<b>???</b>'), `<span class="dim">${Sx.where}</span>`));
       }
     }
     if (fresh.size) { prof.logsNew = []; save(); }   // 한 번 보면 NEW 표시는 사라진다
-    const s = prof.stats;
-    c2.appendChild(h('h3', '', '전적'));
-    c2.appendChild(h('div', 'card', `출격 ${s.raids} · 탈출 ${s.extracts} · 격추당함 ${s.deaths}<br>격추 ${s.kills}기<br>최고 운반 가치 ₵${s.bestValue}`));
-    c2.appendChild(h('h3', '', '팁'));
-    SA.STORY.tips.forEach(t => c2.appendChild(h('div', 'small dim', '· ' + t)));
-    body.append(c1, c2);
   };
 
-  return { open, close, go, toast, render };
+  return { open, close, go, toast, render, openPanel, closePanel, isPanelOpen, openRack, barHover, setResult, hud, progOf };
 })();

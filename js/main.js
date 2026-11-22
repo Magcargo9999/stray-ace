@@ -14,7 +14,6 @@ SA.Main = (() => {
     fit(); addEventListener('resize', fit);
     SA.profile = SA.Save.load();
     SA.Input.attach(cv);
-    document.querySelectorAll('#hg-tabs button').forEach(b => b.onclick = () => SA.Hangar.go(b.dataset.tab));
     $('#title-start').onclick = () => { SA.Audio.init(); $('#title').style.display = 'none'; beginFlow(); };
     $('#title-reset').onclick = twice($('#title-reset'), () => { SA.profile = SA.Save.reset(); SA.Hangar.toast('초기화했다.'); });
     $('#hg-settings').onclick = () => openSettings(false);
@@ -34,7 +33,11 @@ SA.Main = (() => {
     };
   };
 
+  // 출격 직전 의뢰 진행을 찍어 두고, 결과창에서 이번 판에 오른 것만 보여 준다
+  let preC = {};
+  const cSnap = () => { const K = SA.Contracts, o = {}; for (const c of SA.STORY.contracts) { const st = K.st(c.id); if (st.accepted && !st.done && K.open(c)) o[c.id] = SA.Hangar.progOf(c); } return o; };
   const startRaid = () => {
+    preC = cSnap();
     scene = 'raid';
     document.querySelectorAll('.ctx').forEach(x => x.remove()); SA.UI.hideTip();
     SA.Raid.start(SA.profile);
@@ -50,7 +53,7 @@ SA.Main = (() => {
   };
   const startTutorial = () => {
     scene = 'raid'; document.querySelectorAll('.ctx').forEach(x => x.remove()); SA.UI.hideTip();
-    $('#hangar').style.display = 'none';
+    SA.Hangar.close();
     SA.Tutorial.start();
   };
   const endTutorial = (got) => {
@@ -65,7 +68,7 @@ SA.Main = (() => {
   // ── 연습장 ──
   const startRange = () => {
     scene = 'raid'; document.querySelectorAll('.ctx').forEach(x => x.remove()); SA.UI.hideTip();
-    $('#hangar').style.display = 'none';
+    SA.Hangar.close();
     SA.Raid.start(SA.profile, { range: true });
     const pnl = document.createElement('div'); pnl.id = 'rangepanel';
     const types = [['k_fighter', '전투기'], ['e_frigate', '프리깃'], ['k_turret', '포대'], ['corrode', '침식체'], ['hunter', '사냥꾼'], ['raven', '레이븐']];
@@ -112,29 +115,46 @@ SA.Main = (() => {
   const showResult = (r) => {
     scene = 'result';
     SA.UI.tabClose(); SA.UI.hideTip();
+    SA.Hangar.setResult(r);
     const w = $('#result'); w.style.display = 'flex';
     const list = (items) => items.length ? items.map(it => `<img title="${SA.ITEMS[it.id].name}" src="${SA.Render.iconSrc(it.id)}" style="width:${SA.ITEMS[it.id].w * 24}px;height:${SA.ITEMS[it.id].h * 24}px">`).join('') : '<span class="dim">없음</span>';
     const pl = SA.PILOTS[r.pilot];
+    const sub = r.ok ? (r.emergency ? '비상탈출 — 보안 칸과 장착 부품만 남았다.' : '화물을 전부 창고로 옮겼다.') : '화물을 잃었다. 보안 칸만 남았다.';
+    // 알림: 한 줄씩 짧게 (자세한 건 마우스를 올리면)
+    const notes = [];
+    const n = (cls, txt, tipTxt) => notes.push(`<div class="${cls}"${tipTxt ? ` title="${tipTxt}"` : ''}>${txt}</div>`);
+    if (!r.ok && r.pilot !== 'cmdr') n('warn', `${pl.name} 부상 · ${SA.INJURY_RAIDS}회 휴식`, SA.profile.pilot !== r.pilot ? `다음 출격은 ${SA.PILOTS[SA.profile.pilot].name}` : '');
+    if (!r.ok && r.mode === 'normal') n('dim', '장착 부품 내구도 -40%', '작업대에서 수리할 수 있다');
+    if (!r.ok && r.mode === 'easy') n('dim', '쉬움 — 장착 부품 무사');
+    if (!r.ok && r.mode === 'recover') n('warn', '다음 출격에 잔해 신호', '찾아서 들고 탈출하면 부품을 되찾는다 (한 번뿐)');
+    if (r.lostPart) n('bad', `잃은 부품: ${r.lostPart}`);
+    if (r.lostAll && r.lostAll.length) n('bad', `${r.mode === 'recover' ? '떨어뜨린' : '잃은'} 부품: ${r.lostAll.join(', ')}`);
+    if (r.overflow) n('warn', `창고가 가득 차 일부 자동 판매 ₵${r.overflow}`);
+    (r.rescued || []).forEach(m => n('ok', m));
+    (r.lostCaps || []).forEach(x => n('warn', `${x}을(를) 잃었다`, '다음 출격에 다시 기회가 온다'));
+    (r.repMsgs || []).forEach(m => n('warn', m));
+    if (r.ravenFled) n('ok', '레이븐 도주 — 다음 출격 미니맵의 붉은 신호');
+    if (r.recovered) n('ok', r.recovered);
+    if (r.decoded) n('ok', r.decoded);
+    if (r.partsIn && r.partsIn.length) n('ok', `부품함: ${r.partsIn.join(', ')}`);
+    if (r.giftPulse) n('warn', '용병단이 펄스건을 지급했다', '주무기가 남지 않아 내구도 60짜리를 받았다');
+    // 의뢰 진행: 이번 판에 오른 것만
+    const post = cSnap(), crows = [];
+    for (const c of SA.STORY.contracts) {
+      const before = preC[c.id], after = post[c.id] || (before && SA.Hangar.progOf(c));
+      if (!before || !after || after[0] <= before[0]) continue;
+      const done = after[0] >= after[1];
+      crows.push(`<div class="rc"><b>${c.title}</b><span class="pb"><i class="was" style="width:${before[0] / after[1] * 100}%"></i><i class="now" style="left:${before[0] / after[1] * 100}%;width:${(after[0] - before[0]) / after[1] * 100}%"></i></span><span>${before[0]} → ${after[0]}/${after[1]}</span>${done ? '<span class="ok">✓</span>' : ''}</div>`);
+    }
+    const tm = `${Math.floor(r.time / 60)}:${String(Math.floor(r.time % 60)).padStart(2, '0')}`;
     w.querySelector('.inner').innerHTML = `
       <h1 class="${r.ok ? 'ok' : 'bad'}">${r.ok ? '탈출 성공' : '격추'}</h1>
-      <div class="dim">${r.ok ? (r.emergency ? '비상탈출 — 화물칸을 버리고 보안 칸과 장착 부품만 들고 빠져나왔다.' : '살아서 돌아왔다. 화물은 전부 창고로.') : `화물을 잃었다. 보안 칸만 살아남았다. ${r.pilot === 'cmdr' ? '단장은 무사히 기체를 버리고 탈출했다.' : `${pl.name}은(는) ${SA.INJURY_RAIDS}회 출격 동안 쉬어야 한다.`}${SA.profile.pilot !== r.pilot ? ` 다음 출격은 ${SA.PILOTS[SA.profile.pilot].name}이(가) 나간다.` : ''}`}</div>
-      <div class="stats"><span>시간 <b>${Math.floor(r.time / 60)}:${String(Math.floor(r.time % 60)).padStart(2, '0')}</b></span><span>격추 <b>${r.kills}</b></span><span>스침 <b>${r.graze}</b></span><span>침식 <b>${Math.floor(r.corr)}%</b></span></div>
+      <div class="dim">${sub}</div>
+      <div class="stats"><span title="출격 시간">시간 <b>${tm}</b></span><span title="격추한 적">격추 <b>${r.kills}</b></span><span title="스친 탄">스침 <b>${r.graze}</b></span><span title="침식률">침식 <b>${Math.floor(r.corr)}%</b></span></div>
       <h3>가져온 것 <span class="ok">₵${r.value}</span></h3><div class="icons">${list(r.brought)}</div>
       ${r.lost.length ? `<h3>잃은 것</h3><div class="icons lost">${list(r.lost)}</div>` : ''}
-      ${r.overflow ? `<div class="warn small">창고가 가득 차서 일부를 ₵${r.overflow}에 자동 판매했다.</div>` : ''}
-      ${(r.rescued || []).map(m => `<div class="ok">${m}</div>`).join('')}
-      ${(r.lostCaps || []).map(n => `<div class="warn small">${n}을(를) 잃었다. 다음 출격에 다시 기회가 온다.</div>`).join('')}
-      ${(r.repMsgs || []).map(m => `<div class="warn small">${m}</div>`).join('')}
-      ${r.lostPart ? `<div class="bad">잃은 부품: ${r.lostPart} — 장착 칸이 비었다</div>` : ''}
-      ${r.ravenFled ? '<div class="ok">레이븐이 도주했다 — 다음 출격부터 미니맵의 붉은 신호에서 재대결</div>' : ''}
-      ${r.lostAll && r.lostAll.length ? `<div class="bad">${r.mode === 'recover' ? '그 자리에 떨어뜨린 부품' : '잃은 부품'}: ${r.lostAll.join(', ')}</div>` : ''}
-      ${!r.ok && r.mode === 'recover' ? '<div class="warn small">회수 모드 — 다음 출격 맵 어딘가에 잔해 신호가 뜬다. 찾아서 들고 탈출하면 되찾는다 (한 번뿐).</div>' : ''}
-      ${!r.ok && r.mode === 'normal' ? '<div class="small dim">장착 부품 내구도 -40%. 작업대에서 수리할 수 있다.</div>' : ''}
-      ${!r.ok && r.mode === 'easy' ? '<div class="small dim">쉬움 모드 — 장착 부품은 무사하다.</div>' : ''}
-      ${r.recovered ? `<div class="ok">${r.recovered}</div>` : ''}
-      ${r.decoded ? `<div class="ok">${r.decoded}</div>` : ''}
-      ${r.partsIn && r.partsIn.length ? `<div class="ok">부품함에 넣었다: ${r.partsIn.join(', ')}</div>` : ''}
-      ${r.giftPulse ? '<div class="warn small">주무기가 남지 않아 용병단이 펄스건(내구도 60)을 지급했다.</div>' : ''}`;
+      ${notes.length ? `<div class="notes">${notes.join('')}</div>` : ''}
+      ${crows.length ? `<h3>의뢰 진행</h3><div class="rcs">${crows.join('')}</div>` : ''}`;
   };
 
   const loop = (t) => {

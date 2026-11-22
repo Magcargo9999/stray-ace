@@ -72,7 +72,7 @@ SA.Tutorial = (() => {
       prompt(['W', 'A', 'S', 'D'], '이동', () => Math.hypot(P.x - x0, P.y - y0) > 40, '누르는 방향으로 움직인다');
       prompt(['마우스', '좌클릭'], '조준 · 사격', () => I().mouse.down, '마우스로 겨누고, 좌클릭을 누르고 있으면 쏜다');
     },
-    2: () => {   // ② 탄막 — Shift 저속·스침을 알려 주고 순양함을 잡는다
+    2: () => {   // ② 탄막 — Shift 저속·스침을 알려 주고 프리깃을 잡는다
       const fr = spawn('k_frigate', 380, 0, 2); fr.hp = fr.maxHp = 260; R.tut.fr = fr;
       spawn('k_tracker', 420, -160, 2);
       prompt(['Shift'], '저속 이동', () => I().isDown('ShiftLeft') || I().isDown('ShiftRight'), '누르는 동안 느려지고 판정점이 보인다. 맞는 곳은 기체 한가운데 점 하나뿐');
@@ -124,8 +124,8 @@ SA.Tutorial = (() => {
         if (!alive(1) && T.t > 1 && !T.prompt && !T.pq.length) go(2);
         break;
       }
-      case 2: {   // 기능만 알려 주고 목표치는 없다: 순양함만 잡으면 된다
-        T.goal = '순양함 격추';
+      case 2: {   // 기능만 알려 주고 목표치는 없다: 프리깃만 잡으면 된다
+        T.goal = '프리깃 격추';
         if (T.fr.dead && !T.prompt && !T.pq.length) { for (const e of R.enemies) if (e.tut === 2) e.dead = true; go(3); }
         break;
       }

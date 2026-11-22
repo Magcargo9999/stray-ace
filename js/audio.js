@@ -80,6 +80,8 @@ SA.Audio = (() => {
       case 'shield': tone('triangle', 700, t, 0.4, 0.12, { slide: 1100 }); break;
       case 'siren': for (let i = 0; i < 2; i++) { tone('sawtooth', 220, t + i * 0.5, 0.45, 0.08, { slide: 330, lp: 900 }); } break;
       case 'beep': tone('square', 1000, t, 0.07, 0.05, { lp: 3000 }); break;
+      case 'launch': tone('sawtooth', 110, t, 1.3, 0.07, { slide: 900, lp: 1600 }); noise(t, 1.3, 0.09, { f: 900, type: 'lowpass' }); break;   // 격납고 발진
+      case 'tick': if (gate(name, 60)) tone('triangle', 1700, t, 0.025, 0.025, { lp: 4000 }); break;   // 격납고 물건에 마우스를 올릴 때
       case 'extract': [523, 659, 784, 1046].forEach((f, i) => tone('square', f, t + i * 0.09, 0.2, 0.07, { lp: 3500 })); tone('sine', 200, t, 1.0, 0.15, { slide: 1600 }); break;
       case 'salvage': if (gate(name, 140)) tone('triangle', 300 + p * 500, t, 0.08, 0.04); break;
       case 'open': noise(t, 0.2, 0.15, { f: 1500, fTo: 400 }); tone('square', 330, t, 0.1, 0.05); break;

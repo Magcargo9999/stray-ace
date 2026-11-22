@@ -17,7 +17,7 @@ SA.UI = (() => {
     for (const it of grid.items) {
       const d = SA.ITEMS[it.id], [w, hh] = SA.Grid.dims(it);
       const tr = it.lv === 2 ? '은하' : it.lv === 1 ? '행성' : d.tier;
-      const n = h('div', 'item' + (tr && tr !== '일반' ? ' g-' + tr : ''));
+      const n = h('div', 'item' + (tr && tr !== '일반' ? ' g-' + tr : '') + (opts.sel && opts.sel === it.uid ? ' sel' : ''));
       n.style.left = it.x * CELL + 'px'; n.style.top = it.y * CELL + 'px';
       n.style.width = w * CELL + 'px'; n.style.height = hh * CELL + 'px';
       n.style.setProperty('--c', d.color);
@@ -141,6 +141,8 @@ SA.UI = (() => {
     const d = drag; drag = null;
     d.el.remove();
     document.querySelectorAll('.grid .preview').forEach(p => p.style.display = 'none');
+    // 격납고 창고: 끌지 않고 클릭만 하면 고르기 (오른쪽 정보칸)
+    if (d.src.kind === 'grid' && Math.hypot(e.clientX - d.sx, e.clientY - d.sy) < 5 && views[d.src.name].opts.onSelect) { views[d.src.name].opts.onSelect(d.src.it); return; }
     // 주변 아이템: 끌지 않고 좌클릭만 하면 화물칸 빈자리로
     if (d.src.kind === 'ground' && Math.hypot(e.clientX - d.sx, e.clientY - d.sy) < 5) {
       if (SA.Grid.add(SA.R.cargo, d.id, d.src.item.ch !== undefined ? { ch: d.src.item.ch } : undefined)) { d.src.item.taken = true; SA.Audio.sfx('pickup', 1); } else { SA.Audio.sfx('deny'); SA.Raid.msg('화물칸에 자리가 없다', '#ffb3b3', 2); }

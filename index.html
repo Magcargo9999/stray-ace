@@ -30,22 +30,20 @@
   <button class="btn big" id="title-start">격납고로</button>
   <div class="small dim">WASD 이동 · 좌클릭 사격 · 우클릭 조준 · 휠 주무기 교체 · R 동력원 교체 · Shift 저속 · Q/E 장비 · Space 파일럿 기술 · Tab 화물칸 · Z 시야 · M 지도 · X 길게 비상탈출 · Esc 일시정지</div>
   <button class="btn small ghostbtn" id="title-reset">저장 데이터 초기화</button>
-  <div class="small dim ver">프로토타입 v0.49 · 1단계</div>
+  <div class="small dim ver">프로토타입 v0.50 · 1단계</div>
 </div>
 
 <div id="hangar" class="full" style="display:none">
-  <header>
-    <div class="logo sm">STRAY<span>//</span>ACE <span class="dim">격납고</span></div>
-    <nav id="hg-tabs">
-      <button data-tab="sortie">출격 준비</button><button data-tab="stash">창고</button><button data-tab="bench">작업대</button>
-      <button data-tab="shop">상점</button><button data-tab="contracts">의뢰</button><button data-tab="records">기록</button>
-    </nav>
-    <div class="credits" id="hg-credits">₵0</div>
-    <button class="btn small" id="hg-settings">설정</button>
-  </header>
-  <div id="hg-quest" class="quest"></div>
-  <div id="hg-line" class="line"></div>
-  <main id="hg-body"></main>
+  <div id="hg-stage">
+    <canvas id="hg-cv"></canvas>
+    <div id="hg-goal" class="hg-goal"></div>
+    <div id="hg-top"><span class="credits" id="hg-credits">₵0</span><button class="hg-gear" id="hg-settings" title="설정 (Esc)"><img src="assets/hangar/ic_gear.png"></button></div>
+    <nav id="hg-bar"></nav>
+  </div>
+  <div id="hg-panel" style="display:none"><div class="pn">
+    <header><span class="por"></span><b class="ttl"></b><button class="x" title="닫기 (Esc)">✕</button></header>
+    <div class="pb" id="hg-body"></div>
+  </div></div>
 </div>
 
 <div id="tabwin" style="display:none">
@@ -85,6 +83,7 @@
 <script src="js/tutorial.js"></script>
 <script src="js/render.js"></script>
 <script src="js/inventory.js"></script>
+<script src="js/hangarScene.js"></script>
 <script src="js/hangar.js"></script>
 <script src="js/main.js"></script>
 </body>
