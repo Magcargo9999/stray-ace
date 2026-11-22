@@ -69,11 +69,11 @@ SA.Tutorial = (() => {
       prompt(['W', 'A', 'S', 'D'], '이동', () => Math.hypot(P.x - x0, P.y - y0) > 40, '누르는 방향으로 움직인다');
       prompt(['마우스', '좌클릭'], '조준 · 사격', () => I().mouse.down, '마우스로 겨누고, 좌클릭을 누르고 있으면 쏜다');
     },
-    2: () => {   // ② 탄막 — 첫 스침 보너스(20스택)를 쌓을 때까지 순양함은 격추되지 않는다
-      const fr = spawn('k_frigate', 380, 0, 2); fr.hp = fr.maxHp = 99999; R.tut.fr = fr;
+    2: () => {   // ② 탄막 — Shift 저속·스침을 알려 주고 순양함을 잡는다
+      const fr = spawn('k_frigate', 380, 0, 2); fr.hp = fr.maxHp = 260; R.tut.fr = fr;
       spawn('k_fighter', 420, -160, 2);
       prompt(['Shift'], '저속 이동', () => I().isDown('ShiftLeft') || I().isDown('ShiftRight'), '누르는 동안 느려지고 판정점이 보인다. 맞는 곳은 기체 한가운데 점 하나뿐');
-      prompt([], '스침', (p) => R.graze > 0 || p.t > 5, '적 탄을 판정점 가까이로 아슬아슬하게 스치면 스택이 쌓인다');
+      prompt([], '스침', (p) => R.graze > 0 || p.t > 5, '적 탄을 아슬아슬하게 스치면 스택이 쌓이고, 쌓일수록 피해·드랍이 오른다');
     },
     3: () => {   // ③ 매복 편대 — 기술과 장비를 아끼지 말 것
       msg('매복!', '#ff6b7a', 2.5); SA.Audio.sfx('siren'); R.shake = 6;
@@ -121,18 +121,9 @@ SA.Tutorial = (() => {
         if (!alive(1) && T.t > 1 && !T.prompt && !T.pq.length) go(2);
         break;
       }
-      case 2: {
-        if (!T.f.open) {
-          T.goal = `적 탄을 스쳐 스침 스택 쌓기 ${Math.min(SA.GRAZE.per, R.graze)}/${SA.GRAZE.per}  (Shift 저속)`;
-          if (R.graze >= SA.GRAZE.per || T.t > 60) {   // 첫 보너스(드랍·피해 +)가 붙는 스택까지
-            T.f.open = true; T.fr.hp = T.fr.maxHp = 260;
-            msg('스침 스택 — 쌓일수록 주는 피해와 드랍이 오른다. 맞으면 조금 깎인다', '#fff3a8', 6);
-          }
-        } else {
-          T.goal = `순양함 격추 — 스침 스택만큼 피해 ↑ (지금 +${Math.round(SA.Raid.grazeDmg() * 100)}%)`;
-          if (T.fr.dead && !alive(2)) go(3);
-          else if (T.fr.dead && T.t > 8) { for (const e of R.enemies) if (e.tut === 2) e.dead = true; go(3); }
-        }
+      case 2: {   // 기능만 알려 주고 목표치는 없다: 순양함만 잡으면 된다
+        T.goal = '순양함 격추';
+        if (T.fr.dead && !T.prompt && !T.pq.length) { for (const e of R.enemies) if (e.tut === 2) e.dead = true; go(3); }
         break;
       }
       case 3: {
