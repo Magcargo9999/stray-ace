@@ -3,7 +3,7 @@
 SA.HangarScene = (() => {
   const W = 1280, H = 720, $ = (s) => document.querySelector(s);
   const IMG = {}, SPR = {};            // 원본 이미지 / 축소본 캐시 { c: canvas, sil: 윤곽용 실루엣, a: 알파 }
-  let cv, ctx, stage, on = false, t0 = 0, T = 0, mx = 0, my = 0, hover = null, k = 1;
+  let cv, ctx, stage, on = false, t0 = 0, T = 0, mx = 640, my = 360, sx = 640, sy = 360, hover = null, k = 1;
   let anim = null, guide = null, bubble = null, chatT = 6, sparks = [];
   const P = () => SA.profile;
 
@@ -81,6 +81,30 @@ SA.HangarScene = (() => {
     x.drawImage(s.c, 0, 0); x.globalCompositeOperation = 'source-in'; x.fillStyle = '#05070d'; x.fillRect(0, 0, s.w, s.h);
     return (HALO[key] = c);
   };
+  // 미리 굽기: 배경(어둡게 한 겹 포함)·앞 레이어를 화면 크기로 한 번만 줄여 둔다
+  const LAY = {};
+  const layer = (n) => {
+    if (LAY[n]) return LAY[n]; const im = IMG[n]; if (!im) return null;
+    const [w, h] = n === 'bg' ? [W + 32, H + 18] : [W + 48, H + 27];
+    const c = shrink(im, w, h), x = c.getContext('2d');
+    if (n === 'bg') { x.fillStyle = 'rgba(8,12,24,0.5)'; x.fillRect(0, 0, w, h); }   // 배경을 한 겹 어둡게: 물건이 앞으로 나온다 (그림 파일은 그대로)
+    return (LAY[n] = c);
+  };
+  // 물건 한 장: 바닥 그림자 + 뒤쪽 그늘 + 짙은 테두리(평소) 또는 밝은 윤곽(마우스) + 그림
+  const BAKE = {};
+  const baked = (o, hv) => {
+    const key = o.id + o.h + (hv ? 'h' : ''); if (BAKE[key]) return BAKE[key];
+    const s = sprite(o.img, o.h); if (!s) return null;
+    const pad = 30, c = document.createElement('canvas'); c.width = s.w + pad * 2; c.height = s.h + pad * 2; const x = c.getContext('2d');
+    x.save(); x.translate(pad + s.w / 2, pad + s.h - 4); x.scale(1, 16 / (s.w * 0.55));
+    const g = x.createRadialGradient(0, 0, 0, 0, 0, s.w * 0.55); g.addColorStop(0, 'rgba(0,0,0,0.7)'); g.addColorStop(1, 'rgba(0,0,0,0)');
+    x.fillStyle = g; x.beginPath(); x.arc(0, 0, s.w * 0.55, 0, 6.29); x.fill(); x.restore();
+    const ha = halo(o.img, o.h, '#000000'); if (ha) { x.globalAlpha = 0.7; x.drawImage(ha.c, pad - ha.pad + 3, pad - ha.pad + 4); x.globalAlpha = 1; }
+    const edge = hv ? s.sil : rim(o.img, o.h);
+    if (edge) { x.globalAlpha = hv ? 1 : 0.85; for (const [dx, dy] of [[-2, 0], [2, 0], [0, -2], [0, 2]]) x.drawImage(edge, pad + dx, pad + dy); x.globalAlpha = 1; }
+    x.drawImage(s.c, pad, pad);
+    return (BAKE[key] = { c, pad });
+  };
   const floorLight = (cx, cy, rx, ry, col, a) => {   // 바닥 빛웅덩이 / 그림자
     ctx.save(); ctx.translate(cx, cy); ctx.scale(1, ry / rx);
     const g = ctx.createRadialGradient(0, 0, 0, 0, 0, rx); g.addColorStop(0, col.replace('A', a)); g.addColorStop(1, col.replace('A', 0));
@@ -132,7 +156,7 @@ SA.HangarScene = (() => {
   };
 
   // ── 그리기 ──
-  const par = (d) => [-(mx / W - 0.5) * d * 16, -(my / H - 0.5) * d * 8];
+  const par = (d) => [Math.round(-(sx / W - 0.5) * d * 16), Math.round(-(sy / H - 0.5) * d * 8)];   // 부드럽게 따라온 마우스 기준, 정수 픽셀
   const placed = (o) => {   // 화면 위 사각형 (시차 포함)
     const s = sprite(o.img, o.h); if (!s) return null;
     const [px, py] = par(o.d);
@@ -142,21 +166,14 @@ SA.HangarScene = (() => {
     ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.imageSmoothingEnabled = true;
     ctx.fillStyle = '#05070d'; ctx.fillRect(0, 0, W, H);
     // 뒷벽: 화면보다 조금 크게 깔아 시차로 가장자리가 안 보이게
-    if (IMG.bg) { const [px, py] = par(0.25); ctx.drawImage(IMG.bg, -16 + px, -9 + py, W + 32, H + 18); }
-    ctx.fillStyle = 'rgba(8,12,24,0.5)'; ctx.fillRect(0, 0, W, H);   // 배경을 한 겹 어둡게: 물건이 앞으로 나온다 (그림 파일은 그대로)
+    const B = layer('bg'); if (B) { const [px, py] = par(0.25); ctx.drawImage(B, -16 + px, -9 + py); }
     const bd = badges(), launching = anim && anim.type === 'launch';
     for (const o of OBJ) {
       if (o.pilots) { drawPilots(); continue; }
       if (o.npc) { if (visible(o)) drawNpc(o); continue; }
       if (!visible(o)) { if (hover === o) lockedSpot(o); continue; }
       const p = placed(o); if (!p) continue;
-      const hv = hover === o, cx = p.x + p.s.w / 2, by = p.y + p.s.h;
-      floorLight(cx, by - 4, p.s.w * 0.55, 16, 'rgba(0,0,0,A)', 0.7);   // 바닥 그림자
-      // 어두운 명암만: 뒤쪽 그늘 + 짙은 테두리로 배경과 떼어 놓는다 (색 빛은 쓰지 않는다)
-      const ha = halo(o.img, o.h, '#000000'); if (ha) { ctx.globalAlpha = 0.7; ctx.drawImage(ha.c, p.x - ha.pad + 3, p.y - ha.pad + 4); ctx.globalAlpha = 1; }
-      if (hv) for (const [dx, dy] of [[-2, 0], [2, 0], [0, -2], [0, 2]]) ctx.drawImage(p.s.sil, p.x + dx, p.y + dy);
-      else { const r = rim(o.img, o.h); if (r) { ctx.globalAlpha = 0.85; for (const [dx, dy] of [[-2, 0], [2, 0], [0, -2], [0, 2]]) ctx.drawImage(r, p.x + dx, p.y + dy); ctx.globalAlpha = 1; } }
-      ctx.drawImage(p.s.c, p.x, p.y);
+      const bk = baked(o, hover === o); if (bk) ctx.drawImage(bk.c, p.x - bk.pad, p.y - bk.pad);
       if (o.rack !== undefined) drawRackShip(o, p);
       if (o.ship && !launching) drawMainShip(o, p);
       if (o.id === 'decoder') drawDecoder(p);
@@ -166,7 +183,7 @@ SA.HangarScene = (() => {
     }
     if (launching) drawLaunch();
     drawSparks();
-    if (IMG.fg) { const [px, py] = par(1.1); ctx.drawImage(IMG.fg, -24 + px, -14 + py, W + 48, H + 27); }
+    const F = layer('fg'); if (F) { const [px, py] = par(1.1); ctx.drawImage(F, -24 + px, -14 + py); }
     if (anim && anim.type === 'crash' && anim.t < 0.6) { ctx.fillStyle = `rgba(232,240,255,${1 - anim.t / 0.6})`; ctx.fillRect(0, 0, W, H); }
     if (guide) drawGuide();
     if (hover && !guide && !(bubble && bubble.o && bubble.o.id === hover.id)) nameTag(hover);
@@ -251,7 +268,7 @@ SA.HangarScene = (() => {
   };
   // NPC: 원화가 오기 전까지 실루엣 자리표시
   const npcInfo = (o) => o.npc === 'pilot' ? { ...SA.PILOTS[o.pid], color: SA.PILOTS[o.pid].color } : SA.HG_NPC[o.npc];
-  const npcRect = (o) => { const [px, py] = par(o.d), bob = Math.sin(T * 1.6 + o.x) * 1.2; return { x: o.x + px, y: o.base + py + bob, w: o.h * 0.42, h: o.h }; };
+  const npcRect = (o) => { const [px, py] = par(o.d); return { x: o.x + px, y: o.base + py, w: o.h * 0.42, h: o.h }; };
   const drawFigure = (r, col, hov) => {
     const { x, y, w, h } = r, hr = h * 0.13;
     ctx.save();
@@ -272,7 +289,7 @@ SA.HangarScene = (() => {
 
   const icon = (name, x, y) => {
     const s = sprite('ic_' + name, 26); if (!s) return;
-    ctx.drawImage(s.c, Math.round(x - s.w / 2), Math.round(y - s.h + Math.sin(T * 4) * 3));
+    ctx.drawImage(s.c, Math.round(x - s.w / 2), Math.round(y - s.h + Math.sin(T * 2.5) * 2));
   };
   const lockedSpot = (o) => {
     const [px, py] = par(o.d), w = o.h * 1.1, x = o.x - w / 2 + px, y = o.base - o.h + py;
@@ -395,6 +412,7 @@ SA.HangarScene = (() => {
     // 호버
     if (!anim && !guide && !panelOpen()) pickHover();
     else if (hover && (panelOpen() || anim)) setHover(null);
+    sx += (mx - sx) * Math.min(1, dt * 5); sy += (my - sy) * Math.min(1, dt * 5);   // 시차가 마우스를 천천히 따라온다 (떨림 방지)
     for (const s of sparks) { s.x += s.vx * dt; s.y += s.vy * dt; s.vy += 160 * dt; s.l -= dt; }
     sparks = sparks.filter(s => s.l > 0);
     if (anim) {
@@ -433,5 +451,6 @@ SA.HangarScene = (() => {
     ctx.font = '13px "Galmuri11", sans-serif'; ctx.textAlign = 'center'; ctx.fillStyle = '#8f9bb8'; ctx.fillText('클릭해서 다음', W / 2, H - 92);
   };
 
-  return { init, load, start, stop, play, react, say, startGuide, fit, IMG, sprite, isAnim: () => !!anim, guideOn: () => !!guide };
+  const bench = (n = 30) => { const t = performance.now(); for (let i = 0; i < n; i++) { update(0.016); draw(); } return (performance.now() - t) / n; };   // 개발용: 한 프레임 평균 ms
+  return { init, load, start, stop, play, react, say, startGuide, fit, IMG, sprite, bench, isAnim: () => !!anim, guideOn: () => !!guide };
 })();

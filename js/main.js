@@ -172,7 +172,7 @@ SA.Main = (() => {
       R.mouseWorld.y = R.cam.y + (I.mouse.y - cv.height / 2) / zw;
       SA.Raid.update(rdt);
       if (SA.R) SA.Render.draw(ctx, SA.R);
-    } else if (scene !== 'raid') {
+    } else if (scene !== 'raid' && document.querySelector('#hangar').style.display === 'none') {   // 격납고가 떠 있으면 뒤 캔버스는 그리지 않는다
       // 메뉴 배경: 별만 흐른다
       ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.fillStyle = '#05070d'; ctx.fillRect(0, 0, cv.width, cv.height);
       ctx.fillStyle = '#3b4a6b';
