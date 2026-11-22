@@ -17,7 +17,7 @@ SA.Render = (() => {
     return c;
   };
   const load = (done) => {
-    const list = [['hex', 'assets/hex_hull.png'], ['beacon', 'assets/beacon.png'], ['hexTurret', 'assets/hex_turret.png'], ['swift', 'assets/swift_hull.png'], ['ace', SA.SHIPS.ace.img], ['bastion', 'assets/bastion_hull.png'], ['arsenal', 'assets/arsenal_hull.png'], ['flame', 'assets/engine_flame.png'], ['ast_rock', 'assets/m_rock.png'], ['ast_planet', 'assets/m_planetoid.png'], ['ast_shard', 'assets/m_shard.png'], ['box_crate', 'assets/box_crate.png'], ['box_locked', 'assets/box_locked.png'], ['sub_drone', 'assets/sub_drone.png'], ['poi_wreck', 'assets/poi_wreck.png'], ['i_rcap', 'assets/i_rcap.png']];
+    const list = [['poi_distress', 'assets/poi_distress.png'], ['hex', 'assets/hex_hull.png'], ['beacon', 'assets/beacon.png'], ['hexTurret', 'assets/hex_turret.png'], ['swift', 'assets/swift_hull.png'], ['ace', SA.SHIPS.ace.img], ['bastion', 'assets/bastion_hull.png'], ['arsenal', 'assets/arsenal_hull.png'], ['flame', 'assets/engine_flame.png'], ['ast_rock', 'assets/m_rock.png'], ['ast_planet', 'assets/m_planetoid.png'], ['ast_shard', 'assets/m_shard.png'], ['box_crate', 'assets/box_crate.png'], ['box_locked', 'assets/box_locked.png'], ['sub_drone', 'assets/sub_drone.png'], ['poi_wreck', 'assets/poi_wreck.png'], ['i_pod', 'assets/i_pod.png']];
     for (const id in SA.ENEMIES) { const d = SA.ENEMIES[id]; if (!d.img) continue; list.push(['en_' + id, d.img]);
       if (d.anim) for (let k = 1; k < d.anim.n; k++) list.push(['en_' + id + '_' + k, d.img.replace(/_0\.png$/, '_' + k + '.png')]); }   // 애니메이션 프레임 xxx_0..n-1.png
     for (const id in SA.ITEMS) if (SA.ITEMS[id].img) list.push(['it_' + id, SA.ITEMS[id].img]);
@@ -38,7 +38,7 @@ SA.Render = (() => {
       if (d.anim) for (let k = 1; k < d.anim.n; k++) if (IMG['en_' + id + '_' + k]) pre['en_' + id + '_' + k] = shrink(IMG['en_' + id + '_' + k], d.size[0] * Z, d.size[1] * Z); }
     // 필드 오브젝트 도트 (월드 크기 x ZOOM)
     const fit = (k, w, h) => { if (IMG[k]) pre[k] = shrink(IMG[k], w * Z, h * Z); };
-    fit('box_crate', 25, 14); fit('box_locked', 18, 25); fit('sub_drone', 11, 11); fit('poi_wreck', 72, 28); fit('i_rcap', 13, 17); fit('beacon', 40, 39);
+    fit('box_crate', 25, 14); fit('box_locked', 18, 25); fit('sub_drone', 11, 11); fit('poi_wreck', 72, 28); fit('i_pod', 13, 17); fit('poi_distress', 16, 18); fit('beacon', 40, 39);
     // 엄폐물: 크기 단계별로 미리 축소 (작은 원본은 그대로 확대)
     for (const k of ['rock', 'shard']) if (IMG['ast_' + k]) {
       const im = IMG['ast_' + k]; pre['ast_' + k] = [24, 48, 96].map(d => { const s = d * Z / Math.max(im.width, im.height); return shrink(im, im.width * s, im.height * s); });
@@ -288,14 +288,15 @@ SA.Render = (() => {
       const pulse = (t * 1.5) % 1;
       ctx.strokeStyle = `rgba(255,209,102,${1 - pulse})`; ctx.lineWidth = 1.5;
       ctx.beginPath(); ctx.arc(p.x, p.y, 10 + pulse * 40, 0, 6.29); ctx.stroke();
-      ctx.fillStyle = '#ffd166'; ctx.fillRect(p.x - 3, p.y - 3, 6, 6);
-      label(ctx, 'SOS', p.x, p.y - 12, '#ffd166', 7);
+      if (pre.poi_distress) { ctx.imageSmoothingEnabled = true; ctx.drawImage(pre.poi_distress, p.x - 8, p.y - 9, 16, 18); }   // 조난 신호 송신기 도트
+      else { ctx.fillStyle = '#ffd166'; ctx.fillRect(p.x - 3, p.y - 3, 6, 6); }
+      label(ctx, 'SOS', p.x, p.y - 13, '#ffd166', 7);
     } else if (p.type === 'rescue') {
       if (p.done) return;
       const pulse = (t * 1.2) % 1, tg = SA.RESCUE.targets[p.target];
       ctx.strokeStyle = `rgba(110,231,255,${1 - pulse})`; ctx.lineWidth = 1.5;
       ctx.beginPath(); ctx.arc(p.x, p.y, 12 + pulse * 46, 0, 6.29); ctx.stroke();
-      if (pre.i_rcap) { ctx.imageSmoothingEnabled = true; ctx.drawImage(pre.i_rcap, p.x - 6.5, p.y - 8.5, 13, 17); ctx.fillStyle = tg.color; ctx.fillRect(p.x - 1.5, p.y + 9, 3, 3); }
+      if (pre.i_pod) { ctx.imageSmoothingEnabled = true; ctx.drawImage(pre.i_pod, p.x - 6.5, p.y - 8.5, 13, 17); ctx.fillStyle = tg.color; ctx.fillRect(p.x - 1.5, p.y + 9, 3, 3); }
       else {
       ctx.fillStyle = '#12303a'; ctx.fillRect(p.x - 7, p.y - 7, 14, 14);
       ctx.strokeStyle = '#6ee7ff'; ctx.lineWidth = 1.5; ctx.strokeRect(p.x - 7, p.y - 7, 14, 14);

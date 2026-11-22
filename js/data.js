@@ -335,6 +335,9 @@ for (const id in SA.PARTS) {
   if (id !== 'raven' && id !== 'sensor') SA.BP_POOL[d.tier].push(id);   // 레이븐 전용 설계도는 일반 드랍 풀에서 뺀다
 }
 SA.ITEMS.bp_sensor.img = 'assets/bp_sensor.png';   // 도트 설계도 카드
+SA.PARTS.scatter.img = 'assets/p_scatter.png';   // 산탄 포탑 도트
+SA.PARTS.missile.img = 'assets/p_missile.png';   // 미사일 포드 도트
+SA.ITEMS.chip.img = 'assets/i_chip.png';   // 비행 기록 칩 도트
 // 부품 완성품 아이템 (필드 드랍용). 탈출하면 부품함으로 들어간다
 for (const id in SA.PARTS) {
   const d = SA.PARTS[id], sz = SA.PART_DROP.size[d.slot];
@@ -393,7 +396,7 @@ SA.RESCUE = {
 };
 for (const id in SA.RESCUE.targets) {
   const t = SA.RESCUE.targets[id];
-  SA.ITEMS['cap_' + id] = { name: '구조 캡슐: ' + t.name, w: 2, h: 2, val: 0, kind: 'capsule', img: 'assets/i_rcap.png', color: t.color, desc: '탈출해야 구조가 확정된다. 들고 있으면 이속 -10%. 잃으면 다음 출격에 신호가 다시 뜬다.' };
+  SA.ITEMS['cap_' + id] = { name: '구조 캡슐: ' + t.name, w: 2, h: 2, val: 0, kind: 'capsule', img: 'assets/i_pod.png', color: t.color, desc: '탈출해야 구조가 확정된다. 들고 있으면 이속 -10%. 잃으면 다음 출격에 신호가 다시 뜬다.' };
 }
 // 네임드 레이븐 (임시 수치): 둥지에서 체력 30%가 되면 도주 → 다음 출격부터 다른 위치에서 재대결 → 격추하면 탈출 포드를 들고 탈출해야 완료
 SA.RAVEN = { hp: 1500, fleeAt: 0.3, phase3At: 0.25, dodgeCd: [1.8, 1.5, 1.1],
