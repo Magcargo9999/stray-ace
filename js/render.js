@@ -260,7 +260,7 @@ SA.Render = (() => {
     if (R.extractFx) { R.extractFx -= 1 / 60; ctx.fillStyle = `rgba(200,255,230,${Math.max(0, R.extractFx) * 0.5})`; ctx.fillRect(vx0, vy0, 680, 400); }
 
     ctx.setTransform(1, 0, 0, 1, 0, 0);
-    drawHUD(ctx, R, camX, camY);
+    if (!(SA.Rec && SA.Rec.st.clean)) drawHUD(ctx, R, camX, camY);   // 촬영 모드: HUD 숨김
     if (R.tut && SA.Tutorial) SA.Tutorial.draw(ctx, R);   // 튜토리얼 목표·검은 화면 글귀·화이트아웃
   };
 

@@ -34,5 +34,11 @@ SA.Input = (() => {
   const isDown = (k) => down.has(k);
   const hit = (k) => pressed.has(k);
   const consume = (k) => pressed.delete(k);
-  return { attach, endFrame, isDown, hit, consume, mouse };
+  // 자동 촬영용: 키·마우스를 코드에서 직접 누른다
+  const sim = {
+    key(k, on) { if (on) { if (!down.has(k)) pressed.add(k); down.add(k); } else down.delete(k); },
+    tap(k) { pressed.add(k); },
+    mouse(x, y, l, r) { mouse.x = x; mouse.y = y; if (l != null) mouse.down = l; if (r != null) mouse.right = r; },
+  };
+  return { attach, endFrame, isDown, hit, consume, mouse, sim };
 })();

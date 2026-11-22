@@ -3,22 +3,34 @@ SA.Audio = (() => {
   let ctx = null, master, musicBus, sfxBus, noiseBuf, corrGain;
   const last = {};
   let track = null, nextTime = 0, step = 0, timer = null, corrLayer = 0;
+  let sdest = null;              // 녹화용 출력
+  let capLog = null, tNow = null; // 자동 촬영: 소리 대신 기록 → 나중에 오프라인으로 렌더
 
+  // 소리 회로: 실시간과 오프라인 렌더가 같은 회로를 쓴다
+  const build = (c) => {
+    master = c.createGain(); master.gain.value = 0.8; master.connect(c.destination);
+    musicBus = c.createGain(); musicBus.connect(master);
+    sfxBus = c.createGain(); sfxBus.connect(master);
+    noiseBuf = c.createBuffer(1, c.sampleRate, c.sampleRate);
+    const d = noiseBuf.getChannelData(0);
+    for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
+    corrGain = c.createGain(); corrGain.gain.value = 0; corrGain.connect(musicBus);
+    const o1 = c.createOscillator(), o2 = c.createOscillator(), f = c.createBiquadFilter();
+    o1.type = 'sawtooth'; o1.frequency.value = 55; o2.type = 'sawtooth'; o2.frequency.value = 55.7;
+    f.type = 'lowpass'; f.frequency.value = 260; o1.connect(f); o2.connect(f); f.connect(corrGain); o1.start(0); o2.start(0);
+  };
   const init = () => {
     if (ctx) { if (ctx.state === 'suspended') ctx.resume(); return; }
     try { ctx = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) { return; }
-    master = ctx.createGain(); master.gain.value = 0.8; master.connect(ctx.destination);
-    musicBus = ctx.createGain(); musicBus.connect(master);
-    sfxBus = ctx.createGain(); sfxBus.connect(master);
-    noiseBuf = ctx.createBuffer(1, ctx.sampleRate, ctx.sampleRate);
-    const d = noiseBuf.getChannelData(0);
-    for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
-    corrGain = ctx.createGain(); corrGain.gain.value = 0; corrGain.connect(musicBus);
-    const o1 = ctx.createOscillator(), o2 = ctx.createOscillator(), f = ctx.createBiquadFilter();
-    o1.type = 'sawtooth'; o1.frequency.value = 55; o2.type = 'sawtooth'; o2.frequency.value = 55.7;
-    f.type = 'lowpass'; f.frequency.value = 260; o1.connect(f); o2.connect(f); f.connect(corrGain); o1.start(); o2.start();
+    build(ctx);
     setVolumes();
     if (track) play(track, true);
+  };
+  // 녹화가 게임 소리를 같이 담도록 출력을 하나 더 뽑는다
+  const stream = () => {
+    if (!ctx || !ctx.createMediaStreamDestination) return null;
+    if (!sdest) { sdest = ctx.createMediaStreamDestination(); master.connect(sdest); }
+    return sdest.stream;
   };
   const setVolumes = () => {
     if (!ctx) return;
@@ -51,14 +63,15 @@ SA.Audio = (() => {
   };
   // 같은 소리가 한 프레임에 겹치면 하나만 (탄막 게임 소리 폭주 방지)
   const gate = (k, ms) => {
-    const n = performance.now();
+    const n = tNow != null ? tNow * 1000 : performance.now();
     if (last[k] && n - last[k] < ms) return false;
     last[k] = n; return true;
   };
 
   const sfx = (name, p = 1) => {
-    if (!ctx || ctx.state !== 'running') return;
-    const t = ctx.currentTime;
+    if (capLog) { capLog.push([SA.Cap.t, 's', name, p]); return; }
+    if (!ctx || (ctx.state !== 'running' && tNow == null)) return;
+    const t = tNow != null ? tNow : ctx.currentTime;
     switch (name) {
       case 'shoot': if (gate(name, 55)) tone('square', 880, t, 0.06, 0.05, { slide: 420, lp: 3000 }); break;
       case 'sub': if (gate(name, 70)) tone('square', 1200, t, 0.04, 0.025, { slide: 700, lp: 2500 }); break;
@@ -151,16 +164,56 @@ SA.Audio = (() => {
   };
   const play = (name, force) => {
     if (track === name && !force) return;
+    if (capLog) { track = name; capLog.push([SA.Cap.t, 'p', name]); return; }
     track = name; step = 0;
     if (!ctx) return;
     nextTime = ctx.currentTime + 0.08;
     if (!timer) timer = setInterval(tick, 25);
   };
+  const corrVol = (stage) => (stage >= 2 ? (stage === 3 ? 0.12 : 0.06) : 0);
   const setCorrosion = (stage) => {
+    if (capLog) { if (stage !== corrLayer) { corrLayer = stage; capLog.push([SA.Cap.t, 'c', stage]); } return; }
     if (!ctx || stage === corrLayer) return;
     corrLayer = stage;
-    corrGain.gain.setTargetAtTime(stage >= 2 ? (stage === 3 ? 0.12 : 0.06) : 0, ctx.currentTime, 0.8);
+    corrGain.gain.setTargetAtTime(corrVol(stage), ctx.currentTime, 0.8);
   };
 
-  return { init, sfx, play, setVolumes, setCorrosion, get track() { return track; } };
+  // ── 자동 촬영: 소리 사건을 시각과 함께 적어 두었다가, 촬영이 끝나면 같은 합성기로 WAV를 만든다 ──
+  const capStart = () => { capLog = []; if (track) capLog.push([SA.Cap.t, 'p', track]); if (corrLayer) capLog.push([SA.Cap.t, 'c', corrLayer]); };
+  const capStop = () => { const l = capLog || []; capLog = null; return l; };
+  const renderLog = async (log, dur, t0 = 0) => {
+    const keep = { ctx, master, musicBus, sfxBus, noiseBuf, corrGain, track, step, nextTime, corrLayer };
+    const sr = 48000, oc = new OfflineAudioContext(2, Math.max(1, Math.ceil(dur * sr)), sr);
+    ctx = oc; build(oc); setVolumes(); track = null; step = 0; nextTime = 0;
+    for (const k in last) delete last[k];
+    const music = (to) => {
+      while (track && TR[track] && nextTime < to) {
+        const tr = TR[track], sp = 60 / tr.bpm / 4;
+        if (tr.once && step >= tr.len) { track = null; return; }
+        tr.step(step % tr.len, nextTime, sp); step++; nextTime += sp;
+      }
+    };
+    for (const [ta, k, a, b] of log) {
+      const t = Math.max(0, ta - t0); if (t >= dur) break;
+      music(t); tNow = t;
+      if (k === 's') sfx(a, b);
+      else if (k === 'p') { track = a; step = 0; nextTime = t + 0.02; }
+      else if (k === 'c') corrGain.gain.setTargetAtTime(corrVol(a), t, 0.8);
+    }
+    music(dur); tNow = null;
+    const buf = await oc.startRendering();
+    ({ ctx, master, musicBus, sfxBus, noiseBuf, corrGain, track, step, nextTime, corrLayer } = keep);
+    for (const k in last) delete last[k];
+    // 16비트 WAV → base64
+    const n = buf.length, ch = [buf.getChannelData(0), buf.getChannelData(1)], out = new DataView(new ArrayBuffer(44 + n * 4));
+    const str = (o, s2) => { for (let i = 0; i < s2.length; i++) out.setUint8(o + i, s2.charCodeAt(i)); };
+    str(0, 'RIFF'); out.setUint32(4, 36 + n * 4, true); str(8, 'WAVEfmt '); out.setUint32(16, 16, true); out.setUint16(20, 1, true); out.setUint16(22, 2, true);
+    out.setUint32(24, sr, true); out.setUint32(28, sr * 4, true); out.setUint16(32, 4, true); out.setUint16(34, 16, true); str(36, 'data'); out.setUint32(40, n * 4, true);
+    for (let i = 0, o = 44; i < n; i++) for (let c = 0; c < 2; c++, o += 2) out.setInt16(o, Math.max(-1, Math.min(1, ch[c][i])) * 32767, true);
+    const u8 = new Uint8Array(out.buffer); let bin = '';
+    for (let i = 0; i < u8.length; i += 0x8000) bin += String.fromCharCode.apply(null, u8.subarray(i, i + 0x8000));
+    return btoa(bin);
+  };
+
+  return { init, sfx, play, setVolumes, setCorrosion, stream, capStart, capStop, renderLog, get track() { return track; } };
 })();

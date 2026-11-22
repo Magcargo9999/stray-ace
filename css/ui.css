@@ -306,3 +306,33 @@ h3 { margin: 6px 0 8px; font-size: 15px; color: #cfe3ff; } h4 { margin: 10px 0 6
 #settings .set-x { position: absolute; right: 10px; top: 10px; width: 32px; height: 32px; background: none; border: 1px solid #2a3550; color: #8f9bb8; cursor: pointer; font: inherit; margin: 0; }
 #settings .set-x:hover { color: #fff; border-color: #8fd3ff; }
 #settings .danger-zone { margin-top: 22px; padding-top: 14px; border-top: 1px dashed #2a3550; display: flex; flex-direction: column; gap: 6px; }
+
+/* ── 녹화 (F10 녹화 · F9 리플레이 · 편집창 · F8 촬영 모드) ── 화면 DOM이라 녹화본에는 찍히지 않는다 */
+#rec-ind { position: fixed; top: 10px; left: 50%; transform: translateX(-50%); z-index: 90; display: none; align-items: center; gap: 6px;
+  background: rgba(11,17,32,.85); border: 1px solid #6b2f33; color: #f03960; padding: 4px 10px; font-size: 13px; pointer-events: none; }
+#rec-ind i { width: 9px; height: 9px; background: #f03960; border-radius: 50%; animation: recblink 1s steps(2) infinite; }
+#rec-ind b { color: #d8e6ff; font-weight: normal; }
+@keyframes recblink { 50% { opacity: .2; } }
+#rec-rep { position: fixed; bottom: 6px; right: 8px; z-index: 90; display: none; color: #3a4a6b; font-size: 11px; pointer-events: none; }
+#rec-tags { position: fixed; bottom: 6px; left: 8px; z-index: 90; color: #8f9bb8; font-size: 11px; pointer-events: none; }
+#rec-toast { position: fixed; top: 44px; left: 50%; transform: translateX(-50%); z-index: 95; background: #0b1120; border: 1px solid #3a4a6b; color: #d8e6ff;
+  padding: 6px 14px; font-size: 13px; opacity: 0; transition: opacity .2s; pointer-events: none; white-space: nowrap; }
+#rec-toast.on { opacity: 1; }
+#rec-dev { position: fixed; top: 10px; right: 10px; z-index: 92; display: none; background: rgba(11,17,32,.92); border: 1px solid #3a4a6b; padding: 8px 10px; font-size: 12px; color: #d8e6ff; }
+#rec-dev label { display: block; margin: 4px 0; cursor: pointer; } #rec-dev input[type=range] { width: 110px; vertical-align: middle; }
+#rec-ed { position: fixed; inset: 0; z-index: 94; display: none; align-items: center; justify-content: center; background: rgba(5,7,13,.82); }
+#rec-ed .re-in { background: #0b1120; border: 1px solid #3a4a6b; padding: 14px 18px 16px; width: 680px; }
+#rec-ed .re-head { display: flex; align-items: baseline; gap: 12px; position: relative; } #rec-ed h2 { margin: 0 0 8px; font-size: 18px; color: #d8e6ff; }
+#rec-ed .set-x { position: absolute; right: -8px; top: -6px; }
+#rec-ed canvas { display: block; width: 640px; image-rendering: pixelated; }
+#re-pv { height: 360px; background: #05070d; border: 1px solid #1d2840; }
+#re-tl { height: 40px; margin: 6px 0 4px; cursor: pointer; touch-action: none; }
+#rec-ed .re-row { display: flex; align-items: center; gap: 6px; margin: 6px 0; flex-wrap: wrap; font-size: 12px; }
+#rec-ed .re-row > span:first-child { width: 58px; color: #8f9bb8; }
+#rec-ed .re-o { padding: 3px 10px; font-size: 12px; } #rec-ed .re-o.on { border-color: #d8e6ff; color: #d8e6ff; background: #1d2840; }
+#rec-ed .re-go { margin-top: 12px; } #rec-ed .re-go .btn.big { font-size: 15px; padding: 8px 22px; }
+#re-prog { position: relative; height: 18px; margin-top: 8px; background: #1d2840; display: none; }
+#re-prog i { position: absolute; left: 0; top: 0; bottom: 0; width: 0; background: #3a4a6b; }
+#re-prog span { position: relative; padding-left: 8px; font-size: 11px; line-height: 18px; color: #d8e6ff; }
+#rec-ed.busy #re-prog { display: block; } #rec-ed.busy .re-row button, #rec-ed.busy .set-x { pointer-events: none; opacity: .4; }
+#settings label.chk { display: flex; gap: 8px; align-items: center; cursor: pointer; font-size: 13px; margin-top: 6px; }

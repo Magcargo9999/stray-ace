@@ -103,10 +103,12 @@ SA.Main = (() => {
       <label>배경음악 <input type="range" min="0" max="1" step="0.05" value="${s.music}" id="set-music"></label>
       <label>효과음 <input type="range" min="0" max="1" step="0.05" value="${s.sfx}" id="set-sfx"></label>
       <div class="small"><b>격추 시 잃는 것</b> <span class="dim">(바로 적용)</span></div><div class="modes">${modeButtons(SA.profile.deathMode || 'normal')}</div>
-      <div class="small dim keys-help">WASD 이동 · 마우스 조준 · 좌클릭 주무기 · Q/E 액티브 · Space 파일럿 기술<br>휠 주무기 교체 · 우클릭 조준 · Shift 저속 이동 · R 동력원 교체 · X 길게 비상탈출<br>Tab 화물칸(시간 30%, 화물칸 안에서 R 회전) · F 싼 것 버리고 줍기 · Esc 일시정지</div>
+      <div class="small dim keys-help">WASD 이동 · 마우스 조준 · 좌클릭 주무기 · Q/E 액티브 · Space 파일럿 기술<br>휠 주무기 교체 · 우클릭 조준 · Shift 저속 이동 · R 동력원 교체 · X 길게 비상탈출<br>Tab 화물칸(시간 30%, 화물칸 안에서 R 회전) · F 싼 것 버리고 줍기 · Esc 일시정지<br>F10 녹화 시작/끝 · F9 방금 지나간 15초 저장 (리플레이 켰을 때)</div>
+      <label class="chk" title="녹화를 뒤에서 계속 돌려 두었다가 F9를 누르면 방금 지나간 15초를 저장한다. 컴퓨터 부담이 조금 는다."><input type="checkbox" id="set-replay"${s.replay ? ' checked' : ''}> 리플레이 버퍼 (F9로 방금 지나간 장면 저장)</label>
       <div class="danger-zone">${inRaid ? (SA.R && SA.R.tut ? '' : '<button class="btn danger" id="set-abandon">출격 포기 (격추로 처리)</button>') : '<button class="btn danger" id="set-reset">저장 데이터 초기화</button>'}</div>`;
     $('#set-music').oninput = (e) => { s.music = +e.target.value; SA.Audio.setVolumes(); SA.Save.store(SA.profile); };
     $('#set-sfx').oninput = (e) => { s.sfx = +e.target.value; SA.Audio.setVolumes(); SA.Audio.sfx('pickup', 2); SA.Save.store(SA.profile); };
+    $('#set-replay').onchange = (e) => { s.replay = e.target.checked; SA.Save.store(SA.profile); if (SA.Rec) SA.Rec.setReplay(s.replay); };
     w.querySelectorAll('[data-mode]').forEach(b => b.onclick = () => { SA.profile.deathMode = b.dataset.mode; SA.profile.deathModeSet = true; SA.Save.store(SA.profile); w.querySelectorAll('[data-mode]').forEach(x => x.classList.toggle('on', x === b)); });
     $('#set-close').onclick = () => { w.style.display = 'none'; if (SA.R) SA.R.paused = false; };
     if (inRaid && $('#set-abandon')) $('#set-abandon').onclick = () => { w.style.display = 'none'; SA.R.paused = false; if (SA.R.range) { leaveRange(); return; } SA.R.player.hp = 0; SA.Raid.playerDied(); };
@@ -160,7 +162,16 @@ SA.Main = (() => {
   };
 
   const loop = (t) => {
+    if (SA.Cap.manual) return;   // 자동 촬영 중에는 SA.Cap.step이 한 프레임씩 진행한다
     const rdt = Math.min(0.05, (t - last) / 1000 || 0.016); last = t;
+    frame(rdt);
+    requestAnimationFrame(loop);
+  };
+  let clock = 0;   // 메뉴 별 배경용 시계(ms)
+  const step = (dt) => frame(dt);
+  const frame = (rdt0) => {
+    clock += rdt0 * 1000; const t = clock;
+    const rdt = rdt0 * (SA.Rec ? SA.Rec.speed() : 1);   // 촬영 모드 슬로모션
     const I = SA.Input;
     if (scene === 'raid' && SA.R) {
       const R = SA.R;
@@ -178,10 +189,10 @@ SA.Main = (() => {
       ctx.fillStyle = '#3b4a6b';
       for (let i = 0; i < 120; i++) { const x = (i * 97 + t * 0.02 * (1 + i % 3)) % cv.width, y = (i * 53) % cv.height; ctx.fillRect(x, y, 2, 2); }
     }
+    if (SA.Rec) SA.Rec.frame();
     I.endFrame();
-    requestAnimationFrame(loop);
   };
 
   addEventListener('load', boot);
-  return { startRaid, startRange, leaveRange, showResult, openSettings, startTutorial, endTutorial };
+  return { step, startRaid, startRange, leaveRange, showResult, openSettings, startTutorial, endTutorial };
 })();

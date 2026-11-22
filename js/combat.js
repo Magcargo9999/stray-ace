@@ -511,6 +511,7 @@ SA.Combat = (() => {
   const hurtPlayer = (R, dmg) => {
     const P = R.player;
     if (P.invuln > 0 || P.dead || R.state !== 'play') return;
+    if (SA.Rec && SA.Rec.st.god) return;   // 촬영 모드 무적
     if (P.skillState === 'slip') return;   // 레이븐 슬립스트림: 피격 무효
     if (R.range && R.rangeGod) { P.invuln = 0.3; R.hurtFlash = 0.15; return; }   // 연습장 피해 무효
     if (P.odT > 0) dmg *= P.odMul || 2;

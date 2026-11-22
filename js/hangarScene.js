@@ -144,7 +144,7 @@ SA.HangarScene = (() => {
   const start = () => { if (on) return; on = true; fit(); t0 = performance.now(); requestAnimationFrame(loop); };
   const stop = () => { on = false; hideBubble(); };
   const loop = (now) => {
-    if (!on) return;
+    if (!on || SA.Cap.manual) return;
     const dt = Math.min(0.05, (now - t0) / 1000); t0 = now; T += dt;
     update(dt); draw();
     requestAnimationFrame(loop);
@@ -499,5 +499,6 @@ SA.HangarScene = (() => {
   const bench = (n = 30) => { const t = performance.now(); for (let i = 0; i < n; i++) { update(0.016); draw(); } return (performance.now() - t) / n; };   // 개발용: 한 프레임 평균 ms
   const setBarHi = (pid) => { barHi = pid; };
   const alerts = () => { const b = badges(), out = {}; if (b.board) out.contracts = 1; if (b.decoder) out.decoder = 1; return out; };
-  return { init, load, start, stop, play, react, say, startGuide, fit, IMG, sprite, bench, setBarHi, alerts, sortieState: () => shipState(), isAnim: () => !!anim, guideOn: () => !!guide };
+  const step = (dt) => { if (!on) return; T += dt; update(dt); draw(); };   // 자동 촬영용 한 프레임
+  return { step, init, load, start, stop, play, react, say, startGuide, fit, IMG, sprite, bench, setBarHi, alerts, sortieState: () => shipState(), isAnim: () => !!anim, guideOn: () => !!guide };
 })();
