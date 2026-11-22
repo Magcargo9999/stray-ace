@@ -17,7 +17,7 @@ SA.Render = (() => {
     return c;
   };
   const load = (done) => {
-    const list = [['hex', 'assets/hex_hull.png'], ['hexTurret', 'assets/hex_turret.png'], ['swift', 'assets/swift_hull.png'], ['ace', SA.SHIPS.ace.img], ['bastion', 'assets/bastion_hull.png'], ['arsenal', 'assets/arsenal_hull.png'], ['flame', 'assets/engine_flame.png'], ['ast_rock', 'assets/m_rock.png'], ['ast_planet', 'assets/m_planetoid.png'], ['ast_shard', 'assets/m_shard.png'], ['box_crate', 'assets/box_crate.png'], ['box_locked', 'assets/box_locked.png'], ['sub_drone', 'assets/sub_drone.png'], ['poi_wreck', 'assets/poi_wreck.png'], ['i_rcap', 'assets/i_rcap.png']];
+    const list = [['hex', 'assets/hex_hull.png'], ['beacon', 'assets/beacon.png'], ['hexTurret', 'assets/hex_turret.png'], ['swift', 'assets/swift_hull.png'], ['ace', SA.SHIPS.ace.img], ['bastion', 'assets/bastion_hull.png'], ['arsenal', 'assets/arsenal_hull.png'], ['flame', 'assets/engine_flame.png'], ['ast_rock', 'assets/m_rock.png'], ['ast_planet', 'assets/m_planetoid.png'], ['ast_shard', 'assets/m_shard.png'], ['box_crate', 'assets/box_crate.png'], ['box_locked', 'assets/box_locked.png'], ['sub_drone', 'assets/sub_drone.png'], ['poi_wreck', 'assets/poi_wreck.png'], ['i_rcap', 'assets/i_rcap.png']];
     for (const id in SA.ENEMIES) { const d = SA.ENEMIES[id]; if (!d.img) continue; list.push(['en_' + id, d.img]);
       if (d.anim) for (let k = 1; k < d.anim.n; k++) list.push(['en_' + id + '_' + k, d.img.replace(/_0\.png$/, '_' + k + '.png')]); }   // 애니메이션 프레임 xxx_0..n-1.png
     for (const id in SA.ITEMS) if (SA.ITEMS[id].img) list.push(['it_' + id, SA.ITEMS[id].img]);
@@ -38,7 +38,7 @@ SA.Render = (() => {
       if (d.anim) for (let k = 1; k < d.anim.n; k++) if (IMG['en_' + id + '_' + k]) pre['en_' + id + '_' + k] = shrink(IMG['en_' + id + '_' + k], d.size[0] * Z, d.size[1] * Z); }
     // 필드 오브젝트 도트 (월드 크기 x ZOOM)
     const fit = (k, w, h) => { if (IMG[k]) pre[k] = shrink(IMG[k], w * Z, h * Z); };
-    fit('box_crate', 25, 14); fit('box_locked', 18, 25); fit('sub_drone', 11, 11); fit('poi_wreck', 72, 28); fit('i_rcap', 13, 17);
+    fit('box_crate', 25, 14); fit('box_locked', 18, 25); fit('sub_drone', 11, 11); fit('poi_wreck', 72, 28); fit('i_rcap', 13, 17); fit('beacon', 40, 39);
     // 엄폐물: 크기 단계별로 미리 축소 (작은 원본은 그대로 확대)
     for (const k of ['rock', 'shard']) if (IMG['ast_' + k]) {
       const im = IMG['ast_' + k]; pre['ast_' + k] = [24, 48, 96].map(d => { const s = d * Z / Math.max(im.width, im.height); return shrink(im, im.width * s, im.height * s); });
@@ -446,14 +446,18 @@ SA.Render = (() => {
         ctx.fillStyle = C('#3a1018'); shipPoly(ctx, [[0, -14], [5, -4], [13, 8], [4, 6], [0, 10], [-4, 6], [-13, 8], [-5, -4]]); ctx.fill(); ctx.stroke();
         ctx.fillStyle = C('#ff4d6d'); ctx.fillRect(-1, -9, 2, 10); ctx.fillStyle = '#ffd166'; ctx.fillRect(-1, -6, 2, 2); ctx.globalAlpha = 1; break;
       default:
-        if (e.beaconOf) {   // 귀환 비콘 (임시 도트): 육각 기둥 + 주황 신호등
-          const pu = 0.5 + 0.5 * Math.sin(R.t * 6);
-          ctx.fillStyle = C('#2a3040'); shipPoly(ctx, [[0, -15], [12, -7], [12, 8], [0, 15], [-12, 8], [-12, -7]]); ctx.fill(); ctx.stroke();
-          ctx.fillStyle = C('#4a5468'); ctx.fillRect(-6, -9, 12, 18); ctx.fillStyle = `rgba(255,179,71,${0.5 + pu * 0.5})`; ctx.fillRect(-3, -6, 6, 6);
-          ctx.strokeStyle = `rgba(255,179,71,${0.6 * (1 - pu)})`; ctx.beginPath(); ctx.arc(0, 0, 18 + pu * 14, 0, 6.29); ctx.stroke();
+        if (e.beaconOf) {   // 귀환 비콘: 도트(assets/beacon.png) + 주황 신호 고리. 도트가 없으면 예전 임시 그림
+          const pu = 0.5 + 0.5 * Math.sin(R.t * 6), dot = !!pre.beacon;
+          if (dot) { ctx.imageSmoothingEnabled = true; if (fl) ctx.filter = 'brightness(2.4)'; ctx.drawImage(pre.beacon, -20, -20, 40, 39); ctx.filter = 'none'; }
+          else {
+            ctx.fillStyle = C('#2a3040'); shipPoly(ctx, [[0, -15], [12, -7], [12, 8], [0, 15], [-12, 8], [-12, -7]]); ctx.fill(); ctx.stroke();
+            ctx.fillStyle = C('#4a5468'); ctx.fillRect(-6, -9, 12, 18); ctx.fillStyle = `rgba(255,179,71,${0.5 + pu * 0.5})`; ctx.fillRect(-3, -6, 6, 6);
+          }
+          ctx.strokeStyle = `rgba(255,179,71,${0.6 * (1 - pu)})`; ctx.beginPath(); ctx.arc(0, dot ? -9 : 0, (dot ? 16 : 18) + pu * 14, 0, 6.29); ctx.stroke();   // 도트는 주황 구슬 둘레에 고리
           ctx.restore();
-          label(ctx, '귀환 비콘', e.x, e.y - 24, '#ffb347', 6);
-          ctx.fillStyle = '#300'; ctx.fillRect(e.x - 14, e.y + 19, 28, 3); ctx.fillStyle = '#ffb347'; ctx.fillRect(e.x - 14, e.y + 19, 28 * e.hp / e.maxHp, 3);
+          const dy = dot ? 5 : 0;
+          label(ctx, '귀환 비콘', e.x, e.y - 24 - dy, '#ffb347', 6);
+          ctx.fillStyle = '#300'; ctx.fillRect(e.x - 14, e.y + 19 + dy, 28, 3); ctx.fillStyle = '#ffb347'; ctx.fillRect(e.x - 14, e.y + 19 + dy, 28 * e.hp / e.maxHp, 3);
           return;
         }
         // crate (부수는 상자 도트)
