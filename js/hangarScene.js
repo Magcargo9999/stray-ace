@@ -1,9 +1,22 @@
 // 격납고 장면: 정면 투시 한 장 + 시차 레이어. 물건·NPC를 누르면 창이 열린다 (창 내용은 hangar.js)
 // 좌표는 논리 1280x720. 물건 위치는 OBJ 데이터로만 두어, 나중에 그림(시점)을 바꿔도 여기만 고치면 된다.
+// UI 피드백 반영(v0.55) 스위치: false로 바꾸면 그 항목만 예전대로 돌아간다
+SA.HGUI = {
+  sortieTag: true,    // 발사대 위 '출격 준비' 표시 + 기체 상태 한 줄, Enter로 출격 준비
+  shipLight: true,    // 발사대 기체 뒤 흰 빛 + 기체 밝은 테두리 (배경에 묻히지 않게)
+  barLink: true,      // 바로가기 막대에 마우스를 올리면 장면 물건도 같이 강조
+  barOrder: true,     // 막대 순서를 장면 왼쪽→오른쪽 배치에 맞춤 (끄면 예전 순서)
+  barAlerts: true,    // 막대 아이콘에도 '!' 알림
+  pixelFont: true,    // 갈무리11 12px 기준 글자 크기, 키캡 숫자
+  goalSplit: true,    // 목표 카드: 괄호 속 힌트를 흐린 보조 줄로
+  creditFx: true,     // 재화 쉼표 + 증감 숫자
+  hideNpc: true,      // 원화가 올 때까지 실루엣 NPC 숨김 (말풍선은 그 사람 물건 위에서)
+  rackLock: true,     // 뒷줄 안 산 기체 칸에 자물쇠 + 가격
+};
 SA.HangarScene = (() => {
   const W = 1280, H = 720, $ = (s) => document.querySelector(s);
   const IMG = {}, SPR = {};            // 원본 이미지 / 축소본 캐시 { c: canvas, sil: 윤곽용 실루엣, a: 알파 }
-  let cv, ctx, stage, on = false, t0 = 0, T = 0, mx = 640, my = 360, sx = 640, sy = 360, hover = null, k = 1;
+  let barHi = null, cv, ctx, stage, on = false, t0 = 0, T = 0, mx = 640, my = 360, sx = 640, sy = 360, hover = null, k = 1;
   let anim = null, guide = null, bubble = null, chatT = 6, sparks = [];
   const P = () => SA.profile;
 
@@ -21,13 +34,14 @@ SA.HangarScene = (() => {
     { id: 'workbench', img: 'workbench', x: 138, base: 690, h: 230, d: .7, open: 'bench', name: '작업대' },
     { id: 'teo', npc: 'teo', x: 290, base: 690, h: 108, d: .7, need: () => P().rescued.teo, open: 'bench' },
     { id: 'mina', npc: 'mina', x: 290, base: 690, h: 100, d: .7, need: () => !P().rescued.teo && P().pilots.mina && !P().pilots.mina.injury, open: 'bench' },
-    { id: 'rack', img: 'rack_main', x: 640, base: 650, h: 420, d: .7, open: 'sortie', name: '발사대 · 출격 준비', ship: true },
+    { id: 'rack', img: 'rack_main', x: 640, base: 650, h: 420, d: .7, open: 'sortie', name: '출격 준비', ship: true },
     { id: 'pilots', pilots: true, d: .75 },
-    { id: 'lounge', img: 'lounge', x: 410, base: 616, h: 108, d: .8, name: '대기실' },
+    { id: 'lounge', img: 'lounge', x: 410, base: 616, h: 108, d: .8, name: '대기실 · 파일럿', lounge: true },
     { id: 'decoder', img: 'decoder', x: 1150, base: 712, h: 190, d: .8, open: 'decoder', name: '해독기' },
   ];
   // 기능별 색 (바로가기 막대·창 테두리와 같은 색): 색으로 기능을 기억한다
   const ACCENT = { rack: '#5dffb0', workbench: '#4bb4f4', board: '#f335a5', terminal: '#3fede3', decoder: '#f03960', lockers: '#d8e6ff', cargo: '#ffd166' };
+  const ANCHOR = { os: 'terminal', teo: 'workbench', mina: 'workbench', dori: 'cargo', pilot: 'lounge' };   // NPC를 숨겼을 때 말풍선이 뜨는 물건
   const PILOT_X = [372, 412, 452, 340, 484, 308];
   // 그림 안 화면 위치 (스프라이트 기준 비율): 해독기 화면 · 슬롯 3칸, 단말 화면
   const SCREEN = { decoder: [0.16, 0.28, 0.84, 0.56], terminal: [0.09, 0.315, 0.83, 0.51] };
@@ -169,13 +183,14 @@ SA.HangarScene = (() => {
     const B = layer('bg'); if (B) { const [px, py] = par(0.25); ctx.drawImage(B, -16 + px, -9 + py); }
     const bd = badges(), launching = anim && anim.type === 'launch';
     for (const o of OBJ) {
-      if (o.pilots) { drawPilots(); continue; }
-      if (o.npc) { if (visible(o)) drawNpc(o); continue; }
+      if (o.pilots) { if (!SA.HGUI.hideNpc) drawPilots(); continue; }
+      if (o.npc) { if (visible(o) && !SA.HGUI.hideNpc) drawNpc(o); continue; }
       if (!visible(o)) { if (hover === o) lockedSpot(o); continue; }
       const p = placed(o); if (!p) continue;
-      const bk = baked(o, hover === o); if (bk) ctx.drawImage(bk.c, p.x - bk.pad, p.y - bk.pad);
+      const bk = baked(o, hover === o || (barHi && SA.HGUI.barLink && objPanel(o) === barHi)); if (bk) ctx.drawImage(bk.c, p.x - bk.pad, p.y - bk.pad);
       if (o.rack !== undefined) drawRackShip(o, p);
       if (o.ship && !launching) drawMainShip(o, p);
+      if (o.ship && SA.HGUI.sortieTag && !launching && hover !== o && !guide) sortieTag(p);
       if (o.id === 'decoder') drawDecoder(p);
       if (o.id === 'terminal') screenGlow(p, SCREEN.terminal, 0.08);
       if (o.id === 'workbench' && P().rescued.teo) weld(p, 0.17, 0.52);
@@ -216,6 +231,7 @@ SA.HangarScene = (() => {
   const drawSparks = () => { for (const s of sparks) { ctx.fillStyle = s.l > 0.25 ? '#d8e6ff' : '#8f9bb8'; ctx.fillRect(s.x, s.y, 2, 2); } };
 
   // 기체 그림: 위에서 본 도트를 '세워 둔' 모습으로. 장착한 서브무기도 얹는다
+  const SHIPSIL = {};
   const shipImg = (id) => id === 'hex' ? SA.Render.IMG.hex : SA.Render.IMG[id];
   const drawShipAt = (id, cx, cy, maxW, maxH, opt = {}) => {
     const s = SA.SHIPS[id], im = shipImg(id); if (!s) return;
@@ -227,6 +243,11 @@ SA.HangarScene = (() => {
     if (opt.flame && SA.Render.IMG.flame && s.flames) {
       const fr = Math.floor(T * 12) % 3; ctx.imageSmoothingEnabled = false;
       for (const [fx, fy] of s.flames) ctx.drawImage(SA.Render.IMG.flame, fr * 8, 0, 8, 8, ox + (fx - 4) * sc, oy + fy * sc, 8 * sc, 8 * sc * opt.flame);
+    }
+    if (im && opt.rim) {   // 밝은 테두리 (흰빛 실루엣을 1~2px 둘레에)
+      const key = id + '@' + Math.round(w) + 'x' + Math.round(h); let sil = SHIPSIL[key];
+      if (!sil) { sil = document.createElement('canvas'); sil.width = Math.ceil(w); sil.height = Math.ceil(h); const sx2 = sil.getContext('2d'); sx2.imageSmoothingEnabled = id !== 'hex'; sx2.drawImage(im, 0, 0, w, h); sx2.globalCompositeOperation = 'source-in'; sx2.fillStyle = '#d8e6ff'; sx2.fillRect(0, 0, w, h); SHIPSIL[key] = sil; }
+      ctx.globalAlpha = (opt.alpha || 1) * 0.55; for (const [dx, dy] of [[-2, 0], [2, 0], [0, -2], [0, 2]]) ctx.drawImage(sil, ox + dx, oy + dy); ctx.globalAlpha = opt.alpha || 1;
     }
     if (im) { ctx.imageSmoothingEnabled = id !== 'hex'; ctx.drawImage(im, ox, oy, w, h); }
     if (id === 'hex' && SA.Render.IMG.hexTurret) { ctx.imageSmoothingEnabled = false; const mw = 13 * sc; ctx.drawImage(SA.Render.IMG.hexTurret, ox + s.mount[0] * w - mw / 2, oy + s.mount[1] * h - mw / 2, mw, mw); }
@@ -246,10 +267,29 @@ SA.HangarScene = (() => {
     }
     ctx.restore();
   };
+  // 기체 상태 한 줄 (준비 완료 / 수리 필요 / 주무기 없음)
+  const shipState = () => {
+    const prof = P(), lo = prof.loadouts[prof.ship];
+    if (!lo.main && !lo.main2) return ['주무기 없음', '#ff6b7a'];
+    if (SA.loUids(lo).map(u => prof.parts.find(p => p.uid === u)).some(p => p && p.dur / p.max < 0.5)) return ['수리 필요', '#ffd166'];
+    return ['준비 완료', '#5dffb0'];
+  };
+  const sortieTag = (p) => {
+    const [st, col] = shipState(), x = p.x + p.s.w / 2, y = p.y - 10;
+    ctx.font = `bold ${SA.HGUI.pixelFont ? 12 : 14}px "Galmuri11", sans-serif`; ctx.textAlign = 'center';
+    const t1 = '출격 준비 [Enter]', w = Math.max(ctx.measureText(t1).width, ctx.measureText(st).width) + 20;
+    ctx.fillStyle = 'rgba(11,17,32,0.9)'; ctx.fillRect(x - w / 2, y - 34, w, 38); ctx.strokeStyle = '#3a4a6b'; ctx.lineWidth = 1; ctx.strokeRect(x - w / 2 + 0.5, y - 33.5, w - 1, 37);
+    ctx.fillStyle = '#d8e6ff'; ctx.fillText(t1, x, y - 19);
+    ctx.fillStyle = col; ctx.font = `${SA.HGUI.pixelFont ? 12 : 13}px "Galmuri11", sans-serif`; ctx.fillText(st, x, y - 4);
+  };
   const drawMainShip = (o, p) => {
     let cy = p.y + p.s.h * 0.47, a = 1;
     if (anim && anim.type === 'land') { const q = Math.min(1, anim.t / 0.9); cy -= (1 - q) * (1 - q) * 420; }
-    drawShipAt(P().ship, p.x + p.s.w / 2, cy, p.s.w * 0.42, p.s.h * 0.52, { subs: true, soot: P().scorched, flame: anim && anim.type === 'land' ? 1.2 : 0, alpha: a });
+    if (SA.HGUI.shipLight) {   // 기체 뒤 흰 빛 (색 없이): 주인공이 배경에 묻히지 않게
+      const g = ctx.createRadialGradient(p.x + p.s.w / 2, cy, 4, p.x + p.s.w / 2, cy, p.s.w * 0.42);
+      g.addColorStop(0, 'rgba(216,230,255,0.30)'); g.addColorStop(1, 'rgba(216,230,255,0)'); ctx.fillStyle = g; ctx.fillRect(p.x, cy - p.s.w * 0.42, p.s.w, p.s.w * 0.84);
+    }
+    drawShipAt(P().ship, p.x + p.s.w / 2, cy, p.s.w * 0.42, p.s.h * 0.52, { subs: true, soot: P().scorched, flame: anim && anim.type === 'land' ? 1.2 : 0, alpha: a, rim: SA.HGUI.shipLight });
   };
   const drawRackShip = (o, p) => {
     const id = shipsInRacks()[o.rack]; if (!id) return;
@@ -257,6 +297,7 @@ SA.HangarScene = (() => {
     if (own) drawShipAt(id, cx, cy, p.s.w * 0.44, p.s.h * 0.5, { subs: true });
     else {   // 안 산 기체: 홀로그램 윤곽
       drawShipAt(id, cx, cy, p.s.w * 0.44, p.s.h * 0.5, { alpha: 0.3, filter: 'grayscale(1) brightness(1.8)' });
+      if (SA.HGUI.rackLock) { const s = SA.SHIPS[id], lk = sprite('ic_lock', 16), ty = p.y + p.s.h - 16; ctx.font = '12px "Galmuri11", sans-serif'; ctx.textAlign = 'center'; const tx = `₵${s.price.toLocaleString('ko-KR')}`, tw = ctx.measureText(tx).width + 28; ctx.fillStyle = 'rgba(11,17,32,0.9)'; ctx.fillRect(cx - tw / 2, ty - 13, tw, 18); if (lk) ctx.drawImage(lk.c, Math.round(cx - tw / 2 + 4), ty - 12); ctx.fillStyle = '#d8e6ff'; ctx.fillText(tx, cx + 8, ty + 1); }
       ctx.fillStyle = 'rgba(216,230,255,0.10)'; for (let yy = p.y + p.s.h * 0.2 + (T * 20) % 3; yy < p.y + p.s.h * 0.75; yy += 3) ctx.fillRect(p.x + p.s.w * 0.25, yy, p.s.w * 0.5, 1);
     }
   };
@@ -268,7 +309,10 @@ SA.HangarScene = (() => {
   };
   // NPC: 원화가 오기 전까지 실루엣 자리표시
   const npcInfo = (o) => o.npc === 'pilot' ? { ...SA.PILOTS[o.pid], color: SA.PILOTS[o.pid].color } : SA.HG_NPC[o.npc];
-  const npcRect = (o) => { const [px, py] = par(o.d); return { x: o.x + px, y: o.base + py, w: o.h * 0.42, h: o.h }; };
+  const npcRect = (o) => {
+    if (SA.HGUI.hideNpc) { const a = OBJ.find(x => x.id === ANCHOR[o.npc]), p = a && placed(a); if (p) return { x: p.x + p.s.w / 2, y: p.y + p.s.h, w: p.s.w, h: p.s.h }; }
+    const [px, py] = par(o.d); return { x: o.x + px, y: o.base + py, w: o.h * 0.42, h: o.h };
+  };
   const drawFigure = (r, col, hov) => {
     const { x, y, w, h } = r, hr = h * 0.13;
     ctx.save();
@@ -304,9 +348,9 @@ SA.HangarScene = (() => {
   const nameTag = (o) => {
     const txt = label(o); if (!txt) return;
     let x, y;
-    if (o.npc) { const r = npcRect(o); x = r.x; y = r.y - r.h - 10; }
+    if (o.npc && !SA.HGUI.hideNpc) { const r = npcRect(o); x = r.x; y = r.y - r.h - 10; }
     else { const p = placed(o); x = o.x + par(o.d)[0]; y = p ? p.y - 8 : o.base - o.h - 8; }
-    ctx.font = 'bold 15px "Galmuri11", "Malgun Gothic", sans-serif'; ctx.textAlign = 'center';
+    ctx.font = `bold ${SA.HGUI.pixelFont ? 12 : 15}px "Galmuri11", "Malgun Gothic", sans-serif`; ctx.textAlign = 'center';
     const tw = ctx.measureText(txt).width + 18; y = Math.max(26, y);
     ctx.fillStyle = 'rgba(11,17,32,0.92)'; ctx.fillRect(x - tw / 2, y - 20, tw, 26);
     ctx.strokeStyle = '#3a4a6b'; ctx.lineWidth = 1; ctx.strokeRect(x - tw / 2 + 0.5, y - 19.5, tw - 1, 25);
@@ -317,9 +361,9 @@ SA.HangarScene = (() => {
   const hitList = () => {   // 앞에 그린 것부터
     const out = [];
     for (const o of OBJ) {
-      if (o.pilots) { for (const po of pilotObjs()) out.push(po); continue; }
-      if (o.npc) { if (visible(o)) out.push(o); continue; }
-      if (o.img && (visible(o) || o.lockTip)) out.push(o);
+      if (o.pilots) { if (!SA.HGUI.hideNpc) for (const po of pilotObjs()) out.push(po); continue; }
+      if (o.npc) { if (visible(o) && !SA.HGUI.hideNpc) out.push(o); continue; }
+      if (o.img && (visible(o) || o.lockTip) && (o.open || o.rack !== undefined || (o.lounge && SA.HGUI.hideNpc) || o.ship)) out.push(o);
     }
     return out.reverse();
   };
@@ -338,7 +382,7 @@ SA.HangarScene = (() => {
     if (o) SA.Audio.sfx('tick');
     SA.Hangar.barHover(o ? (o.npc === 'pilot' ? null : objPanel(o)) : null);
   };
-  const objPanel = (o) => o.rack !== undefined ? 'sortie' : o.open;
+  const objPanel = (o) => o.rack !== undefined ? 'rack' : o.open;
   const click = () => {
     if (anim) { anim.skip = true; return; }
     if (guide) { guideNext(); return; }
@@ -347,6 +391,7 @@ SA.HangarScene = (() => {
     if (o.npc) return npcClick(o);
     if (!visible(o)) return;
     if (o.rack !== undefined) { const id = shipsInRacks()[o.rack]; if (id) SA.Hangar.openRack(id); return; }
+    if (o.lounge) { const ps = pilotObjs(); if (ps.length) npcClick(SA.U.pick(ps)); else say('os', '다들 나가 있어.'); return; }
     if (o.open) SA.Hangar.openPanel(o.open);
   };
 
@@ -452,5 +497,7 @@ SA.HangarScene = (() => {
   };
 
   const bench = (n = 30) => { const t = performance.now(); for (let i = 0; i < n; i++) { update(0.016); draw(); } return (performance.now() - t) / n; };   // 개발용: 한 프레임 평균 ms
-  return { init, load, start, stop, play, react, say, startGuide, fit, IMG, sprite, bench, isAnim: () => !!anim, guideOn: () => !!guide };
+  const setBarHi = (pid) => { barHi = pid; };
+  const alerts = () => { const b = badges(), out = {}; if (b.board) out.contracts = 1; if (b.decoder) out.decoder = 1; return out; };
+  return { init, load, start, stop, play, react, say, startGuide, fit, IMG, sprite, bench, setBarHi, alerts, sortieState: () => shipState(), isAnim: () => !!anim, guideOn: () => !!guide };
 })();

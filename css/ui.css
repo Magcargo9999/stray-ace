@@ -29,10 +29,10 @@ h3 { margin: 6px 0 8px; font-size: 15px; color: #cfe3ff; } h4 { margin: 10px 0 6
 #hangar { background: #05070d; z-index: 5; }
 #hg-stage { position: absolute; left: 50%; top: 50%; width: 1280px; height: 720px; transform-origin: center; }
 #hg-cv { position: absolute; inset: 0; width: 1280px; height: 720px; }
-.hg-goal { position: absolute; left: 18px; top: 16px; max-width: 520px; background: rgba(11,17,32,.86); border: 1px solid #2a3550; padding: 7px 12px; color: #ffd166; font-size: 14px; cursor: pointer; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.hg-goal { position: absolute; left: 18px; top: 16px; max-width: 520px; background: rgba(11,17,32,.86); border: 1px solid #2a3550; padding: 7px 12px; color: #ffd166; font-size: 12px; cursor: pointer; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .hg-goal .k { color: #8f9bb8; margin-right: 8px; } .hg-goal:hover { border-color: #8fd3ff; }
 #hg-top { position: absolute; right: 18px; top: 14px; display: flex; align-items: center; gap: 10px; }
-#hg-top .credits { background: rgba(11,17,32,.86); border: 1px solid #2a3550; padding: 5px 12px; }
+#hg-top .credits { background: rgba(11,17,32,.86); border: 1px solid #2a3550; padding: 5px 12px; font-size: 24px; }
 .hg-gear { width: 38px; height: 38px; padding: 5px; background: rgba(11,17,32,.86); border: 1px solid #2a3550; cursor: pointer; }
 .hg-gear:hover { border-color: #8fd3ff; } .hg-gear img { width: 100%; height: 100%; }
 #hg-bar { position: absolute; left: 50%; bottom: 6px; transform: translateX(-50%); display: flex; gap: 6px; background: rgba(11,17,32,.9); border: 1px solid #2a3550; padding: 5px 6px; }
@@ -42,7 +42,7 @@ h3 { margin: 6px 0 8px; font-size: 15px; color: #cfe3ff; } h4 { margin: 10px 0 6
 #hg-bar .hb:hover, #hg-bar .hb.hi { border-color: #d8e6ff; background: #18233a; color: #fff; }
 #hg-bar .hb.on { border-color: #5dffb0; }
 #hg-bar .hb.lock { opacity: .4; } #hg-bar .hb.lock img.hgi { filter: grayscale(1); }
-.hg-bubble { position: absolute; width: 320px; display: flex; gap: 10px; background: rgba(11,17,32,.95); border: 1px solid #3a4a6b; padding: 9px 11px; font-size: 14px; color: #e6edf3; z-index: 3; }
+.hg-bubble { position: absolute; width: 320px; display: flex; gap: 10px; background: rgba(11,17,32,.95); border: 1px solid #3a4a6b; padding: 9px 11px; font-size: 12px; color: #e6edf3; z-index: 3; }
 .hg-bubble.guide { border-color: #ffd166; }
 .hg-bubble .por { width: 44px; height: 44px; flex: none; object-fit: cover; object-position: 50% 18%; background: #fff; border: 1px solid #3a4a6b; }
 .por.ini, .ini { display: inline-flex; align-items: center; justify-content: center; width: 30px; height: 30px; flex: none; border: 1px solid var(--c); color: var(--c); background: #0b1120; font-weight: bold; }
@@ -284,3 +284,14 @@ h3 { margin: 6px 0 8px; font-size: 15px; color: #cfe3ff; } h4 { margin: 10px 0 6
 .card.log.unknown { opacity: .55; border-style: dashed; }
 .new { background: #ff8f3d; color: #0b0e14; font-size: 10px; font-weight: 700; padding: 0 4px; border-radius: 2px; }
 #hg-tabs button.has-new::after { content: ''; display: inline-block; width: 6px; height: 6px; margin-left: 4px; border-radius: 50%; background: #ff8f3d; vertical-align: middle; }
+
+/* v0.55 UI 피드백 (SA.HGUI 스위치와 짝) */
+#hg-bar .hb.px span { font-size: 12px; } #hg-bar .hb.px { height: 54px; }
+#hg-bar .hb i.kc { left: 3px; top: 3px; min-width: 15px; height: 15px; padding: 0 3px; font-size: 12px; line-height: 15px; color: #d8e6ff; background: #1d2840; border: 1px solid #3a4a6b; border-bottom-width: 2px; text-align: center; }
+#hg-bar .hb .al { display: none; position: absolute; right: 3px; top: 2px; width: 16px; height: 16px; line-height: 16px; font-size: 12px; color: #0b1120; background: #ffd166; text-align: center; }
+#hg-bar .hb.alert .al { display: block; }
+.hg-goal { white-space: normal; } .hg-goal .hint { color: #8f9bb8; font-size: 12px; margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+#hg-top .credits { background: rgba(11,17,32,.95); }
+.crfx { position: absolute; right: 52px; top: 40px; font-size: 12px; animation: crfx 1.4s ease-out forwards; pointer-events: none; }
+.crfx.up { color: #5dffb0; } .crfx.dn { color: #ff6b7a; }
+@keyframes crfx { from { opacity: 1; transform: translateY(0); } to { opacity: 0; transform: translateY(-16px); } }

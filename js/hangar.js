@@ -19,6 +19,9 @@ SA.Hangar = (() => {
   const BAR = [['sortie', 'ic_rack', '출격 준비'], ['stash', 'ic_locker', '창고'], ['bench', 'ic_tools', '작업대'], ['contracts', 'ic_note', '의뢰'],
     ['decoder', 'ic_decoder', '해독기'], ['shop', 'ic_coins', '상점'], ['deliv', 'ic_crate', '배달']];
   const AC = { sortie: '#5dffb0', stash: '#d8e6ff', bench: '#4bb4f4', contracts: '#f335a5', decoder: '#f03960', shop: '#3fede3', deliv: '#ffd166', rack: '#5dffb0' };   // 장면 속 물건 빛과 같은 색
+  // 장면 왼쪽→오른쪽 순서 (SA.HGUI.barOrder를 끄면 예전 순서)
+  const BAR_SCENE = ['stash', 'bench', 'sortie', 'deliv', 'contracts', 'shop', 'decoder'];
+  const barList = () => SA.HGUI.barOrder ? BAR_SCENE.map(id => BAR.find(b => b[0] === id)) : BAR;
   const locked = (id) => id === 'deliv' && !P().rescued.deliv;
   const TITLE = { sortie: '출격 준비', stash: '창고', bench: '작업대', contracts: '의뢰 게시판', decoder: '해독기', shop: '상점 · 오스의 단말', deliv: '배달 · 도리', rack: '기체' };
   const WHO = { bench: () => P().rescued.teo ? 'teo' : 'mina', contracts: () => 'os', shop: () => 'os', deliv: () => 'dori' };
@@ -27,10 +30,12 @@ SA.Hangar = (() => {
     if (ready) return; ready = true;
     S().init();
     const bar = $('#hg-bar');
-    BAR.forEach(([id, ic, nm], i) => {
-      const b = h('button', 'hb', `${ico(ic)}<span>${nm}</span><i>${i + 1}</i>`); b.dataset.p = id;
+    barList().forEach(([id, ic, nm], i) => {
+      const b = h('button', 'hb' + (SA.HGUI.pixelFont ? ' px' : ''), `${ico(ic)}<span>${nm}</span><i class="${SA.HGUI.pixelFont ? 'kc' : ''}">${i + 1}</i><b class="al">!</b>`); b.dataset.p = id;
       b.onclick = () => openPanel(id);
       tip(b, () => locked(id) ? '도리를 구조하면 열린다' : `${nm} <span class="dim">(${i + 1})</span>`);
+      const en = b.onmouseenter, lv = b.onmouseleave;
+      b.onmouseenter = (e) => { en(e); S().setBarHi(id); }; b.onmouseleave = (e) => { lv(e); S().setBarHi(null); };   // 막대 ↔ 장면 물건 같이 강조
       bar.appendChild(b);
     });
     $('#hg-goal').onclick = () => openPanel('contracts');
@@ -47,7 +52,8 @@ SA.Hangar = (() => {
       return;
     }
     const m = /^Digit([1-7])$/.exec(e.code);
-    if (m && !S().guideOn()) openPanel(BAR[+m[1] - 1][0]);
+    if (m && !S().guideOn()) openPanel(barList()[+m[1] - 1][0]);
+    if (SA.HGUI.sortieTag && (e.code === 'Enter' || e.code === 'NumpadEnter') && !S().guideOn()) { e.preventDefault(); if (panel === 'sortie') sortieGo(); else if (!panel) openPanel('sortie'); }   // Enter: 출격 준비 → 한 번 더 누르면 출격
   };
 
   const open = () => {
@@ -69,10 +75,31 @@ SA.Hangar = (() => {
 
   // 목표 카드 · 크레딧 · 막대 상태
   const hud = () => {
-    $('#hg-credits').textContent = '₵' + P().credits;
-    $('#hg-goal').innerHTML = `<span class="k">목표</span>${SA.Quest.label()}`;
+    credits();
+    const g = goalParts();
+    $('#hg-goal').innerHTML = `<span class="k">목표</span>${g[0]}${g[1] ? `<div class="hint">${g[1]}</div>` : ''}`;
+    document.querySelectorAll('#hg-bar .hb').forEach(b => b.classList.toggle('alert', !!(SA.HGUI.barAlerts && S().alerts()[b.dataset.p])));
     tip($('#hg-goal'), () => `${SA.Quest.label()}${SA.Quest.rewardText()}<br><span class="dim">누르면 의뢰 게시판</span>`);
     document.querySelectorAll('#hg-bar .hb').forEach(b => { b.classList.toggle('lock', locked(b.dataset.p)); b.classList.toggle('on', b.dataset.p === panel); });
+  };
+  // 목표: 괄호 속 힌트(진행 숫자 말고)와 ' — ' 뒤 설명은 흐린 보조 줄로
+  const goalParts = () => {
+    const t = SA.Quest.label(); if (!SA.HGUI.goalSplit) return [t, ''];
+    let main = t, hint = '';
+    const dash = main.indexOf(' — '); if (dash > 0) { hint = main.slice(dash + 3); main = main.slice(0, dash); }
+    main = main.replace(/\s*\(([^)]*)\)/g, (all, inner) => { if (/^\d+\/\d+$/.test(inner.trim())) return all; hint = hint ? inner + ' · ' + hint : inner; return ''; });
+    return [main, hint];
+  };
+  // 재화: 쉼표 + 바뀌면 증감 숫자가 잠깐 떠오른다
+  let lastCr = null;
+  const credits = () => {
+    const c = P().credits, el = $('#hg-credits');
+    el.textContent = '₵' + (SA.HGUI.creditFx ? c.toLocaleString('ko-KR') : c);
+    if (SA.HGUI.creditFx && lastCr !== null && c !== lastCr) {
+      const d = c - lastCr, f = h('span', 'crfx ' + (d > 0 ? 'up' : 'dn'), `${d > 0 ? '+' : '−'}${Math.abs(d).toLocaleString('ko-KR')}`);
+      $('#hg-top').appendChild(f); setTimeout(() => f.remove(), 1400);
+    }
+    lastCr = c;
   };
   const barHover = (pid) => document.querySelectorAll('#hg-bar .hb').forEach(b => b.classList.toggle('hi', b.dataset.p === pid));
 
@@ -230,7 +257,9 @@ SA.Hangar = (() => {
     const go = h('div', 'gorow');
     const dm = SA.DEATH_MODES[prof.deathMode] || SA.DEATH_MODES.normal;
     const rule = tip(h('span', 'rule', `<span class="sk">✕</span>${dm.name}`), `<b>격추되면 [${dm.name}]</b><br><span class="desc">${dm.desc}</span><br>파일럿 부상 ${SA.INJURY_RAIDS}회 휴식 · <span class="dim">설정에서 바꿀 수 있다</span>`);
-    const b = h('button', 'btn big', '출격'); b.onclick = sortieGo;
+    const noMain = !lo.main && !lo.main2;
+    const b = h('button', 'btn big' + (noMain ? ' dis' : ''), noMain ? '주무기 없음' : '출격'); b.onclick = sortieGo;
+    if (SA.HGUI.sortieTag && !noMain) tip(b, 'Enter');
     const rg = h('button', 'btn small', '시험 비행'); rg.onclick = () => { const l = prof.loadouts[prof.ship]; if (!l.main && !l.main2) { toast('주무기를 장착해야 한다.', '#ffb3b3'); return; } close(); SA.Main.startRange(); };
     tip(rg, '연습장에서 지금 장착으로 시험한다');
     go.append(rule, rg, b); R.appendChild(go);
