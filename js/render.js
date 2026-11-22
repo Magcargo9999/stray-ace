@@ -17,7 +17,7 @@ SA.Render = (() => {
     return c;
   };
   const load = (done) => {
-    const list = [['hex', 'assets/hex_hull.png'], ['hexTurret', 'assets/hex_turret.png'], ['swift', 'assets/swift_hull.png'], ['bastion', 'assets/bastion_hull.png'], ['arsenal', 'assets/arsenal_hull.png'], ['flame', 'assets/engine_flame.png'], ['ast_rock', 'assets/m_rock.png'], ['ast_planet', 'assets/m_planetoid.png'], ['ast_shard', 'assets/m_shard.png'], ['box_crate', 'assets/box_crate.png'], ['box_locked', 'assets/box_locked.png'], ['sub_drone', 'assets/sub_drone.png'], ['poi_wreck', 'assets/poi_wreck.png'], ['i_rcap', 'assets/i_rcap.png']];
+    const list = [['hex', 'assets/hex_hull.png'], ['hexTurret', 'assets/hex_turret.png'], ['swift', 'assets/swift_hull.png'], ['ace', SA.SHIPS.ace.img], ['bastion', 'assets/bastion_hull.png'], ['arsenal', 'assets/arsenal_hull.png'], ['flame', 'assets/engine_flame.png'], ['ast_rock', 'assets/m_rock.png'], ['ast_planet', 'assets/m_planetoid.png'], ['ast_shard', 'assets/m_shard.png'], ['box_crate', 'assets/box_crate.png'], ['box_locked', 'assets/box_locked.png'], ['sub_drone', 'assets/sub_drone.png'], ['poi_wreck', 'assets/poi_wreck.png'], ['i_rcap', 'assets/i_rcap.png']];
     for (const id in SA.ENEMIES) { const d = SA.ENEMIES[id]; if (!d.img) continue; list.push(['en_' + id, d.img]);
       if (d.anim) for (let k = 1; k < d.anim.n; k++) list.push(['en_' + id + '_' + k, d.img.replace(/_0\.png$/, '_' + k + '.png')]); }   // 애니메이션 프레임 xxx_0..n-1.png
     for (const id in SA.ITEMS) if (SA.ITEMS[id].img) list.push(['it_' + id, SA.ITEMS[id].img]);
@@ -30,7 +30,7 @@ SA.Render = (() => {
     }
   };
   const prep = () => {
-    for (const id of ['swift', 'bastion', 'arsenal']) {
+    for (const id of ['swift', 'bastion', 'arsenal', 'ace']) {
       const s = SA.SHIPS[id];
       if (IMG[id]) pre[id] = shrink(IMG[id], s.size[0] * Z, s.size[1] * Z);
     }
@@ -261,6 +261,7 @@ SA.Render = (() => {
 
     ctx.setTransform(1, 0, 0, 1, 0, 0);
     drawHUD(ctx, R, camX, camY);
+    if (R.tut && SA.Tutorial) SA.Tutorial.draw(ctx, R);   // 튜토리얼 목표·검은 화면 글귀·화이트아웃
   };
 
   const label = (ctx, s, x, y, col, size) => {
@@ -607,7 +608,7 @@ SA.Render = (() => {
       T(ctx, 'SOS', e.x - Math.cos(e.a) * 22, e.y - Math.sin(e.a) * 16 + 4, '#ffd166', 11, 'center');
     }
 
-    if (!R.range) {   // 연습장에서는 침식·목표 표시를 숨긴다
+    if (!R.range && !R.tut) {   // 연습장·튜토리얼에서는 침식·목표 표시를 숨긴다
     // 침식 게이지 (상단 중앙)
     const gw = 340, gx = W / 2 - gw / 2, gy = 18;
     ctx.fillStyle = 'rgba(8,10,18,0.7)'; ctx.fillRect(gx - 8, gy - 6, gw + 16, 40);
@@ -694,7 +695,7 @@ SA.Render = (() => {
       T(ctx, `예비 ${spare} · R 교체`, bx + 280, y0 + 49, spare ? '#8f9bb8' : '#ff8f3d', 11, 'right', false);
     }
     ctx.fillStyle = 'rgba(8,10,18,0.7)'; ctx.fillRect(bx - 8, by - 92, 300, 128);
-    T(ctx, `${SA.SHIPS[P.ship].name} · ${SA.PILOTS[P.pilot].name}`, bx, by - 72, '#8f9bb8', 12, 'left', false);
+    T(ctx, `${SA.SHIPS[P.ship].name} · ${R.tut ? '단장' : SA.PILOTS[P.pilot].name}`, bx, by - 72, '#8f9bb8', 12, 'left', false);
     bar(ctx, bx, by - 6, 280, 12, P.hp / P.maxHp, P.hp / P.maxHp < 0.3 ? '#ff4d6d' : '#5dffb0');
     if (P.barrierMax) bar(ctx, bx, by - 10, 280, 3, P.barrier / P.barrierMax, '#6ee0ff', 'rgba(0,0,0,0)');
     T(ctx, `HP ${Math.ceil(P.hp)}/${P.maxHp}`, bx, by + 22, '#e6edf3', 13);
@@ -713,7 +714,7 @@ SA.Render = (() => {
     };
     P.acts.forEach((a, i) => slot(bx + i * 92, i ? 'E' : 'Q', a ? SA.PARTS[a.part.id].name : '비어 있음', a ? (a.part.mod === 'a_two' && a.ch > 0 ? 0 : a.cd) : 0, a ? SA.Combat.actCd(P, a) : 1, !!a && SA.Combat.eff(a.part) > 0, a && a.part.mod === 'a_two' ? (a.ch === undefined ? 2 : a.ch) : undefined));
     const pl = SA.PILOTS[P.pilot];
-    slot(bx + 184, 'SPACE', SA.PILOTS[P.pilot].title, P.skillCd, pl.cd, !!pl.skill);
+    slot(bx + 184, 'SPACE', R.tut ? '배럴 롤' : SA.PILOTS[P.pilot].title, P.skillCd, pl.cd, !!pl.skill);
 
     // 우하단: 화물 미니 격자
     const cg = R.cargo, cs = 9, cx = W - 24 - Math.max(cg.w, 2) * cs - 30 - 2 * cs, cy = H - 24 - Math.max(cg.h, 2) * cs;
@@ -735,7 +736,7 @@ SA.Render = (() => {
     // 비상탈출: 길게 누르는 중 / 버티는 중
     if (R.emT > 0) { T(ctx, `비상탈출 ${R.emT.toFixed(1)}초 — 버텨라`, W / 2, H / 2 + 90, '#ff8f3d', 20, 'center'); bar(ctx, W / 2 - 100, H / 2 + 100, 200, 6, 1 - R.emT / SA.EXIT.emTime, '#ff8f3d'); }
     else if (R.emHold > 0) { T(ctx, '비상탈출 준비 — 화물칸을 버린다', W / 2, H / 2 + 90, '#ff8f3d', 16, 'center'); bar(ctx, W / 2 - 100, H / 2 + 100, 200, 6, R.emHold / SA.EXIT.emHold, '#ff8f3d'); }
-    else if (!R.emUsed && R.t < 20 && !R.range) T(ctx, 'X 길게: 비상탈출 (화물칸 포기)', W / 2, H - 80, '#8f9bb8', 11, 'center', false);
+    else if (!R.emUsed && R.t < 20 && !R.range && !R.tut) T(ctx, 'X 길게: 비상탈출 (화물칸 포기)', W / 2, H - 80, '#8f9bb8', 11, 'center', false);
     // 탈출 진행
     for (const x of R.extracts) if (x.active && x.prog > 0) {
       T(ctx, `탈출 중 ${(SA.CFG.EXTRACT_TIME - x.prog).toFixed(1)}초`, W / 2, H / 2 + 90, '#5dffb0', 20, 'center');

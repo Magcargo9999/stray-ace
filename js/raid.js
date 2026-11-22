@@ -52,6 +52,7 @@ SA.Raid = (() => {
     { const bm = C().pv(R.player, 'barrier'); R.player.barrier = R.player.barrierMax = Math.round(bm); }   // 베리어 발생기 (등급 배율)
     R.range = !!opt.range;
     if (R.range) return startRange(R, prof, lo);
+    if (opt.tut) return SA.Tutorial.setup(R);   // 튜토리얼 프롤로그
     // 장착 동력원: 창고에서 고른 등급 하나를 꺼내 기체에 꽂는다 (기지에서는 항상 가득 차 있다)
     if (lo.cell) { const it = prof.stash.items.find(x => x.id === lo.cell); if (it) { SA.Grid.remove(prof.stash, it.uid); R.player.cell = { id: lo.cell, e: SA.ITEMS[lo.cell].cap }; } }
     R.cellStart = R.player.cell && R.player.cell.id;
@@ -321,6 +322,7 @@ SA.Raid = (() => {
     S.updateExtra(R, dt);
     updateItems(R, dt);
     if (R.range) { P.x = U.clamp(P.x, 16, R.map.w - 16); P.y = U.clamp(P.y, 16, R.map.h - 16); if (R.rangeGod) { P.hp = P.maxHp; } R.dmgLog = R.dmgLog.filter(d => R.t - d[0] < 5); }
+    else if (R.tut) { updatePois(R, dt); SA.Tutorial.update(R, dt, rdt); }   // 튜토리얼: 침식·비콘·리스폰 없음, 대본대로
     else {
       updatePois(R, dt);
       updateCorrosion(R, dt);
@@ -442,7 +444,7 @@ SA.Raid = (() => {
   };
   // ── 난파선: 자원 게이지가 줄면서 아이템이 하나씩 튀어나온다. 벗어나면 진행 중인 게이지가 줄어든다.
   // 마지막 하나는 오래 걸리는 대신 좋은 아이템 확률이 높다.
-  const wreckNeed = (p) => p.loot.length ? SA.WRECK.per : SA.WRECK.last;
+  const wreckNeed = (p) => p.fast ? (p.loot.length ? 0.45 : 1.2) : p.loot.length ? SA.WRECK.per : SA.WRECK.last;   // 튜토리얼 잔해는 빨리 나온다
   const updateWreck = (R, p, d, dt) => {
     const W = SA.WRECK;
     if (!p.loot) {

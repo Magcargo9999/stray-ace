@@ -345,6 +345,9 @@ for (const id in SA.RECIPES) Object.assign(SA.RECIPES[id].mats, SA.UMAT_ADD(id))
 
 // 기체. mount = 포탑/판정점 (도트 좌표, 0~1 비율)
 SA.SHIPS = {
+  // 단장 전용기 (튜토리얼 프롤로그 전용, 격납고에는 안 나온다). 도트는 사용자 제작 예정 — 그 전까지 레이븐 도트를 그대로 쓴다 (임시)
+  ace:     { name: '전용기', role: '에이스', price: 0, hidden: true, hp: 120, speed: 165, accel: 18, turn: 22, hitR: 2, sub: 2, act: 2, pas: 3, cargo: [4, 3],
+             img: 'assets/raven_hull.png', size: [30, 27], mount: [0.5, 0.5], subMounts: [[-10, 4], [10, 4]], desc: '3년 전, 단장의 기체.' },
   hex:     { name: '헥스', role: '기본', price: 0, hp: 100, speed: 130, accel: 14, turn: 18, hitR: 2.5, sub: 2, act: 2, pas: 3, cargo: [4, 4],
              flames: [[11.5, 30.5], [21.5, 30.5]], img: 'assets/hex_hull.png', turretImg: 'assets/hex_turret.png', size: [32, 32], mount: [16.5 / 32, 18.5 / 32],
              subMounts: [[-9, 4], [9, 4]], desc: '모든 능력치가 평균. 지급 기체.' },
@@ -401,6 +404,7 @@ SA.ITEMS.cap_raven = { name: '레이븐의 탈출 포드', w: 2, h: 2, val: 0, k
 SA.WRECK = { per: 0.9, last: 4, decay: 0.6, final: [['bp:강화', .1], ['goldchip', .3], ['bp:일반', .25], ['engine', .35], ['prec', 1]] };
 // 대사창 화자: 초상화는 assets/portrait_<id>.png (원화가 작업물이 오면 넣는다. 없으면 실루엣)
 SA.SPEAKERS = {
+  cmd:    { name: '단장', title: '3년 전', color: '#e6edf3' },
   raven:  { name: '레이븐', title: '네임드 용병', color: '#ff4d6d' },
   serena: { name: '세레나', title: '왕국 장군', color: '#8fb6ff' },
   volk:   { name: '볼크', title: '제국 돌격 에이스', color: '#ff7a6b' },

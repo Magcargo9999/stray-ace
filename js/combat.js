@@ -530,6 +530,7 @@ SA.Combat = (() => {
     }
     SA.Audio.sfx('hurt');
     fx(R, P.x, P.y, 14, '#ff8a8a', 120, 0.4);
+    if (P.hp <= 0 && R.tut) { P.hp = 1; P.invuln = Math.max(P.invuln, 1.5); return; }   // 튜토리얼: 죽지 않는다
     if (P.hp <= 0) { P.hp = 0; SA.Raid.playerDied(); }
   };
 

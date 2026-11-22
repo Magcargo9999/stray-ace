@@ -15,7 +15,7 @@ SA.Main = (() => {
     SA.profile = SA.Save.load();
     SA.Input.attach(cv);
     document.querySelectorAll('#hg-tabs button').forEach(b => b.onclick = () => SA.Hangar.go(b.dataset.tab));
-    $('#title-start').onclick = () => { SA.Audio.init(); $('#title').style.display = 'none'; scene = 'hangar'; SA.Hangar.open(); if (!SA.profile.deathModeSet) pickDeathMode(); };
+    $('#title-start').onclick = () => { SA.Audio.init(); $('#title').style.display = 'none'; beginFlow(); };
     $('#title-reset').onclick = twice($('#title-reset'), () => { SA.profile = SA.Save.reset(); SA.Hangar.toast('초기화했다.'); });
     $('#hg-settings').onclick = () => openSettings(false);
     $('#result-go').onclick = () => { $('#result').style.display = 'none'; scene = 'hangar'; SA.R = null; SA.Hangar.open(); };
@@ -42,10 +42,25 @@ SA.Main = (() => {
 
   // 사망 처리 방식 고르기 (처음 한 번 + 설정에서 언제든)
   const modeButtons = (cur) => Object.entries(SA.DEATH_MODES).map(([k, m]) => `<button class="btn modebtn${cur === k ? ' on' : ''}" data-mode="${k}"><b>${m.name}</b><div class="small dim">${m.desc}</div></button>`).join('');
-  const pickDeathMode = () => {
+  // 첫 접속: 난이도(사망 처리)를 고르면 바로 튜토리얼 프롤로그. 끝나면 격납고
+  const beginFlow = () => {
+    scene = 'hangar'; SA.Hangar.open();
+    const next = () => { if (!SA.profile.tutDone) startTutorial(); };
+    if (!SA.profile.deathModeSet) pickDeathMode(next); else next();
+  };
+  const startTutorial = () => {
+    scene = 'raid'; document.querySelectorAll('.ctx').forEach(x => x.remove()); SA.UI.hideTip();
+    $('#hangar').style.display = 'none';
+    SA.Tutorial.start();
+  };
+  const endTutorial = (got) => {
+    SA.UI.tabClose(); SA.R = null; scene = 'hangar'; SA.Hangar.open();
+    SA.Hangar.toast(got.length ? `3년 후 — 보안 칸에 남아 있던 것: ${got.join(', ')}` : '3년 후 — 보안 칸은 비어 있었다', '#ffd166');
+  };
+  const pickDeathMode = (cb) => {
     const w = $('#settings'); w.style.display = 'flex';
     w.querySelector('.inner').innerHTML = `<h2>격추되면 무엇을 잃을까</h2><div class="dim small">언제든 설정에서 바꿀 수 있다. 보안 칸은 어느 방식이든 남는다.</div><div class="modes">${modeButtons(SA.profile.deathMode || 'normal')}</div>`;
-    w.querySelectorAll('[data-mode]').forEach(b => b.onclick = () => { SA.profile.deathMode = b.dataset.mode; SA.profile.deathModeSet = true; SA.Save.store(SA.profile); w.style.display = 'none'; SA.Hangar.toast(`사망 처리: ${SA.DEATH_MODES[b.dataset.mode].name}`); });
+    w.querySelectorAll('[data-mode]').forEach(b => b.onclick = () => { SA.profile.deathMode = b.dataset.mode; SA.profile.deathModeSet = true; SA.Save.store(SA.profile); w.style.display = 'none'; SA.Hangar.toast(`사망 처리: ${SA.DEATH_MODES[b.dataset.mode].name}`); if (cb) cb(); });
   };
   // ── 연습장 ──
   const startRange = () => {
@@ -84,13 +99,13 @@ SA.Main = (() => {
       <div class="small"><b>격추 시 잃는 것</b> <span class="dim">(바로 적용)</span></div><div class="modes">${modeButtons(SA.profile.deathMode || 'normal')}</div>
       <div class="small dim keys-help">WASD 이동 · 마우스 조준 · 좌클릭 주무기 · Q/E 액티브 · Space 파일럿 기술<br>휠 주무기 교체 · 우클릭 조준 · Shift 저속 이동 · R 동력원 교체 · X 길게 비상탈출<br>Tab 화물칸(시간 30%, 화물칸 안에서 R 회전) · F 싼 것 버리고 줍기 · Esc 일시정지</div>
       <button class="btn" id="set-close">${inRaid ? '계속하기' : '닫기'}</button>
-      ${inRaid ? '<button class="btn danger" id="set-abandon">출격 포기 (격추로 처리)</button>' : '<button class="btn danger" id="set-reset">저장 데이터 초기화</button>'}`;
+      ${inRaid ? (SA.R && SA.R.tut ? '' : '<button class="btn danger" id="set-abandon">출격 포기 (격추로 처리)</button>') : '<button class="btn danger" id="set-reset">저장 데이터 초기화</button>'}`;
     $('#set-music').oninput = (e) => { s.music = +e.target.value; SA.Audio.setVolumes(); SA.Save.store(SA.profile); };
     $('#set-sfx').oninput = (e) => { s.sfx = +e.target.value; SA.Audio.setVolumes(); SA.Audio.sfx('pickup', 2); SA.Save.store(SA.profile); };
     w.querySelectorAll('[data-mode]').forEach(b => b.onclick = () => { SA.profile.deathMode = b.dataset.mode; SA.profile.deathModeSet = true; SA.Save.store(SA.profile); w.querySelectorAll('[data-mode]').forEach(x => x.classList.toggle('on', x === b)); });
     $('#set-close').onclick = () => { w.style.display = 'none'; if (SA.R) SA.R.paused = false; };
-    if (inRaid) $('#set-abandon').onclick = () => { w.style.display = 'none'; SA.R.paused = false; if (SA.R.range) { leaveRange(); return; } SA.R.player.hp = 0; SA.Raid.playerDied(); };
-    else $('#set-reset').onclick = twice($('#set-reset'), () => { SA.profile = SA.Save.reset(); w.style.display = 'none'; SA.Hangar.render(); });
+    if (inRaid && $('#set-abandon')) $('#set-abandon').onclick = () => { w.style.display = 'none'; SA.R.paused = false; if (SA.R.range) { leaveRange(); return; } SA.R.player.hp = 0; SA.Raid.playerDied(); };
+    else if (!inRaid) $('#set-reset').onclick = twice($('#set-reset'), () => { SA.profile = SA.Save.reset(); w.style.display = 'none'; beginFlow(); });
     if (inRaid && SA.R) SA.R.paused = true;
   };
 
@@ -146,5 +161,5 @@ SA.Main = (() => {
   };
 
   addEventListener('load', boot);
-  return { startRaid, startRange, leaveRange, showResult, openSettings };
+  return { startRaid, startRange, leaveRange, showResult, openSettings, startTutorial, endTutorial };
 })();

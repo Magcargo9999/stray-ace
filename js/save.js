@@ -53,7 +53,7 @@ SA.Save = (() => {
       logs: [],                // 해독한 블랙박스 인덱스
       stats: { raids: 0, extracts: 0, deaths: 0, kills: 0, bestValue: 0 },
       settings: { music: 0.5, sfx: 0.7 },
-      seenTips: false, tierMig: true,
+      seenTips: false, tierMig: true, tutDone: false,
       bpMiss: 0,              // 새 설계도 없이 출격한 횟수 (불운 보정)
       deliv: { slot: -1, stock: [] },   // 배달 상점 재고 (20분마다 교체)
       bring: {},              // 이번 출격에 가져갈 소모품 개수
@@ -110,7 +110,7 @@ SA.Save = (() => {
   const load = () => {
     try {
       const s = localStorage.getItem(KEY);
-      if (s) { const j = JSON.parse(s), p = Object.assign(fresh(), j); p.rescMig = !!j.rescMig; p.cellMig = !!j.cellMig; p.tierMig = !!j.tierMig; return migrate(p); }
+      if (s) { const j = JSON.parse(s), p = Object.assign(fresh(), j); p.rescMig = !!j.rescMig; p.cellMig = !!j.cellMig; p.tierMig = !!j.tierMig; p.tutDone = j.tutDone !== undefined ? !!j.tutDone : !!((j.stats && j.stats.raids > 0) || j.deathModeSet); return migrate(p); }   // 이미 하던 세이브는 튜토리얼을 건너뛴다
     } catch (e) { console.warn('save load failed', e); }
     return fresh();
   };

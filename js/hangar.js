@@ -456,6 +456,7 @@ SA.Hangar = (() => {
     const prof = P(), c1 = h('div', 'col wide'), c2 = h('div', 'col');
     c1.appendChild(h('h3', '', '기체'));
     for (const id in SA.SHIPS) {
+      if (SA.SHIPS[id].hidden) continue;   // 단장 전용기 등 숨은 기체
       const s = SA.SHIPS[id], own = prof.ships.includes(id);
       const c = h('div', 'card ship');
       c.appendChild(shipImg(id));
