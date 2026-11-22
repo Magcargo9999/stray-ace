@@ -22,11 +22,11 @@ SA.HangarScene = (() => {
 
   // 물건 배치 (x = 가운데, base = 바닥 y, h = 높이, d = 시차 깊이). open = 누르면 여는 창
   const OBJ = [
-    { id: 'rack1', img: 'rack_small', x: 326, base: 466, h: 140, d: .45, rack: 0 },
-    { id: 'rack2', img: 'rack_small', x: 404, base: 466, h: 140, d: .45, rack: 1 },
-    { id: 'rack3', img: 'rack_small', x: 482, base: 466, h: 140, d: .45, rack: 2 },
+    { id: 'rack1', img: 'rack_small', x: 326, base: 524, h: 140, d: .45, rack: 0 },
+    { id: 'rack2', img: 'rack_small', x: 404, base: 524, h: 140, d: .45, rack: 1 },
+    { id: 'rack3', img: 'rack_small', x: 482, base: 524, h: 140, d: .45, rack: 2 },
     { id: 'lockers', img: 'lockers', x: 104, base: 552, h: 224, d: .55, open: 'stash', name: '창고' },   // 바닥에 닿게 크게, 뒷줄 거치대보다 앞
-    { id: 'board', img: 'board', x: 862, base: 398, h: 148, d: .45, open: 'contracts', name: '의뢰 게시판' },
+    { id: 'board', img: 'board', x: 836, base: 420, h: 148, d: .45, open: 'contracts', name: '의뢰 게시판' },
     { id: 'cargo', img: 'cargo', x: 790, base: 542, h: 108, d: .5, open: 'deliv', name: '도리의 화물', need: () => P().rescued.deliv, lockTip: '빈자리 — 도리를 구조하면 들어온다' },
     { id: 'dori', npc: 'dori', x: 878, base: 552, h: 92, d: .5, need: () => P().rescued.deliv, open: 'deliv' },
     { id: 'os', npc: 'os', x: 958, base: 566, h: 108, d: .5, open: 'contracts', open2: 'shop' },
@@ -101,7 +101,7 @@ SA.HangarScene = (() => {
     if (LAY[n]) return LAY[n]; const im = IMG[n]; if (!im) return null;
     const [w, h] = n === 'bg' ? [W + 32, H + 18] : [W + 48, H + 27];
     const c = shrink(im, w, h), x = c.getContext('2d');
-    if (n === 'bg') { x.fillStyle = 'rgba(8,12,24,0.5)'; x.fillRect(0, 0, w, h); }   // 배경을 한 겹 어둡게: 물건이 앞으로 나온다 (그림 파일은 그대로)
+    if (n === 'bg') { x.fillStyle = 'rgba(8,12,24,0.45)'; x.fillRect(0, 0, w, h); }   // 배경을 한 겹 어둡게: 물건이 앞으로 나온다 (그림 파일은 그대로)
     return (LAY[n] = c);
   };
   // 물건 한 장: 바닥 그림자 + 뒤쪽 그늘 + 짙은 테두리(평소) 또는 밝은 윤곽(마우스) + 그림
