@@ -403,7 +403,7 @@ SA.MIMIC = { chance: 0.3, hp: 900 };
 SA.ITEMS.cap_raven = { name: '레이븐의 탈출 포드', w: 2, h: 2, val: 0, kind: 'capsule', img: 'assets/i_pod.png', color: '#ff4d6d', desc: '격추된 레이븐이 갇힌 탈출 포드. 들고 탈출해야 그를 붙잡는다. 들고 있으면 이속 -10%.' };
 // 난파선 (임시): 아이템 하나당 0.9초, 마지막 한 개는 4초. 벗어나면 진행 중 게이지가 초당 0.6씩 줄어든다.
 // 마지막 보상은 위에서부터 굴려 처음 당첨된 것 하나 (좋은 것 확률 높게)
-SA.WRECK = { per: 0.9, last: 4, decay: 0.6, final: [['bp:강화', .1], ['goldchip', .3], ['bp:일반', .25], ['engine', .35], ['prec', 1]] };
+SA.WRECK = { maxItems: 5, per: 0.9, last: 4, decay: 0.6, final: [['bp:강화', .1], ['goldchip', .3], ['bp:일반', .25], ['engine', .35], ['prec', 1]] };
 // 대사창 화자: 초상화는 assets/portrait_<id>.png (원화가 작업물이 오면 넣는다. 없으면 실루엣)
 SA.SPEAKERS = {
   cmd:    { name: '단장', title: '3년 전', color: '#e6edf3' },
