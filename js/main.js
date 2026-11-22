@@ -19,7 +19,9 @@ SA.Main = (() => {
     $('#hg-settings').onclick = () => openSettings(false);
     $('#result-go').onclick = () => { $('#result').style.display = 'none'; scene = 'hangar'; SA.R = null; SA.Hangar.open(); };
     $('#tw-close').onclick = () => SA.UI.tabClose();
-    SA.Render.load(() => { $('#loading').style.display = 'none'; $('#title').style.display = 'flex'; });
+    // 도트 폰트(갈무리)를 먼저 받아 둔다: 캔버스 글씨도 같은 폰트로 그리려고
+    const fonts = document.fonts ? Promise.all(['14px "Galmuri11"', 'bold 14px "Galmuri11"', '12px "Galmuri9"'].map(f => document.fonts.load(f))).catch(() => {}) : Promise.resolve();
+    SA.Render.load(() => fonts.then(() => { $('#loading').style.display = 'none'; $('#title').style.display = 'flex'; }));
     requestAnimationFrame(loop);
   };
 

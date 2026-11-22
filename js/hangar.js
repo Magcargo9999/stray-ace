@@ -18,6 +18,7 @@ SA.Hangar = (() => {
   // 바로가기 막대 (숫자키 1~7)
   const BAR = [['sortie', 'ic_rack', '출격 준비'], ['stash', 'ic_locker', '창고'], ['bench', 'ic_tools', '작업대'], ['contracts', 'ic_note', '의뢰'],
     ['decoder', 'ic_decoder', '해독기'], ['shop', 'ic_coins', '상점'], ['deliv', 'ic_crate', '배달']];
+  const AC = { sortie: '#5dffb0', stash: '#d8e6ff', bench: '#4bb4f4', contracts: '#f335a5', decoder: '#f03960', shop: '#3fede3', deliv: '#ffd166', rack: '#5dffb0' };   // 장면 속 물건 빛과 같은 색
   const locked = (id) => id === 'deliv' && !P().rescued.deliv;
   const TITLE = { sortie: '출격 준비', stash: '창고', bench: '작업대', contracts: '의뢰 게시판', decoder: '해독기', shop: '상점 · 오스의 단말', deliv: '배달 · 도리', rack: '기체' };
   const WHO = { bench: () => P().rescued.teo ? 'teo' : 'mina', contracts: () => 'os', shop: () => 'os', deliv: () => 'dori' };
@@ -27,7 +28,7 @@ SA.Hangar = (() => {
     S().init();
     const bar = $('#hg-bar');
     BAR.forEach(([id, ic, nm], i) => {
-      const b = h('button', 'hb', `${ico(ic)}<span>${nm}</span><i>${i + 1}</i>`); b.dataset.p = id;
+      const b = h('button', 'hb', `${ico(ic)}<span>${nm}</span><i>${i + 1}</i>`); b.dataset.p = id; b.style.setProperty('--ac', AC[id]);
       b.onclick = () => openPanel(id);
       tip(b, () => locked(id) ? '도리를 구조하면 열린다' : `${nm} <span class="dim">(${i + 1})</span>`);
       bar.appendChild(b);
@@ -88,7 +89,7 @@ SA.Hangar = (() => {
     hud();
     if (!panel) return;
     const pn = $('#hg-panel .pn'), body = $('#hg-body');
-    pn.className = 'pn p-' + panel;
+    pn.className = 'pn p-' + panel; pn.style.setProperty('--ac', AC[panel] || '#3a4a6b');
     $('#hg-panel .ttl').textContent = TITLE[panel];
     const who = WHO[panel] && WHO[panel](), por = $('#hg-panel .por');
     const N = who && SA.HG_NPC[who];

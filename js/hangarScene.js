@@ -26,6 +26,8 @@ SA.HangarScene = (() => {
     { id: 'lounge', img: 'lounge', x: 410, base: 616, h: 108, d: .8, name: '대기실' },
     { id: 'decoder', img: 'decoder', x: 1150, base: 712, h: 190, d: .8, open: 'decoder', name: '해독기' },
   ];
+  // 기능별 색 (바로가기 막대·창 테두리와 같은 색): 색으로 기능을 기억한다
+  const ACCENT = { rack: '#5dffb0', workbench: '#4bb4f4', board: '#f335a5', terminal: '#3fede3', decoder: '#f03960', lockers: '#d8e6ff', cargo: '#ffd166' };
   const PILOT_X = [372, 412, 452, 340, 484, 308];
   // 그림 안 화면 위치 (스프라이트 기준 비율): 해독기 화면 · 슬롯 3칸, 단말 화면
   const SCREEN = { decoder: [0.16, 0.28, 0.84, 0.56], terminal: [0.09, 0.315, 0.83, 0.51] };
@@ -60,6 +62,31 @@ SA.HangarScene = (() => {
     const a = c.getContext('2d').getImageData(0, 0, c.width, c.height).data;
     return (SPR[key] = { c, sil, a, w: c.width, h: c.height });
   };
+
+  // 물건 뒤 은은한 색 빛 (흐린 실루엣). 한 번 만들어 둔다
+  const HALO = {};
+  const halo = (name, h, col) => {
+    const key = name + '@' + h + col; if (HALO[key]) return HALO[key];
+    const s = sprite(name, h); if (!s) return null;
+    const pad = 28, c = document.createElement('canvas'); c.width = s.w + pad * 2; c.height = s.h + pad * 2;
+    const t = document.createElement('canvas'); t.width = s.w; t.height = s.h; const tx = t.getContext('2d');
+    tx.drawImage(s.c, 0, 0); tx.globalCompositeOperation = 'source-in'; tx.fillStyle = col; tx.fillRect(0, 0, s.w, s.h);
+    const x = c.getContext('2d'); x.filter = 'blur(9px)'; x.drawImage(t, pad, pad); x.filter = 'none';
+    return (HALO[key] = { c, pad });
+  };
+  const rim = (name, h) => {   // 늘 켜진 얇은 테두리 (배경과 떨어져 보이게)
+    const key = name + '@' + h + 'rim'; if (HALO[key]) return HALO[key];
+    const s = sprite(name, h); if (!s) return null;
+    const c = document.createElement('canvas'); c.width = s.w; c.height = s.h; const x = c.getContext('2d');
+    x.drawImage(s.c, 0, 0); x.globalCompositeOperation = 'source-in'; x.fillStyle = '#8f9bb8'; x.fillRect(0, 0, s.w, s.h);
+    return (HALO[key] = c);
+  };
+  const floorLight = (cx, cy, rx, ry, col, a) => {   // 바닥 빛웅덩이 / 그림자
+    ctx.save(); ctx.translate(cx, cy); ctx.scale(1, ry / rx);
+    const g = ctx.createRadialGradient(0, 0, 0, 0, 0, rx); g.addColorStop(0, col.replace('A', a)); g.addColorStop(1, col.replace('A', 0));
+    ctx.fillStyle = g; ctx.beginPath(); ctx.arc(0, 0, rx, 0, 6.29); ctx.fill(); ctx.restore();
+  };
+  const rgba = (hex) => `rgba(${parseInt(hex.slice(1, 3), 16)},${parseInt(hex.slice(3, 5), 16)},${parseInt(hex.slice(5, 7), 16)},A)`;
 
   const init = () => {
     stage = $('#hg-stage'); cv = $('#hg-cv'); ctx = cv.getContext('2d');
@@ -116,19 +143,26 @@ SA.HangarScene = (() => {
     ctx.fillStyle = '#05070d'; ctx.fillRect(0, 0, W, H);
     // 뒷벽: 화면보다 조금 크게 깔아 시차로 가장자리가 안 보이게
     if (IMG.bg) { const [px, py] = par(0.25); ctx.drawImage(IMG.bg, -16 + px, -9 + py, W + 32, H + 18); }
-    lampFlicker();
+    ctx.fillStyle = 'rgba(11,17,32,0.46)'; ctx.fillRect(0, 0, W, H);   // 배경을 한 겹 어둡게: 물건이 앞으로 나온다 (그림 파일은 그대로)
     const bd = badges(), launching = anim && anim.type === 'launch';
     for (const o of OBJ) {
       if (o.pilots) { drawPilots(); continue; }
       if (o.npc) { if (visible(o)) drawNpc(o); continue; }
       if (!visible(o)) { if (hover === o) lockedSpot(o); continue; }
       const p = placed(o); if (!p) continue;
-      if (hover === o) for (const [dx, dy] of [[-2, 0], [2, 0], [0, -2], [0, 2]]) ctx.drawImage(p.s.sil, p.x + dx, p.y + dy);
+      const ac = ACCENT[o.id], hv = hover === o, cx = p.x + p.s.w / 2, by = p.y + p.s.h;
+      floorLight(cx, by - 4, p.s.w * 0.5, 14, 'rgba(0,0,0,A)', 0.55);   // 바닥 그림자
+      if (ac) {   // 기능별 색: 바닥 빛웅덩이 + 뒤쪽 후광 (깜빡이지 않는다)
+        floorLight(cx, by - 6, p.s.w * 0.62, 22, rgba(ac), hv ? 0.42 : 0.26);
+        const ha = halo(o.img, o.h, ac); if (ha) { ctx.globalAlpha = hv ? 0.95 : 0.6; ctx.drawImage(ha.c, p.x - ha.pad, p.y - ha.pad); ctx.globalAlpha = 1; }
+      }
+      if (hv) for (const [dx, dy] of [[-2, 0], [2, 0], [0, -2], [0, 2]]) ctx.drawImage(p.s.sil, p.x + dx, p.y + dy);
+      else { const r = rim(o.img, o.h); if (r) { ctx.globalAlpha = 0.45; for (const [dx, dy] of [[-1, 0], [1, 0], [0, -1]]) ctx.drawImage(r, p.x + dx, p.y + dy); ctx.globalAlpha = 1; } }
       ctx.drawImage(p.s.c, p.x, p.y);
       if (o.rack !== undefined) drawRackShip(o, p);
       if (o.ship && !launching) drawMainShip(o, p);
       if (o.id === 'decoder') drawDecoder(p);
-      if (o.id === 'terminal') screenGlow(p, SCREEN.terminal, 0.08 + 0.04 * Math.sin(T * 2));
+      if (o.id === 'terminal') screenGlow(p, SCREEN.terminal, 0.10, '63,237,227');
       if (o.id === 'workbench' && P().rescued.teo) weld(p, 0.17, 0.52);
       if (bd[o.id]) icon(bd[o.id], o.x + par(o.d)[0], p.y - 18);
     }
@@ -139,34 +173,30 @@ SA.HangarScene = (() => {
     if (guide) drawGuide();
     if (hover && !guide && !(bubble && bubble.o && bubble.o.id === hover.id)) nameTag(hover);
   };
-  const lampFlicker = () => {   // 형광등이 가끔 떨린다
-    const f = Math.sin(T * 13) > 0.97 || (T % 7.3 < 0.08) ? 0.12 : 0;
-    if (f) { ctx.fillStyle = `rgba(5,7,13,${f})`; ctx.fillRect(0, 0, W, H); }
-  };
-  const screenGlow = (p, r, a) => {
+  const screenGlow = (p, r, a, c = '216,230,255') => {   // 화면 빛: 고정 (깜빡이지 않는다)
     const x = p.x + r[0] * p.s.w, y = p.y + r[1] * p.s.h, w = (r[2] - r[0]) * p.s.w, h = (r[3] - r[1]) * p.s.h;
-    ctx.fillStyle = `rgba(216,230,255,${a})`; ctx.fillRect(x, y, w, h);
-    ctx.fillStyle = `rgba(216,230,255,${a * 0.9})`;
-    for (let yy = y + ((T * 18) % 4); yy < y + h; yy += 4) ctx.fillRect(x, yy, w, 1);   // 주사선
+    ctx.fillStyle = `rgba(${c},${a})`; ctx.fillRect(x, y, w, h);
+    ctx.fillStyle = `rgba(${c},${a * 0.7})`;
+    for (let yy = y + 1; yy < y + h; yy += 4) ctx.fillRect(x, yy, w, 1);   // 주사선 (멈춰 있음)
     return [x, y, w, h];
   };
   const drawDecoder = (p) => {
     const dec = P().decoding || [];
-    const [x, y, w, h] = screenGlow(p, SCREEN.decoder, dec.length ? 0.12 : 0.05);
+    const [x, y, w, h] = screenGlow(p, SCREEN.decoder, dec.length ? 0.13 : 0.06, '240,57,96');
     if (dec.length) {   // 해독 중: 파형이 흐른다
       ctx.strokeStyle = '#d8e6ff'; ctx.lineWidth = 1.5; ctx.beginPath();
-      for (let i = 0; i <= 40; i++) { const xx = x + 6 + (w - 12) * i / 40, yy = y + h / 2 + Math.sin(i * 0.7 + T * 6) * h * 0.22 * Math.sin(i / 40 * Math.PI); i ? ctx.lineTo(xx, yy) : ctx.moveTo(xx, yy); }
+      for (let i = 0; i <= 40; i++) { const xx = x + 6 + (w - 12) * i / 40, yy = y + h / 2 + Math.sin(i * 0.7 + T * 2) * h * 0.22 * Math.sin(i / 40 * Math.PI); i ? ctx.lineTo(xx, yy) : ctx.moveTo(xx, yy); }
       ctx.stroke();
     }
     dec.forEach((d, i) => {   // 슬롯에 맡긴 블랙박스
       const r = SLOTS[i]; if (!r) return;
       const sx = p.x + r[0] * p.s.w, sy = p.y + r[1] * p.s.h, sw = (r[2] - r[0]) * p.s.w, sh = (r[3] - r[1]) * p.s.h;
       ctx.fillStyle = '#0b1120'; ctx.fillRect(sx + sw * 0.2, sy + sh * 0.2, sw * 0.6, sh * 0.6);
-      ctx.fillStyle = Math.sin(T * 5 + i) > 0 ? '#f03960' : '#6b2f33'; ctx.fillRect(sx + sw * 0.5 - 2, sy + sh * 0.4, 4, 3);
+      ctx.fillStyle = '#f03960'; ctx.fillRect(sx + sw * 0.5 - 2, sy + sh * 0.4, 4, 3);
     });
   };
   const weld = (p, rx, ry) => {   // 작업대 용접 불꽃 (가끔)
-    if (Math.random() < 0.06) for (let i = 0; i < 6; i++) sparks.push({ x: p.x + rx * p.s.w, y: p.y + ry * p.s.h, vx: (Math.random() - 0.3) * 60, vy: -Math.random() * 50, l: 0.4 + Math.random() * 0.3 });
+    if (Math.random() < 0.012) for (let i = 0; i < 5; i++) sparks.push({ x: p.x + rx * p.s.w, y: p.y + ry * p.s.h, vx: (Math.random() - 0.3) * 60, vy: -Math.random() * 50, l: 0.4 + Math.random() * 0.3 });
   };
   const drawSparks = () => { for (const s of sparks) { ctx.fillStyle = s.l > 0.25 ? '#d8e6ff' : '#8f9bb8'; ctx.fillRect(s.x, s.y, 2, 2); } };
 
@@ -211,7 +241,7 @@ SA.HangarScene = (() => {
     const own = P().ships.includes(id), cx = p.x + p.s.w / 2, cy = p.y + p.s.h * 0.48;
     if (own) drawShipAt(id, cx, cy, p.s.w * 0.44, p.s.h * 0.5, { subs: true });
     else {   // 안 산 기체: 홀로그램 윤곽
-      drawShipAt(id, cx, cy, p.s.w * 0.44, p.s.h * 0.5, { alpha: 0.28 + 0.06 * Math.sin(T * 3 + o.rack), filter: 'grayscale(1) brightness(1.8)' });
+      drawShipAt(id, cx, cy, p.s.w * 0.44, p.s.h * 0.5, { alpha: 0.3, filter: 'grayscale(1) brightness(1.8)' });
       ctx.fillStyle = 'rgba(216,230,255,0.10)'; for (let yy = p.y + p.s.h * 0.2 + (T * 20) % 3; yy < p.y + p.s.h * 0.75; yy += 3) ctx.fillRect(p.x + p.s.w * 0.25, yy, p.s.w * 0.5, 1);
     }
   };
