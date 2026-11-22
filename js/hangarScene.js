@@ -9,10 +9,10 @@ SA.HangarScene = (() => {
 
   // 물건 배치 (x = 가운데, base = 바닥 y, h = 높이, d = 시차 깊이). open = 누르면 여는 창
   const OBJ = [
-    { id: 'lockers', img: 'lockers', x: 112, base: 470, h: 150, d: .45, open: 'stash', name: '창고' },
-    { id: 'rack1', img: 'rack_small', x: 250, base: 466, h: 148, d: .45, rack: 0 },
-    { id: 'rack2', img: 'rack_small', x: 342, base: 466, h: 148, d: .45, rack: 1 },
-    { id: 'rack3', img: 'rack_small', x: 434, base: 466, h: 148, d: .45, rack: 2 },
+    { id: 'rack1', img: 'rack_small', x: 326, base: 466, h: 140, d: .45, rack: 0 },
+    { id: 'rack2', img: 'rack_small', x: 404, base: 466, h: 140, d: .45, rack: 1 },
+    { id: 'rack3', img: 'rack_small', x: 482, base: 466, h: 140, d: .45, rack: 2 },
+    { id: 'lockers', img: 'lockers', x: 104, base: 552, h: 224, d: .55, open: 'stash', name: '창고' },   // 바닥에 닿게 크게, 뒷줄 거치대보다 앞
     { id: 'board', img: 'board', x: 862, base: 398, h: 148, d: .45, open: 'contracts', name: '의뢰 게시판' },
     { id: 'cargo', img: 'cargo', x: 790, base: 542, h: 108, d: .5, open: 'deliv', name: '도리의 화물', need: () => P().rescued.deliv, lockTip: '빈자리 — 도리를 구조하면 들어온다' },
     { id: 'dori', npc: 'dori', x: 878, base: 552, h: 92, d: .5, need: () => P().rescued.deliv, open: 'deliv' },
