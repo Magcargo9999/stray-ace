@@ -79,7 +79,7 @@ SA.STORY = {
     { src: '왕국', title: '왕국 기술병의 메모', lines: ['[기술병] 보안 구역 해독키를 정비창에 두고 왔다. 들키면 끝장인데.', '[기술병] 폐광에 왕국 보안 구역이 있다는 걸 아는 사람은 거의 없다.'],
       signal: { kind: 'cache', label: '정비창 잔해', loot: [['key_zone', 1], ['cell2', 1], ['prec', 1]] } },
     { src: '제국', title: '제국 에이스 비행 기록', lines: ['[에이스] 소행성대 사냥 기록. 오늘은 셋.', '[에이스] 내 격납고 좌표를 아는 놈이 있으면… 상대해 주지.'],
-      signal: { kind: 'ambush', label: '제국 에이스의 은신처', elite: true, loot: [['part:강화', 1], ['bp:전설', .3], ['ace', .6], ['qcircuit', .5]] } },
+      signal: { kind: 'ambush', label: '제국 에이스의 은신처', elite: true, loot: [['part:강화', 1], ['bp:행성', .3], ['ace', .6], ['qcircuit', .5]] } },
   ],
   // 메인퀘스트: '다음에 뭘 해야 하는지'만. 한 번에 하나, HUD 한 줄로 보인다.
   main: [

@@ -5,6 +5,33 @@ SA.Save = (() => {
   const KEY = 'strayace_profile_v1';
   let partSeq = 1;
   const newPart = (id) => ({ uid: 'p' + Date.now().toString(36) + (partSeq++), id, dur: 100, max: 100 });
+  // 필드에서 주운 부품 완성품 아이템 → 부품 (행성 개조 등 유지)
+  const fromItem = (it) => {
+    const d = SA.ITEMS[it.id], np = newPart(d.part);
+    if (it.lv) { np.lv = it.lv; np.max = SA.LV_MAX[it.lv]; }
+    if (it.mod) np.mod = it.mod; if (it.awk) np.awk = it.awk;
+    np.dur = Math.min(np.max, it.dur !== undefined ? it.dur : 60);
+    return np;
+  };
+  // 부품 등급 개편 (v0.41): 없어진 부품 → 그 계열 행성급 + 개조 [기준 부품, 등급, 개조, 각성]
+  const TIER_CONV = { twin: ['pulse', 1, 'm_twin'], shard: ['scatter', 1, 'm_frag'], crusher: ['scatter', 1, 'm_crush'], rail: ['lance', 1, 'm_pierce'], breaker: ['lance', 1, 'm_cut'],
+    plating2: ['plating', 1], obs2: ['obs1', 1], obs3: ['obs1', 2, null, 'hunter'], gzcharge: ['mg', 1, 's_graze'], convert: ['purge', 1, 'a_conv'], slowfield: ['deflect', 0] };
+  const tierMig = (p) => {
+    for (const q of p.parts) {
+      const c = TIER_CONV[q.id]; if (!c) continue;
+      const lost = 100 - (q.max || 100), r = q.max ? q.dur / q.max : 1;
+      q.id = c[0]; q.lv = c[1]; if (c[2]) q.mod = c[2]; if (c[3]) q.awk = c[3];
+      q.max = Math.max(40, SA.LV_MAX[q.lv] - lost); q.dur = Math.round(q.max * r);
+    }
+    for (const old in TIER_CONV) { const i = p.recipes.indexOf(old); if (i >= 0) { p.recipes.splice(i, 1); if (!p.recipes.includes(TIER_CONV[old][0])) p.recipes.push(TIER_CONV[old][0]); } }
+    for (const it of p.stash.items) {
+      const k = it.id.slice(3), c = TIER_CONV[k]; if (!c) continue;
+      if (it.id.startsWith('pt_')) { it.id = 'pt_' + c[0]; if (c[1]) it.lv = c[1]; if (c[2]) it.mod = c[2]; if (c[3]) it.awk = c[3]; }
+      else if (it.id.startsWith('bp_')) { if (SA.ITEMS['bp_' + c[0]] && !p.recipes.includes(c[0])) it.id = 'bp_' + c[0]; else { p.credits += 200; it.id = '__gone'; } }
+    }
+    p.stash.items = p.stash.items.filter(it => it.id !== '__gone');
+    for (const s in p.loadouts) { const l = p.loadouts[s]; if (l.cell && !SA.ITEMS[l.cell]) l.cell = 'cell1'; }
+  };
 
   const fresh = () => {
     const parts = ['pulse', 'mg', 'purge', 'magnet'].map(newPart);   // 시작 지급은 이것뿐, 나머지는 제작
@@ -26,7 +53,7 @@ SA.Save = (() => {
       logs: [],                // 해독한 블랙박스 인덱스
       stats: { raids: 0, extracts: 0, deaths: 0, kills: 0, bestValue: 0 },
       settings: { music: 0.5, sfx: 0.7 },
-      seenTips: false,
+      seenTips: false, tierMig: true,
       bpMiss: 0,              // 새 설계도 없이 출격한 횟수 (불운 보정)
       deliv: { slot: -1, stock: [] },   // 배달 상점 재고 (20분마다 교체)
       bring: {},              // 이번 출격에 가져갈 소모품 개수
@@ -43,6 +70,7 @@ SA.Save = (() => {
   // 예전 세이브 정리: 사라진 아이템(연료 전지 등)은 판매가로 환불, 모르는 부품·제작법은 뺀다
   const LEGACY = { fuel: 60 };
   const migrate = (p) => {
+    if (!p.tierMig) { p.tierMig = true; tierMig(p); }
     for (const it of p.stash.items.slice()) if (!SA.ITEMS[it.id]) { p.credits += LEGACY[it.id] || 0; SA.Grid.remove(p.stash, it.uid); }
     p.parts = p.parts.filter(q => SA.PARTS[q.id]);
     p.recipes = p.recipes.filter(r => SA.RECIPES[r]);
@@ -77,7 +105,7 @@ SA.Save = (() => {
   const load = () => {
     try {
       const s = localStorage.getItem(KEY);
-      if (s) { const j = JSON.parse(s), p = Object.assign(fresh(), j); p.rescMig = !!j.rescMig; p.cellMig = !!j.cellMig; return migrate(p); }
+      if (s) { const j = JSON.parse(s), p = Object.assign(fresh(), j); p.rescMig = !!j.rescMig; p.cellMig = !!j.cellMig; p.tierMig = !!j.tierMig; return migrate(p); }
     } catch (e) { console.warn('save load failed', e); }
     return fresh();
   };
@@ -86,5 +114,5 @@ SA.Save = (() => {
   };
   const reset = () => { try { localStorage.removeItem(KEY); } catch (e) {} return fresh(); };
 
-  return { load, store, reset, newPart };
+  return { load, store, reset, newPart, fromItem };
 })();

@@ -79,11 +79,13 @@ SA.Render = (() => {
       case 'bb_reward': p(ol, 2, 3, 12, 11); p('#2a2d36', 3, 4, 10, 9); p('#ffb347', 3, 7, 10, 2); p('#fff2d0', 5, 7, 2, 1); p('#ffb347', 11, 4, 2, 2); break;
       case 'alloy': p(ol, 2, 4, 12, 9); p('#4f7f74', 3, 5, 10, 7); p('#9fd8c8', 3, 5, 10, 2); p('#cff3ea', 4, 5, 3, 1); p('#2f5a50', 3, 10, 10, 2); break;
       case 'fcore': p(ol, 3, 2, 10, 28); p('#24496e', 4, 3, 8, 26); p('#6fb7ff', 5, 5, 6, 8); p('#6fb7ff', 5, 19, 6, 8); p('#d58a5b', 4, 14, 8, 4); p('#e8f4ff', 6, 7, 2, 3); break;
+      case 'chip': p(ol, 3, 2, 10, 12); p('#4a1f2e', 4, 3, 8, 10); p('#ff8fb0', 5, 4, 6, 2); p('#ff4d6d', 5, 7, 6, 1); p('#ff8fb0', 5, 9, 4, 1); p('#ffe0ea', 5, 11, 2, 1); for (let i = 0; i < 4; i++) { p('#c9b27a', 1, 4 + i * 2, 2, 1); p('#c9b27a', 13, 4 + i * 2, 2, 1); } break;   // 비행 기록 칩 (임시 도트)
+      case 'abyss': p(ol, 3, 3, 10, 10); p('#2a1450', 4, 4, 8, 8); p('#6b3fd0', 5, 5, 6, 6); p('#c08bff', 6, 6, 4, 4); p('#f4e9ff', 7, 7, 2, 2); p('#6b3fd0', 7, 1, 2, 2); p('#6b3fd0', 7, 13, 2, 2); p('#6b3fd0', 1, 7, 2, 2); p('#6b3fd0', 13, 7, 2, 2); break;   // 심연 핵 (임시 도트)
       case 'qcircuit': p(ol, 2, 2, 12, 12); p('#8a6a12', 3, 3, 10, 10); p('#ffd166', 4, 4, 8, 8); p('#b98cff', 6, 6, 4, 4); p('#f4e9ff', 7, 6, 1, 2); for (let i = 0; i < 3; i++) { p('#ffd166', 0, 4 + i * 3, 2, 1); p('#ffd166', 14, 4 + i * 3, 2, 1); } break;
       case 'key_box1': case 'key_box2': case 'key_box3': case 'key_zone': {   // 해독키 (임시 도트): 코드 칩 카드
         const gc = d.color; p(ol, 2, 3, 12, 10); p('#1c2333', 3, 4, 10, 8); p(gc, 3, 4, 10, 2); p('#d8b45a', 4, 8, 4, 3); p('#8a6a2a', 5, 9, 2, 1); p(gc, 10, 8, 2, 2); break;
       }
-      case 'cell1': case 'cell2': case 'cell3': {   // 동력원 (임시 도트): 원통 + 등급 색 띠
+      case 'cell1': case 'cell2': case 'cell3': case 'cell4': {   // 동력원 (임시 도트): 원통 + 등급 색 띠
         const gc = d.color; p(ol, 4, 1, 8, 14); p('#2a3242', 5, 3, 6, 11); p(gc, 5, 5, 6, 2); p(gc, 5, 9, 6, 2); p('#cfd6dd', 6, 1, 4, 2); p('#ffffff', 6, 5, 1, 2); break;
       }
       default:
@@ -97,7 +99,7 @@ SA.Render = (() => {
           break;
         }
         // 설계도
-        p(ol, 2, 2, 12, 12); const tc = { 강화: '#3a7a2a', 전설: '#7a5a12' }[(SA.PARTS[d.recipe] || {}).tier] || '#1f4f8a'; p(tc, 3, 3, 10, 10);
+        p(ol, 2, 2, 12, 12); const tc = { 강화: '#3a7a2a', 행성: '#7a5a12' }[(SA.PARTS[d.recipe] || {}).tier] || '#1f4f8a'; p(tc, 3, 3, 10, 10);
         p(tc === '#7a5a12' ? '#ffd166' : '#cfe3ff', 4, 5, 8, 1); p('#cfe3ff', 4, 8, 6, 1); p('#cfe3ff', 4, 10, 7, 1); p('#ffffff', 10, 4, 2, 2);
     }
     iconCache[id] = c;
@@ -192,7 +194,7 @@ SA.Render = (() => {
     // 떠다니는 아이템
     for (const it of R.items) if (vis(it.x, it.y, 20)) {
       const d = SA.ITEMS[it.id], w = d.w * 8, h = d.h * 8, bob = Math.sin(it.t * 4) * 1;
-      if (it.glow && !it.full) { ctx.globalAlpha = 0.25 + 0.2 * Math.sin(it.t * 6); ctx.fillStyle = it.glow === '전설' ? '#ffd166' : '#5dffb0'; ctx.beginPath(); ctx.arc(it.x, it.y + bob, Math.max(w, h) * 0.8 + 4, 0, 6.29); ctx.fill(); }
+      if (it.glow && !it.full) { ctx.globalAlpha = 0.25 + 0.2 * Math.sin(it.t * 6); ctx.fillStyle = SA.TIER_COL[it.glow] || '#5dffb0'; ctx.beginPath(); ctx.arc(it.x, it.y + bob, Math.max(w, h) * 0.8 + 4, 0, 6.29); ctx.fill(); }
       ctx.globalAlpha = 0.35 + 0.25 * Math.sin(it.t * 5);
       ctx.fillStyle = it.full ? '#ff6b6b' : d.color;
       ctx.fillRect(it.x - w / 2 - 2, it.y - h / 2 - 2 + bob, w + 4, h + 4);
@@ -312,7 +314,7 @@ SA.Render = (() => {
       if (pre.box_locked) { ctx.imageSmoothingEnabled = true; ctx.drawImage(pre.box_locked, p.x - 9, p.y - 12.5, 18, 25); }
       else { ctx.fillStyle = '#3a4558'; ctx.fillRect(p.x - 9, p.y - 12, 18, 24); }
       ctx.fillStyle = gc; ctx.fillRect(p.x - 2, p.y + 1, 4, 4);
-      label(ctx, sec ? '보안상자' : `잠긴 상자 · ${['일반', '강화', '전설'][p.grade - 1]}`, p.x, p.y - 18, gc, 6);
+      label(ctx, sec ? '보안상자' : `잠긴 상자 · ${['일반', '강화', '행성'][p.grade - 1]}`, p.x, p.y - 18, gc, 6);
       const near = U.d2(p.x, p.y, R.player.x, R.player.y) < SA.BOX.r ** 2, need = sec ? SA.BOX.hackHold : SA.BOX.openHold;
       ctx.strokeStyle = near ? gc : 'rgba(160,180,210,0.2)'; ctx.lineWidth = 1; ctx.setLineDash([3, 4]); ctx.beginPath(); ctx.arc(p.x, p.y, SA.BOX.r, 0, 6.29); ctx.stroke(); ctx.setLineDash([]);
       if (p.prog > 0) { ctx.strokeStyle = gc; ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(p.x, p.y, SA.BOX.r + 3, -Math.PI / 2, -Math.PI / 2 + Math.min(1, p.prog / need) * 6.283); ctx.stroke(); }
@@ -612,7 +614,7 @@ SA.Render = (() => {
     bar(ctx, gx, gy + 14, gw, 8, R.corr / 100, ['#6d7fa8', '#9a7bdc', '#b06cff', '#d14dff'][R.stage]);
     ctx.fillStyle = '#05070d'; [30, 60, 90].forEach(m => ctx.fillRect(gx + gw * m / 100 - 1, gy + 12, 2, 12));
     const st = SA.CORROSION[R.stage], next = SA.CORROSION[R.stage + 1];
-    const eta = next ? (next.at - R.corr) / (st.rate * (SA.Combat.hasPas(P, 'plating') ? 0.8 : 1)) : 0;
+    const eta = next ? (next.at - R.corr) / (st.rate * (1 - Math.min(0.7, SA.Combat.pv(P, 'plating', 0)))) : 0;
     T(ctx, `침식 ${Math.floor(R.corr)}% · ${st.name}`, gx, gy + 8, '#cbb8ff', 13);
     T(ctx, next ? `다음 단계 ${fmtT(eta)}` : '최고 단계', gx + gw, gy + 8, '#8f9bb8', 12, 'right', false);
     T(ctx, fmtT(R.t), W / 2, gy + 50, '#8f9bb8', 12, 'center', false);
@@ -679,9 +681,9 @@ SA.Render = (() => {
       const y0 = by - 150;
       ctx.fillStyle = 'rgba(8,10,18,0.7)'; ctx.fillRect(bx - 8, y0, 300, 54);
       P.mains.forEach((m, i) => {
-        const on = i === P.wi, nm = m ? SA.PARTS[m.id].name : '—';
+        const on = i === P.wi, nm = m ? SA.partName(m, true) : '—', tc = m && m.lv ? SA.TIER_COL[SA.partTier(m)] : '#e6edf3';
         T(ctx, `${i + 1}`, bx + i * 142, y0 + 17, on ? '#8fd3ff' : '#4a5468', 12);
-        T(ctx, nm, bx + 14 + i * 142, y0 + 17, on ? '#e6edf3' : '#6b7385', 12, 'left', on);
+        T(ctx, nm, bx + 14 + i * 142, y0 + 17, on ? tc : '#6b7385', 12, 'left', on);
       });
       if (P.swapT > 0) T(ctx, '교체 중', bx + 280, y0 + 17, '#ffd166', 11, 'right', false);
       const cd = P.cell && SA.ITEMS[P.cell.id], frac = cd ? P.cell.e / cd.cap : 0;
@@ -698,15 +700,18 @@ SA.Render = (() => {
     T(ctx, `HP ${Math.ceil(P.hp)}/${P.maxHp}`, bx, by + 22, '#e6edf3', 13);
     const gb = SA.Raid.grazeBonus(), gd = SA.Raid.grazeDmg();
     T(ctx, `스침 ${R.graze} · 드랍 +${Math.round(gb * 100)}% · 피해 +${Math.round(gd * 100)}%`, bx + 280, by + 22, gb > 0 ? '#fff3a8' : '#8f9bb8', 12, 'right', false);
-    const slot = (x, key, name, cd, max, ok) => {
+    if (P.hasRvAwk === undefined) P.hasRvAwk = [...P.mains, ...P.subs.map(s => s.part), ...P.acts.map(a => a && a.part), ...P.pas, P.obs].some(p => p && p.awk === 'raven');
+    if (P.hasRvAwk) T(ctx, `레이븐 각성 +${Math.min(10, P.rvStk || 0) * 3}%`, bx + 280, by - 72, '#ff8fb0', 11, 'right', false);
+    const slot = (x, key, name, cd, max, ok, ch) => {
       ctx.fillStyle = 'rgba(255,255,255,0.06)'; ctx.fillRect(x, by - 58, 84, 40);
       if (cd > 0) { ctx.fillStyle = 'rgba(0,0,0,0.55)'; ctx.fillRect(x, by - 58, 84 * (cd / max), 40); }
       ctx.strokeStyle = cd > 0 || !ok ? '#3a4255' : '#8fd3ff'; ctx.lineWidth = 1; ctx.strokeRect(x + 0.5, by - 57.5, 83, 39);
       T(ctx, key, x + 6, by - 42, ok ? '#8fd3ff' : '#555', 12);
       T(ctx, name, x + 6, by - 25, ok ? '#e6edf3' : '#555', 11, 'left', false);
       if (cd > 0) T(ctx, cd.toFixed(1), x + 78, by - 42, '#fff', 12, 'right');
+      if (ch !== undefined) T(ctx, '●'.repeat(ch) + '○'.repeat(2 - ch), x + 78, by - 25, '#ffd166', 10, 'right', false);   // 2회 충전 개조
     };
-    P.acts.forEach((a, i) => slot(bx + i * 92, i ? 'E' : 'Q', a ? SA.PARTS[a.part.id].name : '비어 있음', a ? a.cd : 0, a ? SA.PARTS[a.part.id].cd : 1, !!a && SA.Combat.eff(a.part) > 0));
+    P.acts.forEach((a, i) => slot(bx + i * 92, i ? 'E' : 'Q', a ? SA.PARTS[a.part.id].name : '비어 있음', a ? (a.part.mod === 'a_two' && a.ch > 0 ? 0 : a.cd) : 0, a ? SA.Combat.actCd(P, a) : 1, !!a && SA.Combat.eff(a.part) > 0, a && a.part.mod === 'a_two' ? (a.ch === undefined ? 2 : a.ch) : undefined));
     const pl = SA.PILOTS[P.pilot];
     slot(bx + 184, 'SPACE', SA.PILOTS[P.pilot].title, P.skillCd, pl.cd, !!pl.skill);
 
@@ -750,7 +755,7 @@ SA.Render = (() => {
         const dist = Math.hypot(m.x - W / 2, m.y - H / 2), spr = md.spread * (sn ? 0.4 : 1) * (P.aiming ? SA.ENERGY.aim : SA.ENERGY.hip);
         const rr = Math.max(cr + 3, Math.min(160, Math.tan(spr) * dist));
         ctx.globalAlpha = P.aiming ? 0.7 : 0.3; ctx.lineWidth = 1; ctx.beginPath(); ctx.arc(m.x, m.y, rr, 0, 6.29); ctx.stroke(); ctx.globalAlpha = 1;
-        if (md.sniper && P.aimC > 0) { const f = P.aimC / SA.ENERGY.sniperCharge; ctx.strokeStyle = f >= 1 ? '#ffe08a' : '#cfe3ff'; ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(m.x, m.y, cr + 6, -Math.PI / 2, -Math.PI / 2 + f * 6.283); ctx.stroke(); }
+        if (md.sniper && P.aimC > 0) { const f = P.aimC / (P.aimMax || SA.ENERGY.sniperCharge); ctx.strokeStyle = f >= 1 ? '#ffe08a' : '#cfe3ff'; ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(m.x, m.y, cr + 6, -Math.PI / 2, -Math.PI / 2 + f * 6.283); ctx.stroke(); }
       }
       ctx.fillStyle = cc; ctx.fillRect(m.x - 1, m.y - 1, 2, 2);
       for (const [a, b] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) ctx.fillRect(m.x + a * ct - (b ? 1 : 0) - (a < 0 ? 4 : 0), m.y + b * ct - (a ? 1 : 0) - (b < 0 ? 4 : 0), a ? 4 : 2, b ? 4 : 2);

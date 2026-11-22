@@ -16,7 +16,8 @@ SA.UI = (() => {
     el.style.width = grid.w * CELL + 'px'; el.style.height = grid.h * CELL + 'px';
     for (const it of grid.items) {
       const d = SA.ITEMS[it.id], [w, hh] = SA.Grid.dims(it);
-      const n = h('div', 'item' + (SA.ITEMS[it.id].tier && SA.ITEMS[it.id].tier !== '일반' ? ' g-' + SA.ITEMS[it.id].tier : ''));
+      const tr = it.lv === 2 ? '은하' : it.lv === 1 ? '행성' : d.tier;
+      const n = h('div', 'item' + (tr && tr !== '일반' ? ' g-' + tr : ''));
       n.style.left = it.x * CELL + 'px'; n.style.top = it.y * CELL + 'px';
       n.style.width = w * CELL + 'px'; n.style.height = hh * CELL + 'px';
       n.style.setProperty('--c', d.color);
@@ -26,9 +27,9 @@ SA.UI = (() => {
       else img.style.transform = 'translate(-50%,-50%)';
       n.appendChild(img);
       if (d.kind === 'cell' && it.ch !== undefined) n.appendChild(h('span', 'val', Math.round(it.ch * 100) + '%'));   // 동력원 충전량
-      else if (opts.showVal !== false) n.appendChild(h('span', 'val', '₵' + d.val));
+      else if (opts.showVal !== false) n.appendChild(h('span', 'val', '₵' + SA.itemVal(it)));
       n.addEventListener('mousedown', (e) => onItemDown(e, name, it));
-      n.addEventListener('mouseenter', (e) => showTip(e, it.id, it.dur !== undefined ? `<br>내구도 ${it.dur}/100` : it.ch !== undefined ? `<br>충전 ${Math.round(it.ch * 100)}%` : ''));
+      n.addEventListener('mouseenter', (e) => showTip(e, it.id, it.dur !== undefined ? `<br>내구도 ${it.dur}/${SA.LV_MAX[it.lv || 0]}` : it.ch !== undefined ? `<br>충전 ${Math.round(it.ch * 100)}%` : '', it));
       n.addEventListener('mouseleave', hideTip);
       n.addEventListener('contextmenu', (e) => { e.preventDefault(); openMenu(e, name, it); });
       el.appendChild(n);
@@ -38,9 +39,15 @@ SA.UI = (() => {
   const refreshAll = () => { for (const k in views) if (document.body.contains(views[k].el)) gridView(k, views[k].el, views[k].grid, views[k].opts); };
 
   // ── 툴팁 ──
-  const showTip = (e, id, extra = '') => {
+  const showTip = (e, id, extra = '', it = null) => {
     if (drag) return;
     const d = SA.ITEMS[id];
+    if (it && d.kind === 'part' && (it.lv || it.mod)) {   // 행성급 부품 완성품: 등급·개조까지 보여 준다
+      const p = { id: d.part, lv: it.lv, mod: it.mod, awk: it.awk };
+      if (!tip) { tip = h('div', 'tip'); document.body.appendChild(tip); }
+      tip.innerHTML = `<b>${SA.partHtml(p)}</b> <span class="dim">${d.w}×${d.h} · 부품 · ${SA.partTier(p)}</span><br>₵${SA.itemVal(it)}<br><span class="desc">[부품] ${SA.partFullDesc(p)} 탈출하면 부품함으로 들어간다.</span>${extra}`;
+      tip.style.display = 'block'; moveTip(e); return;
+    }
     if (!tip) { tip = h('div', 'tip'); document.body.appendChild(tip); }
     const cells = d.w * d.h;
     const tier = d.kind === 'bp' ? (SA.PARTS[d.recipe] || {}).tier : d.tier;

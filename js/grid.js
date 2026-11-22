@@ -61,7 +61,7 @@ SA.Grid = (() => {
     return true;
   };
   const used = (g) => g.items.reduce((n, it) => n + SA.ITEMS[it.id].w * SA.ITEMS[it.id].h, 0);
-  const value = (g) => g.items.reduce((n, it) => n + SA.ITEMS[it.id].val, 0);
+  const value = (g) => g.items.reduce((n, it) => n + SA.itemVal(it), 0);
   const count = (g, id) => g.items.filter(it => it.id === id).length;
   const takeMats = (g, mats) => {
     for (const k in mats) if (count(g, k) < mats[k]) return false;

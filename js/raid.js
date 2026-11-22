@@ -3,7 +3,7 @@ SA.Raid = (() => {
   const U = SA.U, C = () => SA.Combat;
 
   const LOOT = {
-    // 'bp:강화'·'bp:전설'은 dropLoot에서 출처별 배율(SA.BP_MUL)이 곱해진다. 'part:등급' = 부품 완성품
+    // 'bp:강화'·'bp:행성'은 dropLoot에서 출처별 배율(SA.BP_MUL)이 곱해진다. 'part:등급' = 부품 완성품
     wreck: [['scrap', 1], ['scrap', .7], ['wire', .5], ['core', .5], ['engine', .25], ['debris', .22], ['goldchip', .15], ['prec', .15], ['bp:일반', .06], ['key_box1', .03], ['key_zone', .015], ['stardata', .08], ['bb_reward', .05]],
     crate: [['core', .4], ['repairkit', .35], ['canister', .3], ['goldchip', .2], ['wire', .5], ['prec', .3], ['bp:일반', .12], ['bp:강화', .04], ['cell1', .2], ['key_box1', .06], ['stardata', .1], ['bb_reward', .04]],
     cache: [['core', 1], ['engine', .6], ['scrap', 1], ['prec', .8], ['prec', .4], ['bp:일반', .15], ['bp:강화', .12], ['alloy', .25], ['key_box1', .15]],
@@ -37,6 +37,7 @@ SA.Raid = (() => {
     };
     const subs = (lo.sub || []).slice(0, ship.sub).map((u, i) => part(u) && SA.PARTS[part(u).id].slot === 'sub'
       ? { part: part(u), cd: 0, ang: -Math.PI / 2, ox: ship.subMounts[i][0], oy: ship.subMounts[i][1], orb: i * Math.PI, x: 0, y: 0 } : null).filter(Boolean);
+    for (const s of subs.slice()) if (s.part.mod === 's_two') subs.push(Object.assign({}, s, { orb: s.orb + Math.PI, cd: 0.2 }));   // 추적 드론 개조 '2기'
     const pas = (lo.pas || []).slice(0, ship.pas).map(part).filter(Boolean);
     const hasBarrier = pas.some(p => p.id === 'barrier');
     R.player = {
@@ -48,6 +49,7 @@ SA.Raid = (() => {
       acts: [0, 1].map(i => { const p = part((lo.act || [])[i]); return p ? { part: p, cd: 0 } : null; }),
       skillCd: 0, skillT: 0, skillState: null, dash: 0, rollT: 0, shieldT: 0, dead: false, lastMx: 0, lastMy: -1,
     };
+    { const bm = C().pv(R.player, 'barrier'); R.player.barrier = R.player.barrierMax = Math.round(bm); }   // 베리어 발생기 (등급 배율)
     R.range = !!opt.range;
     if (R.range) return startRange(R, prof, lo);
     // 장착 동력원: 창고에서 고른 등급 하나를 꺼내 기체에 꽂는다 (기지에서는 항상 가득 차 있다)
@@ -64,7 +66,7 @@ SA.Raid = (() => {
     generate(R);
     R.cam.x = R.player.x; R.cam.y = R.player.y;
     // 시야: 관측 장비 등급만큼 Z로 화면을 넓힐 수 있다 · 지도 안개
-    const ob = R.player.obs && C().eff(R.player.obs) > 0 ? SA.PARTS[R.player.obs.id].obsLv || 0 : 0;
+    const ob = R.player.obs && C().eff(R.player.obs) > 0 ? (R.player.obs.lv || 0) + 1 : 0;   // 관측기 등급: 일반 1 · 행성 2 · 은하 3
     R.obsLv = ob; R.zoomLv = 0; R.zoom = R.zoomTarget = SA.OBS.levels[0];
     R.fogW = Math.ceil(R.map.w / SA.OBS.fogCell); R.fogH = Math.ceil(R.map.h / SA.OBS.fogCell); R.fog = new Uint8Array(R.fogW * R.fogH); R.fogT = 0;
     revealAt(R, R.player.x, R.player.y, SA.OBS.reveal);
@@ -84,7 +86,7 @@ SA.Raid = (() => {
     R.player.cell = { id: lo.cell || 'cell1', e: SA.ITEMS[lo.cell || 'cell1'].cap };
     R.extracts = []; R.beaconQ = []; R.beaconN = SA.EXIT.max; R.distressAt = 0; R.hunterSpawned = true;
     R.zoom = R.zoomTarget = SA.OBS.levels[0]; R.zoomLv = 0;
-    R.obsLv = R.player.obs && C().eff(R.player.obs) > 0 ? SA.PARTS[R.player.obs.id].obsLv || 0 : 0;
+    R.obsLv = R.player.obs && C().eff(R.player.obs) > 0 ? (R.player.obs.lv || 0) + 1 : 0;
     R.fogW = 1; R.fogH = 1; R.fog = new Uint8Array(1).fill(1); R.fogT = 0;
     R.cam.x = R.player.x; R.cam.y = R.player.y;
     R.allies = []; R.dmgLog = []; R.rangeGod = true; R.dummyMode = 'still';
@@ -143,6 +145,13 @@ SA.Raid = (() => {
       addPoi('duel', dp, { clear: 170, label: '레이븐의 신호', seen: true });
       S.spawnEnemy(R, 'raven', dp.x, dp.y, { rematch: true });
       R.ravenRematch = true;
+    }
+    // 제국 실험 무인기: 레이븐이 합류한 뒤 출격의 일부에 나타난다 (격추하면 비행 기록 칩)
+    if (joined && Math.random() < SA.MIMIC.chance) {
+      const mp = place(0.4, 0.8, 650) || ell(R, 0.6, U.rnd(0, 6.28));
+      addPoi('mimic', mp, { clear: 170, label: '미확인 고속 신호' });
+      const e = S.spawnEnemy(R, 'mimic', mp.x, mp.y, { rematch: true, mimic: true, phase: 1 });
+      e.hp = e.maxHp = SA.MIMIC.hp;
     }
     const rid = SA.Rescue.plan();
     if (rid) {
@@ -240,7 +249,7 @@ SA.Raid = (() => {
   const msg = (text, col = '#fff', life = 3.5) => { SA.R.msgs.push({ text, col, life, max: life }); if (SA.R.msgs.length > 4) SA.R.msgs.shift(); };
 
   // 스침 스택 보너스 (모든 파일럿 공통): 드랍률과 플레이어 피해량
-  const grazeCap = () => (SA.R.player && C().hasPas(SA.R.player, 'grazeamp')) ? SA.GRAZE.capAmp : SA.GRAZE.cap;
+  const grazeCap = () => { const P = SA.R.player; if (!P) return SA.GRAZE.cap; return [SA.GRAZE.cap[0] + C().pv(P, 'grazeamp', 0), SA.GRAZE.cap[1] + C().pv(P, 'grazeamp', 1)]; };
   const grazeTier = () => Math.floor((SA.R.graze || 0) / SA.GRAZE.per);
   const grazeBonus = () => Math.min(grazeCap()[0], grazeTier() * SA.GRAZE.drop);
   const grazeDmg = () => Math.min(grazeCap()[1], grazeTier() * SA.GRAZE.dmg);
@@ -256,10 +265,10 @@ SA.Raid = (() => {
   };
   const dropLoot = (e) => {
     const R = SA.R, D = SA.ENEMIES[e.type] || {}, table = e.loot || D.drops || [], b = grazeBonus();
-    // 강화·전설 설계도 배율: 네임드·보스·대형은 높게, 그 외는 낮게
+    // 강화·행성 설계도 배율: 네임드·보스·대형은 높게, 그 외는 낮게
     const bm = e.boss ? SA.BP_MUL.boss : D.ai === 'frigate' ? SA.BP_MUL.frigate : SA.BP_MUL.normal;
     for (const [id, p] of table) {
-      const k = (id === 'bp:강화' || id === 'bp:전설') ? bm : 1;
+      const k = id === 'bp:강화' ? bm : 1;
       if (Math.random() < (p >= 1 ? 1 : p * k * (1 + b) * pity(id))) spawnItem(R, id, e.x, e.y);
     }
     // 부품 완성품 드랍 (적 격추)
@@ -269,18 +278,22 @@ SA.Raid = (() => {
     }
   };
   const gradeOf = (id) => { const d = SA.ITEMS[id]; if (!d) return '일반'; if (d.kind === 'bp') return (SA.PARTS[d.recipe] || {}).tier || '일반'; return d.tier || '일반'; };
+  // 행성급 부품 완성품: 키울 수 있는 부품 중 무작위 + 무작위 개조 (레이븐 추진기 제외)
+  const PLANET_POOL = () => Object.keys(SA.PARTS).filter(k => SA.canUp(k) && k !== 'raven');
   const spawnItem = (R, id, x, y, spd = 70) => {
-    id = resolve(id);
+    let ex = null;
+    if (id === 'part:행성') { const k = U.pick(PLANET_POOL()); id = 'pt_' + k; ex = { lv: 1 }; const m = SA.randMod(k); if (m) ex.mod = m; }
+    else id = resolve(id);
     const a = Math.random() * 6.28, s = U.rnd(20, spd), d = SA.ITEMS[id];
-    const it = { id, x, y, vx: Math.cos(a) * s, vy: Math.sin(a) * s, full: false, chk: 0, t: 0 };
-    if (d.kind === 'part') it.dur = Math.round(U.rnd(SA.PART_DROP.dur[0], SA.PART_DROP.dur[1]));
+    const it = Object.assign({ id, x, y, vx: Math.cos(a) * s, vy: Math.sin(a) * s, full: false, chk: 0, t: 0 }, ex || {});
+    if (d.kind === 'part') it.dur = Math.round(U.rnd(SA.PART_DROP.dur[0], SA.PART_DROP.dur[1]) * SA.LV_MAX[it.lv || 0] / 100);
     R.items.push(it);
     // 좋은 것이 나오면: 등급별 짧은 효과음 + 빛 (부담스럽지 않게)
-    const g = gradeOf(id);
+    const g = it.lv === 2 ? '은하' : it.lv === 1 ? '행성' : gradeOf(id);
     if (g !== '일반' && R.state === 'play') {
-      const big = g === '전설' && (d.kind === 'part' || d.kind === 'bp');
-      SA.Audio.sfx(big ? 'rare3' : g === '전설' ? 'rare2' : 'rare1');
-      R.rings.push({ x, y, r: 4, max: g === '전설' ? 46 : 28, life: 0.5, col: g === '전설' ? '#ffd166' : '#5dffb0' });
+      const hi = g === '행성' || g === '은하', big = hi && (d.kind === 'part' || d.kind === 'bp');
+      SA.Audio.sfx(big ? 'rare3' : hi ? 'rare2' : 'rare1');
+      R.rings.push({ x, y, r: 4, max: hi ? 46 : 28, life: 0.5, col: SA.TIER_COL[g] });
       it.glow = g;
     }
   };
@@ -339,7 +352,7 @@ SA.Raid = (() => {
 
   const updateItems = (R, dt) => {
     const P = R.player;
-    const mag = SA.CFG.MAGNET_R * (C().hasPas(P, 'magnet') ? 2 : 1);
+    const mag = SA.CFG.MAGNET_R * (1 + C().pv(P, 'magnet'));
     for (const it of R.items) {
       it.t += dt;
       it.vx *= 0.92; it.vy *= 0.92;
@@ -358,14 +371,14 @@ SA.Raid = (() => {
     }
     R.items = R.items.filter(it => !it.taken);
   };
-  const itemState = (it) => { const o = {}; if (it.ch !== undefined) o.ch = it.ch; if (it.dur !== undefined) o.dur = it.dur; return o; };   // 동력원 충전량 등은 줍고 버려도 유지
+  const itemState = (it) => { const o = {}; for (const k of ['ch', 'dur', 'lv', 'mod', 'awk']) if (it[k] !== undefined) o[k] = it[k]; return o; };   // 동력원 충전량 등은 줍고 버려도 유지
   const tryPickup = (R, it) => {
     const d = SA.ITEMS[it.id];
     const placed = SA.Grid.add(R.cargo, it.id, itemState(it));
     if (placed) {
       it.taken = true;
       SA.Audio.sfx('pickup', d.val >= 150 ? 3 : d.val >= 60 ? 2 : 1);
-      R.pickLog.push({ text: `+ ${d.name}`, val: d.val, col: d.color, life: 3 });
+      R.pickLog.push({ text: `+ ${d.kind === 'part' && it.lv ? SA.partName({ id: d.part, lv: it.lv, mod: it.mod }) : d.name}`, val: SA.itemVal(it), col: it.lv ? SA.TIER_COL[it.lv === 2 ? '은하' : '행성'] : d.color, life: 3 });
       if (R.pickLog.length > 5) R.pickLog.shift();
     } else {
       if (!it.full) { SA.Audio.sfx('full'); C().text(R, it.x, it.y - 8, '칸 부족', '#ffb3b3'); }
@@ -476,7 +489,7 @@ SA.Raid = (() => {
     p.prog += dt; SA.Audio.sfx(p.type === 'secure' ? 'hack' : 'salvage', Math.min(1, p.prog / need));
     if (p.prog >= need) {
       p.done = true;
-      if (p.type === 'locked') { codes()[code]--; for (const [id, pr] of SA.LOOT_LOCKED[p.grade]) if (Math.random() < pr * ((id === 'bp:강화' || id === 'bp:전설') ? 1 : 1)) spawnItem(R, id, p.x, p.y, 90); }
+      if (p.type === 'locked') { codes()[code]--; for (const [id, pr] of SA.LOOT_LOCKED[p.grade]) if (Math.random() < pr * ((id === 'bp:강화' || id === 'bp:행성') ? 1 : 1)) spawnItem(R, id, p.x, p.y, 90); }
       else for (const [id, pr] of SA.LOOT_SECURE) if (Math.random() < pr) spawnItem(R, id, p.x, p.y, 90);
       msg(p.type === 'locked' ? `잠긴 상자 개방 — ${SA.CODES[code].name} 남은 ${codes()[code]}회` : '보안상자 해킹 완료', '#5dffb0', 3); SA.Audio.sfx('unlock');
     }
@@ -550,7 +563,7 @@ SA.Raid = (() => {
 
   const updateCorrosion = (R, dt) => {
     const P = R.player, st = SA.CORROSION[R.stage];
-    let rate = st.rate * (C().hasPas(P, 'plating2') ? 0.7 : C().hasPas(P, 'plating') ? 0.8 : 1) * (P.outside ? 4 : 1) * (P.pilot === 'cmdr' ? SA.CMDR_CORR : 1);
+    let rate = st.rate * (1 - Math.min(0.7, C().pv(P, 'plating', 0))) * (P.outside ? 4 : 1) * (P.pilot === 'cmdr' ? SA.CMDR_CORR : 1);
     R.corr = Math.min(100, R.corr + rate * dt);
     let ns = 0; for (let i = 0; i < SA.CORROSION.length; i++) if (R.corr >= SA.CORROSION[i].at) ns = i;
     if (ns !== R.stage) {
@@ -566,7 +579,7 @@ SA.Raid = (() => {
     const s = SA.CORROSION[R.stage];
     if (P.dead) return;
     const cres = 1 - C().corrResist(P);   // 차폐 장갑: 침식 디버프 감소
-    if (s.durDrain) [...P.mains, ...P.subs.map(x => x.part), ...P.pas, P.obs].filter(Boolean).forEach(p => C().wear(p, 0.05 * dt * cres));
+    if (s.durDrain) [...P.mains, ...P.subs.map(x => x.part), ...P.pas, P.obs].filter(p => p && p.awk !== 'hunter').forEach(p => C().wear(p, 0.05 * dt * cres));   // 심연 각성 부품은 침식으로 닳지 않는다
     if (s.hpDrain && R.state === 'play') { P.hp -= s.hpDrain * dt * cres; if (P.hp <= 0) { P.hp = 0; playerDied(); } }
     const cs = SA.CORRODE_SPAWN[R.stage];
     if (cs) {
@@ -728,10 +741,10 @@ SA.Raid = (() => {
       const inside = U.d2(x.x, x.y, P.x, P.y) < SA.CFG.EXTRACT_R ** 2;
       if (inside) {
         const before = Math.floor(x.prog);
-        x.prog += dt * (C().hasPas(R.player, 'exitacc') ? 1 / 0.7 : 1);
+        x.prog += dt / (1 - Math.min(0.6, C().pv(R.player, 'exitacc')));
         if (Math.floor(x.prog) !== before) SA.Audio.sfx('beep');
         if (x.prog >= SA.CFG.EXTRACT_TIME) { R.state = 'extracting'; SA.Audio.sfx('extract'); R.extractFx = 1.2; setTimeout(() => finish(true), 900); return; }
-      } else x.prog = Math.max(0, x.prog - dt * (C().hasPas(R.player, 'exitacc') ? 1.5 : 3));   // 벗어나면 빠르게 줄어든다 (바로 0이 아니라 스트레스 완화)
+      } else x.prog = Math.max(0, x.prog - dt * (C().pv(R.player, 'exitacc') ? 1.5 : 3));   // 벗어나면 빠르게 줄어든다 (바로 0이 아니라 스트레스 완화)
     }
   };
 
@@ -743,6 +756,7 @@ SA.Raid = (() => {
   const bossEngaged = (e) => {
     const R = SA.R; R.boss = e; R.bossEngaged = true;
     if (e.type === 'raven') { say('raven', '여긴 내 구역이야, 떠돌이.'); SA.Audio.sfx('siren'); }
+    if (e.type === 'mimic') { msg('제국 실험 무인기 — 레이븐의 기동을 흉내 낸다', '#c08bff', 4); if (SA.profile.pilots.raven) say('raven', '…저거, 내 비행 기록이잖아요. 누가 훔쳐 갔지?'); SA.Audio.sfx('siren'); }
     SA.Audio.play('boss');
   };
   const ravenFlee = (e) => {   // 도주 시작: 일부 전리품만 흘린다
@@ -763,6 +777,7 @@ SA.Raid = (() => {
       msg('레이븐 격추 — 탈출 포드를 화물칸(2×2)에 싣고 탈출하라', '#ffd166', 6);
       spawnItem(R, 'cap_raven', e.x, e.y, 20);
     }
+    else if (e.type === 'mimic') msg('제국 실험 무인기 격추 — 비행 기록 칩', '#c08bff', 5);
     else { R.hunterKilled = true; msg('심연의 사냥꾼 격추', '#ffd166', 5); }
     R.boss = null;
     SA.Audio.play('raid');
@@ -807,11 +822,11 @@ SA.Raid = (() => {
       if (mode === 'normal') {   // 장착 부품 하나를 확률로 잃는다 (기본 펄스건과 마지막 남은 주무기는 제외) + 내구도 -40%
         const mains = prof.parts.filter(p => SA.PARTS[p.id].slot === 'main');
         const eq = eqParts.filter(p => p.id !== 'pulse' && !(SA.PARTS[p.id].slot === 'main' && mains.length <= 1));
-        if (eq.length && Math.random() < SA.DEATH_PART_LOSS) { const lp = U.pick(eq); lostPart = SA.PARTS[lp.id].name; prof.parts = prof.parts.filter(p => p !== lp); unequip([lp]); }
+        if (eq.length && Math.random() < SA.DEATH_PART_LOSS) { const lp = U.pick(eq); lostPart = SA.partName(lp); prof.parts = prof.parts.filter(p => p !== lp); unequip([lp]); }
         eqParts.forEach(p => { p.dur = Math.max(0, p.dur * 0.6); });
       } else if (mode === 'hard' || mode === 'recover') {   // 장착한 것 전부 (동력원 포함)
         prof.parts = prof.parts.filter(p => !eqParts.includes(p)); unequip(eqParts);
-        lostAll = eqParts.map(p => SA.PARTS[p.id].name); cellBack = false;
+        lostAll = eqParts.map(p => SA.partName(p)); cellBack = false;
         if (mode === 'recover') prof.lostCache = { parts: eqParts, items: lost.map(it => ({ id: it.id, ch: it.ch })), cell: P.cell && P.cell.id, at: Date.now() };
       }
       // 주무기가 하나도 안 남으면 용병단 비상 지급 펄스건 (내구도 60)
@@ -829,11 +844,11 @@ SA.Raid = (() => {
     let overflow = 0, partsIn = [];
     for (const it of brought) {
       const d = SA.ITEMS[it.id];
-      if (d.kind === 'part') { const np = SA.Save.newPart(d.part); np.dur = it.dur !== undefined ? it.dur : 60; prof.parts.push(np); partsIn.push(d.name); continue; }   // 부품 완성품 → 부품함
-      if (!SA.Grid.add(prof.stash, it.id)) overflow += d.val;
+      if (d.kind === 'part') { const np = SA.Save.fromItem(it); prof.parts.push(np); partsIn.push(SA.partName(np)); continue; }   // 부품 완성품 → 부품함
+      if (!SA.Grid.add(prof.stash, it.id)) overflow += SA.itemVal(it);
     }   // 창고에 들어가면 동력원은 다시 가득 찬다
     prof.credits += overflow;
-    const value = brought.reduce((n, it) => n + SA.ITEMS[it.id].val, 0);
+    const value = brought.reduce((n, it) => n + SA.itemVal(it), 0);
     // 파일럿 부상 카운트
     for (const id in prof.pilots) if (id !== R.player.pilot && prof.pilots[id].injury > 0) prof.pilots[id].injury--;
     if (!ok) {

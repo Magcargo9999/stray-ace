@@ -24,56 +24,58 @@ SA.ITEMS = {
   engine:   { name: '엔진', w: 2, h: 2, val: 160, kind: 'mat', img: 'assets/i_engine.png', color: '#d58a5b', desc: '제국 공방 각인이 긁혀 지워져 있다.' },
   goldchip: { name: '금빛 회로', w: 1, h: 1, val: 180, kind: 'mat', tier: '강화', color: '#ffd166', desc: '작고 비싸다. 용병들이 제일 먼저 챙기는 것.' },
   prec:     { name: '정밀 부품', w: 1, h: 1, val: 120, kind: 'mat', tier: '강화', color: '#7fd3ff', desc: '군용 규격 베어링과 회로. 강화 부품에 들어간다.' },
-  ace:      { name: '에이스 각인', w: 1, h: 1, val: 400, kind: 'mat', tier: '전설', color: '#ff4d6d', desc: '이름 있는 자의 기체에서 뜯어낸 각인. 전설 부품에 들어간다.' },
+  ace:      { name: '에이스 각인', w: 1, h: 1, val: 400, kind: 'mat', tier: '행성', color: '#ff4d6d', desc: '이름 있는 자의 기체에서 뜯어낸 각인. 행성 부품에 들어간다.' },
   raven_ticket: { name: '레이븐 고용권', w: 2, h: 1, val: 0, kind: 'ticket', img: 'assets/raven_ticket.png', color: '#c49ac0', desc: '창고에서 사용하면 레이븐이 용병단에 합류한다.' },
   crystal:  { name: '침식 결정', w: 1, h: 1, val: 220, kind: 'mat', tier: '강화', img: 'assets/i_crystal.png', color: '#b98cff', desc: '침식체가 남긴 결정. 만지면 손끝이 저린다.' },
   debris:   { name: '대형 잔해', w: 2, h: 3, val: 300, kind: 'mat', color: '#9aa3ad', desc: '크고 무겁고 비싸다. 화물칸이 운다.' },
   blackbox: { name: '블랙박스', w: 1, h: 1, val: 150, kind: 'lore', img: 'assets/i_blackbox.png', color: '#ff8f3d', desc: '격추된 함선의 기록 장치. 팔거나, 격납고에서 해독하거나.' },
   canister: { name: '정화 캐니스터', w: 1, h: 2, val: 70, kind: 'use', img: 'assets/i_canister.png', color: '#7ff0e0', desc: '사용: 침식률 -25%.' },
   repairkit:{ name: '수리킷', w: 1, h: 1, val: 60, kind: 'use', img: 'assets/i_repairkit.png', color: '#9df07f', desc: '사용: 체력 40 회복. Tab 화물칸에서 장착 부품에 끌어다 놓으면 그 부품 내구도 +40.' },
-  // 상위 재료: 하위 재료 2~3개를 합성 (설계도 없이). 강화·전설 부품 제작에 들어간다 (임시)
+  // 상위 재료: 하위 재료 2~3개를 합성 (설계도 없이). 강화·행성 부품 제작에 들어간다 (임시)
   alloy:    { name: '강화 합금', w: 1, h: 1, val: 160, kind: 'umat', tier: '강화', color: '#9fd8c8', desc: '고철을 코어 열로 다시 녹여 만든 판재. 강화 부품의 뼈대.' },
   fcore:    { name: '융합 코어', w: 1, h: 2, val: 260, kind: 'umat', tier: '강화', color: '#6fb7ff', desc: '코어 둘을 엔진 냉각관으로 묶었다. 강화 액티브·서브웨폰에 들어간다.' },
-  qcircuit: { name: '양자 회로', w: 1, h: 1, val: 520, kind: 'umat', tier: '전설', color: '#ffd166', desc: '금빛 회로 위에 침식 결정을 얹은 기판. 전설 부품의 심장.' },
+  qcircuit: { name: '양자 회로', w: 1, h: 1, val: 520, kind: 'umat', tier: '행성', color: '#ffd166', desc: '금빛 회로 위에 침식 결정을 얹은 기판. 행성 부품의 심장.' },
   stardata: { name: '성구 데이터', w: 1, h: 1, val: 120, kind: 'data', tier: '일반', color: '#a8c8ff', desc: '사용: 이 구역의 지도를 한 번에 밝힌다 (소행성·장소 전부).' },
   bb_reward: { name: '신호 블랙박스', w: 1, h: 1, val: 150, kind: 'lore', tier: '강화', color: '#ffb347', desc: '좌표가 남아 있는 블랙박스. 기지에서 해독하면 다음 출격 맵에 신호 지점이 뜬다.' },
   // 해독키: 필드에서 줍고 기지에서 보안해독기에 '등록'한다. 등록하면 사용 횟수가 생기고, 다 쓰면 상점에서 충전한다
   key_box1: { name: '상자 해독키 (일반)', w: 1, h: 1, val: 80, kind: 'key', tier: '일반', code: 'box1', color: '#9fb3c8', desc: '일반 등급 잠긴 상자의 코드 칩. 기지에서 등록하면 보안해독기로 5번 연다.' },
   key_box2: { name: '상자 해독키 (강화)', w: 1, h: 1, val: 220, kind: 'key', tier: '강화', code: 'box2', color: '#5dffb0', desc: '강화 등급 잠긴 상자의 코드 칩. 등록하면 3번. 2막 보급고에서 주로 쓰인다.' },
-  key_box3: { name: '상자 해독키 (전설)', w: 1, h: 1, val: 600, kind: 'key', tier: '전설', code: 'box3', color: '#ffd166', desc: '전설 등급 잠긴 상자의 코드 칩. 등록하면 1번. 3막의 금고 규격이다.' },
+  key_box3: { name: '상자 해독키 (행성)', w: 1, h: 1, val: 600, kind: 'key', tier: '행성', code: 'box3', color: '#ffd166', desc: '행성 등급 잠긴 상자의 코드 칩. 등록하면 1번. 3막의 금고 규격이다.' },
   key_zone: { name: '왕국 산하 행성 해독키', w: 1, h: 1, val: 300, kind: 'key', tier: '강화', code: 'zone', color: '#8fb6ff', desc: '보안 구역 역장의 출입 코드. 어째서 이런 폐광 소행성대에 왕국 산하 행성의 해독키가…? 등록하면 3번.' },
   // 동력원: 주무기 에너지. 장착 1개 + 예비는 화물칸. 기지에 돌아오면 무료로 가득 찬다. cap = 펄스건 연사 기준 초, dmg = 주무기 피해 배율 (임시)
   cell1:    { name: '동력원 (일반)', w: 1, h: 1, val: 60, kind: 'cell', tier: '일반', cap: 90, dmg: 1.0, color: '#7fe3ff', desc: '주무기 에너지. 펄스건으로 약 90초. 피해 ×1.0. R로 교체.' },
   cell2:    { name: '동력원 (강화)', w: 1, h: 1, val: 180, kind: 'cell', tier: '강화', cap: 150, dmg: 1.2, color: '#5dffb0', desc: '주무기 에너지. 펄스건으로 약 150초. 피해 ×1.2. R로 교체.' },
-  cell3:    { name: '동력원 (전설)', w: 1, h: 1, val: 420, kind: 'cell', tier: '전설', cap: 240, dmg: 1.4, color: '#ffd166', desc: '주무기 에너지. 펄스건으로 약 240초. 피해 ×1.4. R로 교체.' },
+  cell3:    { name: '동력원 (행성)', w: 1, h: 1, val: 420, kind: 'cell', tier: '행성', cap: 240, dmg: 1.4, color: '#ffd166', desc: '주무기 에너지. 펄스건으로 약 240초. 피해 ×1.4. R로 교체.' },
+  cell4:    { name: '동력원 (은하)', w: 1, h: 1, val: 900, kind: 'cell', tier: '은하', cap: 330, dmg: 1.6, color: '#c08bff', desc: '주무기 에너지. 펄스건으로 약 330초. 피해 ×1.6. 심연 핵으로 만든다. R로 교체.' },
+  // 보스 재료: 은하 각성에 들어간다 (보스마다 각성 규칙 1개)
+  chip:     { name: '비행 기록 칩', w: 1, h: 1, val: 600, kind: 'umat', tier: '은하', color: '#ff8fb0', desc: '레이븐의 회피 기동이 통째로 기록된 칩. 은하 부품에 넣으면 스칠 때마다 위력이 오른다 (레이븐 각성).' },
+  abyss:    { name: '심연 핵', w: 1, h: 1, val: 700, kind: 'umat', tier: '은하', color: '#a06bff', desc: '사냥꾼의 몸속에서 뛰던 것. 은하 부품에 넣으면 침식이 깊을수록 위력이 오른다 (심연 각성).' },
   bp_raven:   { name: '설계도: 레이븐 추진기', w: 1, h: 1, val: 300, kind: 'bp', recipe: 'raven', color: '#ffd166', desc: '네임드 용병 레이븐의 추진기. 그는 이걸로 탄 사이를 미끄러졌다.' },
 };
 
 // 장비 부품. slot: main/sub/act/pas
 // 부품. 수치는 임시 (밸런스 조정 예정). 효과 구현은 combat.js
+// 부품: 일반·강화는 서로 다른 독립 부품. 행성·은하는 같은 부품을 키운 것 (lv 1·2, 아래 SA.UPGRADE)
+// 패시브 fx = 효과 수치 (행성 ×1.3, 은하 ×1.6, 은하 각성도 곱해짐). noUp = 수치가 없어 키울 수 없는 부품
 SA.PARTS = {
-  // 주무기
-  pulse:   { name: '펄스건', slot: 'main', tier: '일반', val: 150, rate: 9, dmg: 6, spd: 520, spread: 0.03, shots: 1, desc: '기본 연사.' },
-  twin:    { name: '트윈 펄스', slot: 'main', tier: '강화', val: 420, rate: 9, dmg: 6, spd: 540, spread: 0.02, shots: 2, desc: '2줄 발사. 펄스건 계보.' },
-  scatter: { name: '산탄포', slot: 'main', tier: '일반', val: 220, rate: 2.4, dmg: 5, spd: 430, spread: 0.32, shots: 6, life: 0.45, desc: '가까울수록 강하다.' },
-  shard:   { name: '파편포', slot: 'main', tier: '강화', val: 480, rate: 2.4, dmg: 6, spd: 440, spread: 0.3, shots: 7, life: 0.45, frag: 3, desc: '맞은 탄이 한 번 더 터져 파편을 흩뿌린다. 산탄포 계보.' },
-  crusher: { name: '분쇄포', slot: 'main', tier: '전설', val: 1200, rate: 2.3, dmg: 8, spd: 450, spread: 0.3, shots: 8, life: 0.45, frag: 3, close: true, desc: '가까운 적에게 피해 2배, 기절한 적에게 1.5배. 파편 포함. 산탄포 계보.' },
-  lance:   { name: '관통 레이저', slot: 'main', tier: '일반', val: 300, rate: 3.2, dmg: 15, spd: 760, spread: 0, shots: 1, pierce: 3, desc: '적을 3기까지 관통.' },
-  rail:    { name: '레일건', slot: 'main', tier: '강화', val: 560, rate: 2.6, dmg: 26, spd: 950, spread: 0, shots: 1, pierce: 99, desc: '적을 전부 관통. 관통 레이저 계보.' },
-  breaker: { name: '탄막 관통포', slot: 'main', tier: '전설', val: 1300, rate: 2.4, dmg: 32, spd: 950, spread: 0, shots: 1, pierce: 99, erase: true, desc: '적 전부 관통 + 지나간 자리의 적 탄을 지운다. 관통 레이저 계보.' },
+  // 주무기 (초당 피해: 일반 기준 펄스건 54)
+  pulse:   { name: '펄스건', slot: 'main', tier: '일반', val: 150, rate: 9, dmg: 6, spd: 520, spread: 0.03, shots: 1, desc: '기본 연사. 초당 약 54.' },
+  scatter: { name: '산탄포', slot: 'main', tier: '일반', val: 220, rate: 2.4, dmg: 5, spd: 430, spread: 0.32, shots: 6, life: 0.45, desc: '가까울수록 강하다. 근접 초당 약 72.' },
+  lance:   { name: '관통 레이저', slot: 'main', tier: '일반', val: 240, rate: 3.2, dmg: 15, spd: 760, spread: 0, shots: 1, pierce: 3, desc: '적을 3기까지 관통. 초당 약 48.' },
   sniper:  { name: '저격총', slot: 'main', tier: '강화', val: 560, rate: 0.833, dmg: 150, spd: 1150, spread: 0.02, shots: 1, life: 1.2, sniper: true, desc: '한 발 150, 1.2초에 1발. 우클릭으로 끝까지 정조준하면 피해 ×1.5. 에너지를 많이 먹는다.' },
-  glass:   { name: '유리 대포', slot: 'main', tier: '강화', val: 520, rate: 6, dmg: 14, spd: 620, spread: 0.03, shots: 1, desc: '화력이 아주 세다. 대신 맞을 때마다 장착 부품 내구도가 크게 깎인다.' },
+  glass:   { name: '유리 대포', slot: 'main', tier: '강화', val: 480, rate: 6, dmg: 14, spd: 620, spread: 0.03, shots: 1, desc: '초당 약 84로 아주 세다. 대신 맞을 때마다 장착 부품 내구도가 크게 깎인다.' },
+  beam:    { name: '지속 광선', slot: 'main', tier: '강화', val: 520, rate: 10, dmg: 7.5, spd: 0, spread: 0, shots: 1, beam: 270, desc: '누르고 있으면 이어지는 광선. 맨 앞의 적 하나를 계속 태운다 (초당 약 75, 사거리 270). 에너지를 많이 먹는다.' },
+  swarm:   { name: '군집 미사일', slot: 'main', tier: '강화', val: 520, rate: 1.5, dmg: 8, spd: 240, spread: 0.5, shots: 4, life: 2.2, homing: 5, desc: '작은 유도 미사일 4발을 연달아 쏜다 (초당 약 48, 거의 다 맞는다).' },
   // 서브웨폰 (자동)
-  mg:      { name: '기관포 포탑', slot: 'sub', tier: '일반', val: 120, rate: 4, dmg: 3, range: 230, desc: '가장 가까운 적을 자동 조준.' },
+  mg:      { name: '기관포 포탑', slot: 'sub', tier: '일반', val: 120, rate: 4, dmg: 3, range: 230, desc: '가장 가까운 적을 자동 조준. 초당 약 12.' },
   mine:    { name: '지뢰 투하기', slot: 'sub', tier: '일반', val: 150, rate: 0.45, dmg: 30, range: 0, desc: '지나간 자리에 지뢰를 깐다. 쫓아오는 적에게.' },
-  flamer:  { name: '화염 방사 포탑', slot: 'sub', tier: '일반', val: 160, rate: 14, dmg: 1.6, range: 75, desc: '사거리는 짧지만 초당 피해가 높다.' },
-  drone:   { name: '추적 드론', slot: 'sub', tier: '강화', val: 260, rate: 2.5, dmg: 5, range: 260, leash: 150, desc: '적에게 날아가 붙어서 쏜다. 기체에서 150까지 떨어질 수 있어 엄폐 뒤의 적도 잡는다.' },
-  sdrone:  { name: '방패 드론', slot: 'sub', tier: '강화', val: 300, rate: 4, dmg: 3, range: 200, desc: '기체 가까이를 돌며 닿는 적 탄을 지운다(초당 4발까지). 공격은 약하다.' },
-  intercept: { name: '요격 레이저', slot: 'sub', tier: '강화', val: 320, rate: 3, dmg: 0, range: 90, desc: '가까운 적 탄을 쏘아 떨어뜨린다.' },
+  flamer:  { name: '화염 방사 포탑', slot: 'sub', tier: '일반', val: 160, rate: 14, dmg: 1.6, range: 75, desc: '사거리는 짧지만 초당 피해가 높다 (약 22).' },
+  drone:   { name: '추적 드론', slot: 'sub', tier: '강화', val: 300, rate: 2.5, dmg: 6, range: 260, leash: 150, desc: '적에게 날아가 붙어서 쏜다. 기체에서 150까지 떨어질 수 있어 엄폐 뒤의 적도 잡는다.' },
+  sdrone:  { name: '방패 드론', slot: 'sub', tier: '강화', val: 300, rate: 4, dmg: 3, range: 200, desc: '기체 가까이를 돌며 다가오는 적 탄을 몸으로 지운다(초당 4발까지). 공격은 약하다.' },
+  intercept: { name: '요격 레이저', slot: 'sub', tier: '강화', val: 320, rate: 3, dmg: 0, range: 90, desc: '주변 90 안의 적 탄을 골라 쏘아 떨어뜨린다 (초당 3발).' },
   hturret: { name: '유도탄 포탑', slot: 'sub', tier: '강화', val: 320, rate: 0.8, dmg: 22, range: 320, desc: '느리지만 한 방이 센 유도탄.' },
   chain:   { name: '전기 사슬', slot: 'sub', tier: '강화', val: 340, rate: 1.2, dmg: 8, range: 140, desc: '가까운 적에게 번개. 주변 적 2기에게 튄다.' },
-  gzcharge:{ name: '스침 충전', slot: 'sub', tier: '강화', val: 300, rate: 3, dmg: 4, range: 230, desc: '스칠 때마다 1.5초간 연사 2.5배.' },
-  // 액티브 (Q/E)
+  // 액티브 (Q/E). 행성·은하는 쿨타임이 짧아진다
   missile: { name: '미사일 포드', slot: 'act', tier: '일반', val: 200, cd: 8, desc: '유도 미사일 6발.' },
   purge:   { name: '정화 펄스', slot: 'act', tier: '일반', val: 220, cd: 12, desc: '주변 적 탄을 지운다.' },
   shield:  { name: '일시 방패', slot: 'act', tier: '일반', val: 240, cd: 14, desc: '1.5초 무적.' },
@@ -86,48 +88,41 @@ SA.PARTS = {
   gravity: { name: '중력 우물', slot: 'act', tier: '강화', val: 540, cd: 14, desc: '커서 위치에 3초간 적·적 탄·아이템을 끌어당긴다.' },
   overdrive: { name: '폭주 코어', slot: 'act', tier: '강화', val: 480, cd: 20, desc: '5초간 다른 쿨타임이 3배 빨리 돈다. 대신 받는 피해 2배.' },
   discharge: { name: '스침 방전', slot: 'act', tier: '강화', val: 500, cd: 6, desc: '지난 사용 뒤 스친 횟수만큼 번개를 쏜다.' },
-  convert: { name: '탄 변환기', slot: 'act', tier: '강화', val: 500, cd: 18, desc: '주변 적 탄을 고철(많으면 금빛 회로)로 바꾼다.' },
-  timestop:{ name: '탄막 정지', slot: 'act', tier: '전설', val: 1400, cd: 25, desc: '주변 적 탄이 2.5초 멈췄다가 느리게 움직인다.' },
+  timestop:{ name: '탄막 정지', slot: 'act', tier: '강화', val: 600, cd: 25, desc: '주변 적 탄이 2.5초 멈췄다가 느리게 움직인다.' },
   // 패시브
-  sensor:  { name: '조준 센서', slot: 'pas', tier: '강화', val: 520, img: 'assets/sensor.png', desc: '탄 퍼짐 60% 감소, 주무기 탄속 +10%. 조준선이 붉고 좁아진다. 레이븐이 가끔 설계도를 떨군다.' },
-  magnet:  { name: '자력 수집기', slot: 'pas', tier: '일반', val: 120, desc: '아이템 흡수 거리 2배.' },
-  cooler:  { name: '냉각기', slot: 'pas', tier: '일반', val: 160, desc: '주무기 연사 +15%.' },
-  plating: { name: '차폐 장갑', slot: 'pas', tier: '일반', val: 160, desc: '침식 상승 속도 -20%, 침식 디버프 -30% (연사·이속 감소, 내구도·체력 감소).' },
-  // 관측 장비 (전용 1칸): Z로 화면 배율을 바꾼다. 장비가 좋을수록 더 멀리 보고, 미니맵 레이더가 넓다
-  obs1:    { name: '광역 관측기', slot: 'obs', tier: '일반', val: 200, obsLv: 1, desc: 'Z: 화면을 한 단계 넓게 본다. 미니맵 레이더 600.' },
-  obs2:    { name: '장거리 관측기', slot: 'obs', tier: '강화', val: 480, obsLv: 2, desc: 'Z: 화면을 두 단계까지 넓게 본다. 미니맵 레이더 900.' },
-  obs3:    { name: '심연 투시경', slot: 'obs', tier: '전설', val: 1100, obsLv: 3, desc: 'Z: 화면을 세 단계까지 넓게 본다. 미니맵 레이더 1200, 보스·사냥꾼은 거리와 상관없이 보인다.' },
-  decoder: { name: '보안해독기', slot: 'pas', tier: '강화', val: 420, desc: '등록된 해독 코드로 잠긴 상자·보안 구역을 연다. 보안상자는 해독기만 있으면 해킹으로 연다 (5초 버티기).' },
-  plating2:{ name: '강화 차폐 장갑', slot: 'pas', tier: '강화', val: 380, desc: '침식 상승 속도 -30%, 침식 디버프 -50%.' },
-  engine2: { name: '추진 엔진', slot: 'pas', tier: '일반', val: 160, desc: '이동 속도 +12%.' },
-  cargo:   { name: '화물칸 확장', slot: 'pas', tier: '일반', val: 180, desc: '화물칸 한 줄 추가.' },
-  exitacc: { name: '탈출 가속기', slot: 'pas', tier: '일반', val: 160, desc: '탈출 카운트다운 30% 단축, 구역을 벗어나도 덜 줄어든다.' },
-  shockplate: { name: '충격 장갑', slot: 'pas', tier: '일반', val: 180, desc: '가까운 적(80 이내)에게 피해 +20%, 기절 시간 +50%.' },
-  barrier: { name: '베리어 발생기', slot: 'pas', tier: '강화', val: 260, desc: '4초간 안 맞으면 차오르는 보호막 40.' },
-  counter: { name: '반격 장치', slot: 'pas', tier: '강화', val: 320, desc: '맞으면 주변 적 탄을 지우고 0.6초 더 무적. (5초마다)' },
-  grazeamp:{ name: '스침 증폭기', slot: 'pas', tier: '강화', val: 300, desc: '스침 스택 보너스 상한 증가: 드랍 +40% → +60%, 피해 +20% → +30%.' },
-  grazeflow:{ name: '스침 환류기', slot: 'pas', tier: '강화', val: 300, desc: '5번 스칠 때마다 액티브 쿨타임 -1초.' },
-  redheart:{ name: '붉은 심장', slot: 'pas', tier: '강화', val: 300, desc: '체력 50% 이하일 때 주무기 피해 +30%.' },
-  vault:   { name: '금고 장갑', slot: 'pas', tier: '강화', val: 320, desc: '화물 가치가 높을수록 받는 피해 감소 (최대 -25%).' },
-  secure2: { name: '보안 확장', slot: 'pas', tier: '강화', val: 360, desc: '보안 칸 2×2 → 3×2.' },
-  slowfield:{ name: '시간 감속기', slot: 'pas', tier: '강화', val: 340, desc: '판정 주변(60) 적 탄 속도 -15%.' },
-  deflect: { name: '편향기', slot: 'pas', tier: '강화', val: 320, desc: '가까이 날아오는 적 탄이 조금씩 비껴간다.' },
-  execute: { name: '처형 회로', slot: 'pas', tier: '강화', val: 320, desc: '기절한 적에게 주는 피해 +40%.' },
-  raven:   { name: '레이븐 추진기', slot: 'pas', tier: '전설', val: 900, desc: '이동 +15%, 파일럿 기술 쿨타임 -20%.' },
-  resonator:{ name: '침식 공명기', slot: 'pas', tier: '전설', val: 1200, desc: '침식 연사 페널티 무시. 침식 단계마다 피해 +10/25/45%.' },
+  magnet:  { name: '자력 수집기', slot: 'pas', tier: '일반', val: 120, fx: 1.0, desc: '아이템 흡수 거리 +{0}%.' },
+  cooler:  { name: '냉각기', slot: 'pas', tier: '일반', val: 160, fx: 0.15, desc: '주무기 연사 +{0}%.' },
+  plating: { name: '차폐 장갑', slot: 'pas', tier: '일반', val: 160, fx: [0.2, 0.3], desc: '침식 상승 속도 -{0}%, 침식 디버프 -{1}% (연사·이속 감소, 내구도·체력 감소).' },
+  engine2: { name: '추진 엔진', slot: 'pas', tier: '일반', val: 160, fx: 0.12, desc: '이동 속도 +{0}%.' },
+  cargo:   { name: '화물칸 확장', slot: 'pas', tier: '일반', val: 180, noUp: true, desc: '화물칸 한 줄 추가.' },
+  exitacc: { name: '탈출 가속기', slot: 'pas', tier: '일반', val: 150, fx: 0.3, desc: '귀환 포트 카운트다운 -{0}%, 포트를 벗어나도 덜 줄어든다.' },
+  shockplate: { name: '충격 장갑', slot: 'pas', tier: '일반', val: 180, fx: [0.2, 0.5], desc: '가까운 적(80 이내)에게 피해 +{0}%, 기절 시간 +{1}%.' },
+  sensor:  { name: '조준 센서', slot: 'pas', tier: '강화', val: 420, img: 'assets/sensor.png', fx: [0.6, 0.1], desc: '탄 퍼짐 -{0}%, 주무기 탄속 +{1}%. 조준선이 붉고 좁아진다.' },
+  decoder: { name: '보안해독기', slot: 'pas', tier: '강화', val: 480, noUp: true, desc: '등록된 해독 코드로 잠긴 상자·보안 구역을 연다. 보안상자는 해독기만 있으면 해킹으로 연다 (5초 버티기).' },
+  barrier: { name: '베리어 발생기', slot: 'pas', tier: '강화', val: 300, fx: 40, desc: '4초간 안 맞으면 차오르는 보호막 {v}.' },
+  counter: { name: '반격 장치', slot: 'pas', tier: '강화', val: 320, fx: 0.6, desc: '맞으면 주변 적 탄을 지우고 {v}초 더 무적 (5초마다).' },
+  grazeamp:{ name: '스침 증폭기', slot: 'pas', tier: '강화', val: 300, fx: [0.2, 0.1], desc: '스침 스택 보너스 상한: 드랍 +{0}%p, 피해 +{1}%p.' },
+  grazeflow:{ name: '스침 환류기', slot: 'pas', tier: '강화', val: 300, fx: 1, desc: '5번 스칠 때마다 액티브 쿨타임 -{v}초.' },
+  redheart:{ name: '붉은 심장', slot: 'pas', tier: '강화', val: 300, fx: 0.3, desc: '체력 50% 이하일 때 주무기 피해 +{0}%.' },
+  vault:   { name: '금고 장갑', slot: 'pas', tier: '강화', val: 320, fx: 0.25, desc: '화물 가치가 높을수록 받는 피해 감소 (최대 -{0}%).' },
+  secure2: { name: '보안 확장', slot: 'pas', tier: '강화', val: 360, noUp: true, desc: '보안 칸 2×2 → 3×2.' },
+  deflect: { name: '편향기', slot: 'pas', tier: '강화', val: 340, fx: [1, 0.15], desc: '가까이 날아오는 적 탄이 비껴가고(세기 ×{v0}), 판정 주변 적 탄 속도 -{1}%.' },
+  execute: { name: '처형 회로', slot: 'pas', tier: '강화', val: 320, fx: 0.4, desc: '기절한 적에게 주는 피해 +{0}%.' },
+  raven:   { name: '레이븐 추진기', slot: 'pas', tier: '강화', val: 560, fx: [0.15, 0.2], desc: '이동 +{0}%, 파일럿 기술 쿨타임 -{1}%. 레이븐 합류 보상.' },
+  resonator:{ name: '침식 공명기', slot: 'pas', tier: '강화', val: 600, fx: [0.1, 0.25, 0.45], desc: '침식 연사 페널티 무시. 침식 단계마다 피해 +{0}/{1}/{2}%.' },
+  // 관측 장비 (전용 1칸): Z로 화면 배율. 행성·은하로 키우면 한 단계씩 더 넓게 본다
+  obs1:    { name: '광역 관측기', slot: 'obs', tier: '일반', val: 200, desc: 'Z: 화면을 넓게 본다 (일반 1단계 · 행성 2단계 · 은하 3단계 + 보스 항상 표시). 미니맵 레이더 600/900/1200.' },
 };
 
-// 제작법: 재료는 창고에서 소모
+// 제작법 (일반·강화 부품만. 행성·은하는 SA.UPGRADE로 키운다). 재료는 창고에서 소모
 SA.RECIPES = {
   pulse:   { mats: { scrap: 4, wire: 1 } },
   scatter: { mats: { scrap: 5, wire: 1 } },
   lance:   { mats: { core: 2, wire: 1 } },
-  twin:    { from: 'pulse', mats: { core: 2, prec: 1 } },
-  shard:   { from: 'scatter', mats: { scrap: 6, prec: 2 } },
-  rail:    { from: 'lance', mats: { engine: 1, prec: 2 } },
+  sniper:  { mats: { prec: 2, core: 1, engine: 1 } },
   glass:   { mats: { core: 2, goldchip: 1, prec: 2 } },
-  crusher: { from: 'shard', mats: { ace: 2, prec: 3, engine: 1 } },
-  breaker: { from: 'rail', mats: { ace: 2, prec: 3, crystal: 1 } },
+  beam:    { mats: { core: 2, prec: 2, wire: 1 } },
+  swarm:   { mats: { engine: 1, core: 1, prec: 2 } },
   mg:      { mats: { scrap: 4, wire: 1 } },
   mine:    { mats: { scrap: 3, core: 1 } },
   flamer:  { mats: { core: 1, wire: 2 } },
@@ -136,7 +131,6 @@ SA.RECIPES = {
   intercept: { mats: { core: 2, prec: 1 } },
   hturret: { mats: { core: 1, engine: 1, prec: 1 } },
   chain:   { mats: { wire: 3, goldchip: 1, prec: 1 } },
-  gzcharge:{ mats: { goldchip: 1, prec: 2 } },
   missile: { mats: { core: 1, scrap: 3 } },
   purge:   { mats: { crystal: 1, wire: 1 } },
   shield:  { mats: { core: 2 } },
@@ -149,22 +143,16 @@ SA.RECIPES = {
   gravity: { mats: { crystal: 2, engine: 1, prec: 1 } },
   overdrive: { mats: { core: 3, prec: 1 } },
   discharge: { mats: { goldchip: 1, wire: 2, prec: 1 } },
-  convert: { mats: { goldchip: 1, scrap: 4, prec: 1 } },
-  timestop:{ mats: { ace: 3, crystal: 2, prec: 3 } },
+  timestop:{ mats: { ace: 1, crystal: 2, prec: 2 } },
   magnet:  { mats: { scrap: 4, core: 1 } },
-  sensor:  { mats: { prec: 3, core: 2, wire: 2 } },
   cooler:  { mats: { wire: 2, scrap: 3 } },
   plating: { mats: { scrap: 8 } },
-  decoder: { mats: { prec: 2, wire: 2, goldchip: 1 } },
-  obs1:    { mats: { wire: 2, prec: 1 } },
-  obs2:    { from: 'obs1', mats: { prec: 2, core: 1 } },
-  obs3:    { from: 'obs2', mats: { crystal: 2, ace: 1 } },
-  plating2:{ from: 'plating', mats: { prec: 1, crystal: 1, scrap: 3 } },
-  sniper:  { mats: { prec: 2, core: 1, engine: 1 } },
   engine2: { mats: { engine: 1 } },
   cargo:   { mats: { scrap: 6, wire: 1 } },
   exitacc: { mats: { engine: 1, wire: 1 } },
   shockplate: { mats: { scrap: 6, core: 1 } },
+  sensor:  { mats: { prec: 3, core: 2, wire: 2 } },
+  decoder: { mats: { prec: 2, wire: 2, goldchip: 1 } },
   barrier: { mats: { core: 2, wire: 2, prec: 1 } },
   counter: { mats: { core: 1, goldchip: 1, prec: 1 } },
   grazeamp:{ mats: { goldchip: 2, prec: 1 } },
@@ -172,41 +160,149 @@ SA.RECIPES = {
   redheart:{ mats: { core: 2, crystal: 1, prec: 1 } },
   vault:   { mats: { scrap: 6, goldchip: 1, prec: 1 } },
   secure2: { mats: { goldchip: 2, prec: 2 } },
-  slowfield:{ mats: { crystal: 2, prec: 2 } },
-  deflect: { mats: { wire: 2, core: 1, prec: 1 } },
+  deflect: { mats: { wire: 2, core: 1, crystal: 1, prec: 1 } },
   execute: { mats: { goldchip: 1, core: 1, prec: 2 } },
-  raven:   { mats: { ace: 2, goldchip: 2, engine: 1 } },
-  resonator:{ mats: { ace: 2, crystal: 3, prec: 2 } },
+  raven:   { mats: { ace: 1, goldchip: 2, engine: 1 } },
+  resonator:{ mats: { ace: 1, crystal: 2, prec: 2 } },
+  obs1:    { mats: { wire: 2, prec: 1 } },
+};
+
+// ── 등급 · 행성/은하 강화 · 개조 · 각성 ──
+SA.TIERS = ['일반', '강화', '행성', '은하'];
+SA.TIER_COL = { 일반: '#9fb3c8', 강화: '#5dffb0', 행성: '#ffd166', 은하: '#c08bff' };
+SA.LV_MUL = [1, 1.3, 1.6];      // 주 스탯·패시브 효과 배율 (기준 / 행성 / 은하)
+SA.LV_MAX = [100, 120, 150];    // 최대 내구도
+SA.LV_VAL = [1, 2, 3.5];        // 가치 배율
+SA.partTier = (p) => p.lv === 2 ? '은하' : p.lv === 1 ? '행성' : SA.PARTS[p.id].tier;
+SA.itemVal = (it) => Math.round(SA.ITEMS[it.id].val * SA.LV_VAL[it.lv || 0]);   // 화물 아이템 가치 (행성급 부품 완성품 포함)
+SA.partVal = (p) => Math.round(SA.PARTS[p.id].val * SA.LV_VAL[p.lv || 0]);
+SA.canUp = (id) => { const d = SA.PARTS[id]; return !!d && !d.noUp; };
+// 패시브 fx 값 (i번째) × 배율
+SA.fxv = (id, i = 0, mul = 1) => { const f = SA.PARTS[id].fx; const v = Array.isArray(f) ? f[i] : f; return (v || 0) * mul; };
+SA.partDesc = (id, lv = 0) => {
+  const d = SA.PARTS[id], m = SA.LV_MUL[lv || 0], r2 = (x) => Math.round(x * 100) / 100;
+  return d.desc.replace(/\{v(\d?)\}/g, (_, i) => r2(SA.fxv(id, +i || 0, m))).replace(/\{(\d)\}/g, (_, i) => Math.round(SA.fxv(id, +i, m) * 100));
+};
+// 행성 개조: 칸마다 공용 4개 + 계열 전용 (only). 수치 임시
+SA.MODS = {
+  // 주무기 공용
+  m_rapid: { slot: 'main', name: '속사', desc: '연사 +25%, 한 발 피해 -10%.' },
+  m_eco:   { slot: 'main', name: '절전', desc: '에너지 소모 -35%.' },
+  m_long:  { slot: 'main', name: '장거리', desc: '탄속·사거리 +35%.' },
+  m_stun:  { slot: 'main', name: '충격탄', desc: '맞은 적이 10% 확률로 0.6초 기절.' },
+  // 주무기 전용
+  m_twin:   { slot: 'main', only: ['pulse'], name: '2연장', desc: '두 줄로 쏜다. 한 발 피해 ×0.6 (합 ×1.2).' },
+  m_frag:   { slot: 'main', only: ['scatter'], name: '파편', desc: '맞은 탄이 파편 3개로 터진다 (파편 피해 25%). 몰려 있는 적에게 강하다.' },
+  m_crush:  { slot: 'main', only: ['scatter'], name: '근접 분쇄', desc: '가까운 적(70)에게 피해 2배, 기절한 적에게 1.5배.' },
+  m_pierce: { slot: 'main', only: ['lance'], name: '완전 관통', desc: '적을 전부 관통하고 탄속 +25%.' },
+  m_cut:    { slot: 'main', only: ['lance'], name: '탄막 절단', desc: '지나간 자리의 적 탄을 지운다.' },
+  m_spierce:{ slot: 'main', only: ['sniper'], name: '관통 저격', desc: '적을 전부 관통한다.' },
+  m_quick:  { slot: 'main', only: ['sniper'], name: '빠른 정조준', desc: '정조준 시간 절반.' },
+  m_tough:  { slot: 'main', only: ['glass'], name: '강화 유리', desc: '맞을 때 장착 부품 내구도 손상이 절반.' },
+  m_thick:  { slot: 'main', only: ['beam'], name: '굵은 광선', desc: '광선이 적 3기까지 관통하고, 닿는 적 탄을 지운다.' },
+  m_more:   { slot: 'main', only: ['swarm'], name: '+2발', desc: '한 번에 6발을 쏜다. 한 발 피해 ×0.8 (합 ×1.2).' },
+  // 서브웨폰 공용
+  s_range: { slot: 'sub', name: '사거리', desc: '사거리 +40%.' },
+  s_rate:  { slot: 'sub', name: '연사', desc: '연사 +30%.' },
+  s_stun:  { slot: 'sub', name: '충격', desc: '맞은 적이 10% 확률로 0.6초 기절.' },
+  s_dur:   { slot: 'sub', name: '내구', desc: '내구도 소모 절반.' },
+  // 서브 전용
+  s_graze: { slot: 'sub', only: ['mg'], name: '스침 연동', desc: '스칠 때마다 1.5초간 연사 2.5배.' },
+  s_big:   { slot: 'sub', only: ['mine'], name: '대형 지뢰', desc: '폭발 범위 2배.' },
+  s_burn:  { slot: 'sub', only: ['flamer'], name: '화상', desc: '맞은 적이 3초간 초당 4 피해로 탄다.' },
+  s_two:   { slot: 'sub', only: ['drone'], name: '2기', desc: '드론이 2기가 된다.' },
+  s_wide:  { slot: 'sub', only: ['sdrone'], name: '넓은 방패', desc: '탄을 지우는 범위 2배.' },
+  s_ret:   { slot: 'sub', only: ['intercept'], name: '반격', desc: '떨어뜨린 탄의 절반을 가까운 적에게 되쏜다.' },
+  s_dbl:   { slot: 'sub', only: ['hturret'], name: '2연발', desc: '유도탄을 2발씩 쏜다.' },
+  s_jump:  { slot: 'sub', only: ['chain'], name: '연쇄', desc: '번개가 튀는 수 +2.' },
+  // 액티브 공용
+  a_cd:    { slot: 'act', name: '쿨타임', desc: '쿨타임 -20%.' },
+  a_two:   { slot: 'act', name: '2회 충전', desc: '2번까지 모아 둔다 (쿨타임 1.5배).' },
+  a_inv:   { slot: 'act', name: '회피', desc: '사용하면 0.5초 무적.' },
+  a_gz:    { slot: 'act', name: '스침 점화', desc: '사용하면 스침 스택 +10.' },
+  // 액티브 전용 (부품마다 1개)
+  a_m10:   { slot: 'act', only: ['missile'], name: '10발', desc: '미사일 10발.' },
+  a_conv:  { slot: 'act', only: ['purge'], name: '변환', desc: '지운 탄 10개마다 고철 1개 (최대 4), 40개 이상이면 금빛 회로.' },
+  a_refl:  { slot: 'act', only: ['shield'], name: '반사막', desc: '방패 동안 닿는 적 탄을 되돌려 보낸다.' },
+  a_round: { slot: 'act', only: ['emp'], name: '원형', desc: '부채꼴 대신 주변 전체(100)를 기절시킨다.' },
+  a_chain: { slot: 'act', only: ['harpoon'], name: '연쇄 작살', desc: '앞쪽 적을 3기까지 끌어온다.' },
+  a_free:  { slot: 'act', only: ['dump'], name: '무투기', desc: '화물을 버리지 않고 발동한다.' },
+  a_half:  { slot: 'act', only: ['cannon'], name: '급속 충전', desc: '충전 속도 2배.' },
+  a_o10:   { slot: 'act', only: ['orbital'], name: '10발', desc: '포격 10발.' },
+  a_home:  { slot: 'act', only: ['reflect'], name: '유도 반사', desc: '되돌린 탄이 적을 쫓아가고 피해 2배.' },
+  a_gstun: { slot: 'act', only: ['gravity'], name: '압착', desc: '우물에 끌려온 적이 기절한다.' },
+  a_od:    { slot: 'act', only: ['overdrive'], name: '안정화', desc: '받는 피해 2배 → 1.3배.' },
+  a_dpierce:{ slot: 'act', only: ['discharge'], name: '관통 방전', desc: '번개가 맞은 적 뒤로 한 번 더 튄다.' },
+  a_t4:    { slot: 'act', only: ['timestop'], name: '4초', desc: '탄이 4초 멈춘다.' },
+};
+SA.modsFor = (id) => { const d = SA.PARTS[id]; if (!d || !['main', 'sub', 'act'].includes(d.slot)) return []; return Object.keys(SA.MODS).filter(k => SA.MODS[k].slot === d.slot && (!SA.MODS[k].only || SA.MODS[k].only.includes(id))); };
+SA.randMod = (id) => { const l = SA.modsFor(id); return l.length ? l[Math.floor(Math.random() * l.length)] : null; };
+// 은하 각성: 넣은 보스 재료에 따라 하나. 2·3막 보스는 규칙만 여기에 추가
+SA.AWAKEN = {
+  raven:  { name: '레이븐 각성', mat: 'chip', desc: '스칠 때마다 이 부품 위력 +3% (최대 +30%, 맞으면 초기화).' },
+  hunter: { name: '심연 각성', mat: 'abyss', desc: '침식 단계마다 이 부품 위력 +10%. 침식으로 이 부품 내구도가 깎이지 않는다.' },
+};
+// 강화 비용 (임시, 중간 수준). 행성: 기준 부품 + 상위 재료 2 + 양자 회로 1 + 기준가 / 은하: 양자 회로 2 + 보스 재료 + 침식 결정 3 + 기준가 ×2
+SA.UPGRADE = {
+  cost: (p, awk) => {
+    const d = SA.PARTS[p.id], um = (d.slot === 'act' || d.slot === 'sub') ? 'fcore' : 'alloy';
+    if (!p.lv) return { mats: { [um]: 2, qcircuit: 1 }, cr: d.val };
+    return { mats: Object.assign({ qcircuit: 2, crystal: 3 }, awk ? { [SA.AWAKEN[awk].mat]: 1 } : {}), cr: d.val * 2 };
+  },
+  modCost: (p) => { const d = SA.PARTS[p.id]; return { mats: { [(d.slot === 'act' || d.slot === 'sub') ? 'fcore' : 'alloy']: 1 }, cr: Math.round(d.val * 0.5) }; },
+};
+// 부품 설명 전체 (등급 효과 · 개조 · 각성 포함, HTML)
+SA.partFullDesc = (p) => {
+  const d = SA.PARTS[p.id], lv = p.lv || 0, m = SA.LV_MUL[lv];
+  let s = SA.partDesc(p.id, lv);
+  if (lv && d.slot === 'main') s += ` <span class="g-up">[${SA.partTier(p)}] 피해 +${Math.round((m - 1) * 100)}%</span>`;
+  if (lv && d.slot === 'sub') s += ` <span class="g-up">[${SA.partTier(p)}] 위력 +${Math.round((m - 1) * 100)}% (피해, 피해가 없으면 처리 속도)</span>`;
+  if (lv && d.slot === 'act') s += ` <span class="g-up">[${SA.partTier(p)}] 쿨타임 -${Math.round((1 - 1 / m) * 100)}%</span>`;
+  if (lv && d.slot === 'pas') s += ` <span class="g-up">[${SA.partTier(p)}] 효과 수치 +${Math.round((m - 1) * 100)}% (위 수치에 반영)</span>`;
+  if (lv && d.slot === 'obs') s += ` <span class="g-up">[${SA.partTier(p)}] 시야 ${lv + 1}단계${lv === 2 ? ' · 보스·사냥꾼 항상 표시' : ''}</span>`;
+  if (p.mod && SA.MODS[p.mod]) s += `<br><span class="g-mod">개조 · ${SA.MODS[p.mod].name}: ${SA.MODS[p.mod].desc}</span>`;
+  if (p.awk && SA.AWAKEN[p.awk]) s += `<br><span class="g-awk">${SA.AWAKEN[p.awk].name}: ${SA.AWAKEN[p.awk].desc}</span>`;
+  return s;
+};
+SA.partHtml = (p) => `<span style="color:${SA.TIER_COL[SA.partTier(p)]}">${SA.partName(p)}</span>`;
+// 부품 이름 (등급 표시는 색으로, 개조·각성은 뒤에)
+SA.partName = (p, short) => {
+  const d = SA.PARTS[p.id]; let s = d.name;
+  if (p.lv) s += p.lv === 2 ? ' Ⅲ' : ' Ⅱ';
+  if (!short && p.mod && SA.MODS[p.mod]) s += ' · ' + SA.MODS[p.mod].name;
+  if (!short && p.awk && SA.AWAKEN[p.awk]) s += ' · ' + SA.AWAKEN[p.awk].name;
+  return s;
 };
 // 에너지·사격 (임시). eps = 계속 쏠 때 초당 에너지 (펄스건 1.0 기준, 무기 성향별)
 SA.ENERGY = { reload: 1.2, swap: 0.4, emerMax: 6, emerRegen: 0.25, hip: 1.6, aim: 0.5, aimSpeed: 0.75, slowSpeed: 0.5, sniperCharge: 0.8, sniperMul: 1.5,
-  eps: { pulse: 1.0, twin: 1.15, scatter: 1.0, shard: 1.1, crusher: 1.2, lance: 1.0, rail: 1.1, breaker: 1.25, glass: 1.2, sniper: 1.35 } };
+  eps: { pulse: 1.0, scatter: 1.0, lance: 1.0, glass: 1.2, sniper: 1.35, beam: 1.4, swarm: 1.15 } };
 // 아이템 제작 (설계도 없이 항상 가능). 동력원은 모두 고철 1개가 들어가고, 상위 동력원은 하위 동력원을 쓴다 (임시)
 SA.CRAFT = {
   cell1: { mats: { scrap: 1, wire: 1 } },
   cell2: { mats: { cell1: 1, scrap: 1, core: 1 } },
   cell3: { mats: { cell2: 1, scrap: 1, goldchip: 1, crystal: 1 } },
+  cell4: { mats: { cell3: 1, scrap: 1, abyss: 1 } },
   repairkit: { mats: { scrap: 2, wire: 1 } },
   alloy:    { mats: { scrap: 2, core: 1 } },
   fcore:    { mats: { core: 2, engine: 1 } },
   qcircuit: { mats: { goldchip: 1, prec: 1, crystal: 1 } },
 };
-// 강화·전설 부품 제작에는 상위 재료가 들어간다 (강화: 강화 합금 또는 융합 코어 1 / 전설: 양자 회로 1 + 강화 합금 1)
-SA.UMAT_ADD = (id) => { const d = SA.PARTS[id]; if (!d) return {}; if (d.tier === '전설') return { qcircuit: 1, alloy: 1 }; if (d.tier === '강화') return (d.slot === 'act' || d.slot === 'sub') ? { fcore: 1 } : { alloy: 1 }; return {}; };
+// 강화 부품 제작에는 상위 재료가 들어간다 (강화 합금, 액티브·서브웨폰은 융합 코어 1)
+SA.UMAT_ADD = (id) => { const d = SA.PARTS[id]; if (!d) return {}; if (d.tier === '강화') return (d.slot === 'act' || d.slot === 'sub') ? { fcore: 1 } : { alloy: 1 }; return {}; };
 // 코드 사용 횟수 (등록 1회분)와 상점 충전 가격 (가득 채우기) (임시)
-SA.CODES = { box1: { name: '일반 상자 코드', uses: 5, price: 150 }, box2: { name: '강화 상자 코드', uses: 3, price: 450 }, box3: { name: '전설 상자 코드', uses: 1, price: 900 }, zone: { name: '보안 구역 코드', uses: 3, price: 500 } };
+SA.CODES = { box1: { name: '일반 상자 코드', uses: 5, price: 150 }, box2: { name: '강화 상자 코드', uses: 3, price: 450 }, box3: { name: '행성 상자 코드', uses: 1, price: 900 }, zone: { name: '보안 구역 코드', uses: 3, price: 500 } };
 // 상자: 일반(부수기) / 잠긴 상자(해독기+상자 코드, 머물러 열기) / 보안상자(해독기만, 해킹 5초 버티기) (임시)
 SA.BOX = { openHold: 1.5, hackHold: 5, r: 46 };
 SA.LOOT_LOCKED = {
   1: [['bp:일반', .5], ['bp:강화', .15], ['alloy', .5], ['cell1', .4], ['prec', .6], ['goldchip', .35], ['part:일반', .12], ['key_box1', .08]],
   2: [['bp:강화', .5], ['alloy', 1], ['fcore', .5], ['cell2', .35], ['goldchip', .6], ['part:강화', .15], ['key_box2', .06]],
-  3: [['bp:전설', .4], ['qcircuit', 1], ['alloy', .6], ['cell3', .3], ['part:전설', .1]],
+  3: [['bp:강화', .6], ['qcircuit', 1], ['alloy', .6], ['cell3', .3], ['part:행성', .1]],
 };
-SA.LOOT_SECURE = [['part:강화', .5], ['part:전설', .12], ['bp:강화', .6], ['bp:전설', .2], ['qcircuit', .4], ['alloy', .8], ['fcore', .4], ['key_zone', .1]];
+SA.LOOT_SECURE = [['part:강화', .5], ['part:행성', .12], ['bp:강화', .6], ['qcircuit', .5], ['alloy', .8], ['fcore', .4], ['key_zone', .1]];
 // 부품 완성품 필드 드랍: 화물칸 크기 (주무기 3×1, 그 외 2×1), 내구도 40~80 무작위. 적 격추 확률 (임시)
 SA.PART_DROP = { size: { main: [3, 1], sub: [2, 1], act: [2, 1], pas: [2, 1], obs: [2, 1] }, dur: [40, 80],
-  chance: { fighter: 0.01, turret: 0.015, frigate: 0.03, boss: 0.25 }, tierRoll: [['전설', .05], ['강화', .25], ['일반', 1]] };
-// 설계도 확률: 일반은 그대로, 강화·전설은 낮추고 네임드·보스·대형은 높인다
+  chance: { fighter: 0.01, turret: 0.015, frigate: 0.03, boss: 0.25 }, tierRoll: [['행성', .05], ['강화', .25], ['일반', 1]] };
+// 설계도 확률: 일반은 그대로, 강화·행성은 낮추고 네임드·보스·대형은 높인다
 SA.BP_MUL = { normal: 0.5, frigate: 1.5, boss: 2.5 };
 SA.HIT_WEAR = 3;
 // 사망 처리 방식 (시작할 때 고르고, 설정에서 언제든 바꾼다)
@@ -225,22 +321,22 @@ SA.OBS = { levels: [2, 1.75, 1.5, 1.3], radar: [350, 600, 900, 1200], fogCell: 8
 SA.DECODE = { raids: 1, instant: 300 };   // 회수 잔해: 머물러서 회수하는 시간   // 피격 시 무작위 장착 부품 내구도 감소
 SA.START_RECIPES = ['pulse', 'mg', 'magnet', 'decoder', 'obs1'];   // 보안해독기는 처음부터 안다 (강화라 테오 구조 후 제작)   // 처음 아는 제작법은 이것뿐 (임시). 나머지는 초반 퀘스트 보상·설계도 드랍으로
 // 설계도 아이템은 부품마다 자동 생성. 등급별 풀에서 무작위로 떨어진다 (loot의 'bp:일반' 등)
-SA.BP_POOL = { 일반: [], 강화: [], 전설: [] };
+SA.BP_POOL = { 일반: [], 강화: [] };
 for (const id in SA.PARTS) {
   if (SA.START_RECIPES.includes(id)) continue;
   const d = SA.PARTS[id];
-  if (!SA.ITEMS['bp_' + id]) SA.ITEMS['bp_' + id] = { name: '설계도: ' + d.name, w: 1, h: 1, val: { 일반: 100, 강화: 200, 전설: 400 }[d.tier], kind: 'bp', recipe: id, color: '#e6edf3', desc: '격납고에서 영구 해금된다. 이미 알면 판매.' };
+  if (!SA.ITEMS['bp_' + id]) SA.ITEMS['bp_' + id] = { name: '설계도: ' + d.name, w: 1, h: 1, val: { 일반: 100, 강화: 200 }[d.tier], kind: 'bp', recipe: id, color: '#e6edf3', desc: '격납고에서 영구 해금된다. 이미 알면 판매.' };
   if (id !== 'raven' && id !== 'sensor') SA.BP_POOL[d.tier].push(id);   // 레이븐 전용 설계도는 일반 드랍 풀에서 뺀다
 }
 SA.ITEMS.bp_sensor.img = 'assets/bp_sensor.png';   // 도트 설계도 카드
 // 부품 완성품 아이템 (필드 드랍용). 탈출하면 부품함으로 들어간다
 for (const id in SA.PARTS) {
   const d = SA.PARTS[id], sz = SA.PART_DROP.size[d.slot];
-  SA.ITEMS['pt_' + id] = { name: d.name, w: sz[0], h: sz[1], val: Math.round(d.val * 0.6), kind: 'part', tier: d.tier, part: id, img: d.img, color: { 일반: '#9fb3c8', 강화: '#5dffb0', 전설: '#ffd166' }[d.tier], desc: `[부품] ${d.desc} 탈출하면 부품함으로 들어간다.` };
+  SA.ITEMS['pt_' + id] = { name: d.name, w: sz[0], h: sz[1], val: Math.round(d.val * 0.6), kind: 'part', tier: d.tier, part: id, img: d.img, color: SA.TIER_COL[d.tier], desc: `[부품] ${SA.partDesc(id, 0)} 탈출하면 부품함으로 들어간다.` };
 }
 // 아이템 분류 이름
 SA.KIND_NAME = { mat: '재료', umat: '상위 재료', cell: '동력원', use: '소모품', key: '해독키', lore: '정보', data: '정보', bp: '설계도', capsule: '구조', part: '부품', ticket: '고용권' };
-// 강화·전설 레시피에 상위 재료 추가 (한 번만)
+// 강화·행성 레시피에 상위 재료 추가 (한 번만)
 for (const id in SA.RECIPES) Object.assign(SA.RECIPES[id].mats, SA.UMAT_ADD(id));
 
 // 기체. mount = 포탑/판정점 (도트 좌표, 0~1 비율)
@@ -292,7 +388,9 @@ for (const id in SA.RESCUE.targets) {
 }
 // 네임드 레이븐 (임시 수치): 둥지에서 체력 30%가 되면 도주 → 다음 출격부터 다른 위치에서 재대결 → 격추하면 탈출 포드를 들고 탈출해야 완료
 SA.RAVEN = { hp: 1500, fleeAt: 0.3, phase3At: 0.25, dodgeCd: [1.8, 1.5, 1.1],
-  fleeDrops: [['goldchip', 1], ['prec', .6], ['bp:강화', .3]] };
+  fleeDrops: [['chip', 1], ['goldchip', 1], ['prec', .6], ['bp:강화', .3]] };
+// 제국 실험 무인기: 레이븐 데이터를 학습한 기계. 레이븐 합류 뒤 출격의 mimicChance로 등장, 격추하면 비행 기록 칩 (임시)
+SA.MIMIC = { chance: 0.3, hp: 900 };
 SA.ITEMS.cap_raven = { name: '레이븐의 탈출 포드', w: 2, h: 2, val: 0, kind: 'capsule', img: 'assets/i_pod.png', color: '#ff4d6d', desc: '격추된 레이븐이 갇힌 탈출 포드. 들고 탈출해야 그를 붙잡는다. 들고 있으면 이속 -10%.' };
 // 난파선 (임시): 아이템 하나당 0.9초, 마지막 한 개는 4초. 벗어나면 진행 중 게이지가 초당 0.6씩 줄어든다.
 // 마지막 보상은 위에서부터 굴려 처음 당첨된 것 하나 (좋은 것 확률 높게)
@@ -357,8 +455,9 @@ SA.ENEMIES = {
   n_serena:  { name: '세레나 전용기', ai: 'none', img: 'assets/w_serena.png', size: [28, 31], hp: 1, r: 7 },
   n_volk:    { name: '볼크 전용기', ai: 'none', img: 'assets/w_volk.png', size: [31, 29], hp: 1, r: 7 },
   convoy_ship: { name: '호위 화물선', ai: 'none', img: 'assets/convoy.png', size: [27, 75], hp: 1, r: 18 },
-  hunter:  { name: '심연의 사냥꾼', ai: 'hunter', img: 'assets/hunter_0.png', anim: { n: 6, fps: 8 }, size: [64, 81], hp: 1400, r: 28, speed: 90, color: '#8a5cff', boss: true, drops: [['crystal', 1], ['crystal', 1], ['crystal', .5], ['ace', 1], ['ace', .4], ['bp:전설', .6], ['goldchip', 1], ['goldchip', .5]] },
-  raven:   { name: '네임드 용병 레이븐', ai: 'raven', img: 'assets/raven_hull.png', size: [30, 27], pivot: [0.5, 0.5], hp: 1500, r: 12, speed: 150, color: '#ff4d6d', boss: true, drops: [['bp_raven', .5], ['bp_sensor', .3], ['ace', 1], ['ace', .4], ['bp:강화', .8], ['goldchip', 1], ['goldchip', .6], ['blackbox', .8], ['engine', .5], ['key_box2', .3]] },
+  hunter:  { name: '심연의 사냥꾼', ai: 'hunter', img: 'assets/hunter_0.png', anim: { n: 6, fps: 8 }, size: [64, 81], hp: 1400, r: 28, speed: 90, color: '#8a5cff', boss: true, drops: [['crystal', 1], ['crystal', 1], ['crystal', .5], ['ace', 1], ['ace', .4], ['abyss', 1], ['qcircuit', .6], ['goldchip', 1], ['goldchip', .5]] },
+  raven:   { name: '네임드 용병 레이븐', ai: 'raven', img: 'assets/raven_hull.png', size: [30, 27], pivot: [0.5, 0.5], hp: 1500, r: 12, speed: 150, color: '#ff4d6d', boss: true, drops: [['chip', 1], ['bp_raven', .5], ['bp_sensor', .3], ['ace', 1], ['ace', .4], ['bp:강화', .8], ['goldchip', 1], ['goldchip', .6], ['blackbox', .8], ['engine', .5], ['key_box2', .3]] },
+  mimic:   { name: '제국 실험 무인기', ai: 'raven', img: 'assets/raven_hull.png', size: [30, 27], pivot: [0.5, 0.5], hp: 900, r: 12, speed: 150, color: '#c08bff', boss: true, drops: [['chip', 1], ['goldchip', 1], ['prec', 1], ['bp:강화', .5], ['qcircuit', .3], ['ace', .3]] },
 };
 
 // 침식 단계: at = 침식률 하한(%)

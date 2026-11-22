@@ -58,7 +58,7 @@ SA.Quest = (() => {
     SA.Save.store(prof);
     return m;
   };
-  const rewardText = () => { const { q } = cur(); return q && q.bp ? ` · 보상 설계도: ${SA.PARTS[q.bp].name}` : q && q.rescue ? ' · 보상: 테오 합류(강화 등급 제작 해금) + 트윈 펄스 설계도' : ''; };
+  const rewardText = () => { const { q } = cur(); return q && q.bp ? ` · 보상 설계도: ${SA.PARTS[q.bp].name}` : q && q.rescue ? ' · 보상: 테오 합류(강화 제작·행성 강화 해금) + 강화 합금 2 · 양자 회로 1' : ''; };
   return { event, label, rewardText, cur, sync, ravenCaught };
 })();
 
@@ -96,9 +96,8 @@ SA.Rescue = (() => {
     let msg = `${t.name} 구조 완료`;
     if (id === 'teo') {
       p.rescued.teo = true;
-      const dup = p.recipes.includes('twin');
-      if (dup) p.credits += SA.ITEMS.bp_twin.val; else p.recipes.push('twin');
-      msg += ` — 테오가 합류했다. 작업대에서 강화 등급 제작 가능, ${dup ? '트윈 펄스 설계도는 이미 알아서 ₵' + SA.ITEMS.bp_twin.val : '트윈 펄스 설계도 획득'}`;
+      for (const id of ['alloy', 'alloy', 'qcircuit']) if (!SA.Grid.add(p.stash, id)) p.credits += SA.ITEMS[id].val;   // 테오의 선물: 펄스건 행성 강화(2연장 등)에 딱 맞는 재료
+      msg += ' — 테오가 합류했다. 작업대에서 강화 등급 제작과 행성·은하 강화가 열렸다. 선물: 강화 합금 2 · 양자 회로 1';
       SA.Quest.event('rescue');
     } else if (id === 'deliv') { p.rescued.deliv = true; msg += ' — 상점 탭에서 재료 배달이 열렸다'; }
     else { p.pilots[id] = { injury: 0 }; msg += ' — 파일럿으로 고를 수 있다'; }
