@@ -399,7 +399,7 @@ for (const id in SA.RESCUE.targets) {
   SA.ITEMS['cap_' + id] = { name: '구조 캡슐: ' + t.name, w: 2, h: 2, val: 0, kind: 'capsule', img: 'assets/i_pod.png', color: t.color, desc: '탈출해야 구조가 확정된다. 들고 있으면 이속 -10%. 잃으면 다음 출격에 신호가 다시 뜬다.' };
 }
 // 네임드 레이븐 (임시 수치): 둥지에서 체력 30%가 되면 도주 → 다음 출격부터 다른 위치에서 재대결 → 격추하면 탈출 포드를 들고 탈출해야 완료
-SA.RAVEN = { hp: 1500, fleeAt: 0.3, phase3At: 0.25, dodgeCd: [1.8, 1.5, 1.1],
+SA.RAVEN = { leash: 900, hp: 1500, fleeAt: 0.3, phase3At: 0.25, dodgeCd: [1.8, 1.5, 1.1],
   fleeDrops: [['chip', 1], ['goldchip', 1], ['prec', .6], ['bp:강화', .3]] };
 // 제국 실험 무인기: 레이븐 데이터를 학습한 기계. 레이븐 합류 뒤 출격의 mimicChance로 등장, 격추하면 비행 기록 칩 (임시)
 SA.MIMIC = { chance: 0.3, hp: 900 };

@@ -684,8 +684,19 @@ SA.Combat = (() => {
   // 첫 대결(둥지)에서는 체력 30%에서 도주한다. 날아오는 탄은 옆으로 미끄러지듯 피한다(쿨타임).
   const updateRaven = (R, e, dt, dist, aP, alive) => {
     const P = R.player, RV = SA.RAVEN;
-    if (!e.awake) { if (dist < 340 || e.hp < e.maxHp) { e.awake = true; SA.Raid.bossEngaged(e); } else return; }
+    if (!e.awake) { if (dist < 340 || (e.hp < e.maxHp && !e.gaveUp)) { e.gaveUp = false; e.awake = true; SA.Raid.bossEngaged(e); } else return; }
     e.inv = Math.max(0, (e.inv || 0) - dt);
+    // 구역 이탈: 둥지(첫 자리)에서 너무 멀어지면 추격을 포기하고 돌아간다 (연습장 제외)
+    if (!R.range && !e.fleeing) {
+      const hd = Math.hypot(e.x - e.homeX, e.y - e.homeY);
+      if (!e.leash && hd > RV.leash) { e.leash = true; e.gaveUp = true; e.dashT = 0; e.ghosts = []; SA.Raid.ravenGiveUp(e); }
+      if (e.leash) {
+        if (hd < 50) { e.leash = false; e.awake = false; e.vx = e.vy = 0; return; }
+        const a = U.ang(e.x, e.y, e.homeX, e.homeY);
+        e.vx += (Math.cos(a) * 230 - e.vx) * Math.min(1, 3 * dt); e.vy += (Math.sin(a) * 230 - e.vy) * Math.min(1, 3 * dt);
+        return;
+      }
+    }
     // 도주
     if (e.fleeing) {
       e.fleeT -= dt; e.inv = 1;

@@ -766,6 +766,11 @@ SA.Raid = (() => {
     if (e.type === 'mimic') { msg('제국 실험 무인기 — 레이븐의 기동을 흉내 낸다', '#c08bff', 4); if (SA.profile.pilots.raven) say('raven', '…저거, 내 비행 기록이잖아요. 누가 훔쳐 갔지?'); SA.Audio.sfx('siren'); }
     SA.Audio.play('boss');
   };
+  const ravenGiveUp = (e) => {   // 구역 밖으로 벗어난 플레이어를 놓아준다
+    const R = SA.R; if (R.boss === e) { R.boss = null; R.bossEngaged = false; }
+    if (!e.mimic) say('raven', '…여기까지만 쫓죠. 내 구역으로 돌아갑니다.');
+    SA.Audio.play('raid');
+  };
   const ravenFlee = (e) => {   // 도주 시작: 일부 전리품만 흘린다
     if (SA.R.range) return;
     for (const [id, p] of SA.RAVEN.fleeDrops) if (Math.random() < p) spawnItem(SA.R, id, e.x, e.y);
@@ -949,5 +954,5 @@ SA.Raid = (() => {
     return R.items.filter(it => !it.taken && U.d2(it.x, it.y, P.x, P.y) < r * r);
   };
 
-  return { start, spawnDummy, update, msg, say, swapPlan, doSwap, dropLoot, spawnItem, playerDied, bossEngaged, bossKilled, ravenFlee, ravenFled, allyDown, convoyArrived, finish, useItem, dropToSpace, nearbyGround, grazeBonus, grazeDmg, queueRespawn, hunterWake, beaconBroken, fogged };
+  return { start, spawnDummy, update, msg, say, swapPlan, doSwap, dropLoot, spawnItem, playerDied, bossEngaged, bossKilled, ravenGiveUp, ravenFlee, ravenFled, allyDown, convoyArrived, finish, useItem, dropToSpace, nearbyGround, grazeBonus, grazeDmg, queueRespawn, hunterWake, beaconBroken, fogged };
 })();
