@@ -66,7 +66,7 @@ SA.Tutorial = (() => {
   const ENTER = {
     1: () => {   // ① 도주 시작
       say('…따라붙었군.');
-      spawn('k_fighter', -340, -70, 1); spawn('k_fighter', -340, 70, 1);
+      spawn('k_tracker', -340, -70, 1); spawn('k_tracker', -340, 70, 1);
       SA.Audio.sfx('siren');
       const P = R.player, x0 = P.x, y0 = P.y;
       prompt(['W', 'A', 'S', 'D'], '이동', () => Math.hypot(P.x - x0, P.y - y0) > 40, '누르는 방향으로 움직인다');
@@ -74,13 +74,13 @@ SA.Tutorial = (() => {
     },
     2: () => {   // ② 탄막 — Shift 저속·스침을 알려 주고 순양함을 잡는다
       const fr = spawn('k_frigate', 380, 0, 2); fr.hp = fr.maxHp = 260; R.tut.fr = fr;
-      spawn('k_fighter', 420, -160, 2);
+      spawn('k_tracker', 420, -160, 2);
       prompt(['Shift'], '저속 이동', () => I().isDown('ShiftLeft') || I().isDown('ShiftRight'), '누르는 동안 느려지고 판정점이 보인다. 맞는 곳은 기체 한가운데 점 하나뿐');
       prompt([], '스침', (p) => R.graze > 0 || p.t > 5, '적 탄을 아슬아슬하게 스치면 스택이 쌓이고, 쌓일수록 피해·드랍이 오른다');
     },
     3: () => {   // ③ 매복 편대 — 기술과 장비를 아끼지 말 것
       msg('매복!', '#ff6b7a', 2.5); SA.Audio.sfx('siren'); R.shake = 6;
-      for (let i = 0; i < 6; i++) { const a = i / 6 * 6.28 + 0.3; spawn('k_fighter', Math.cos(a) * 300, Math.sin(a) * 260, 3); }
+      for (let i = 0; i < 6; i++) { const a = i / 6 * 6.28 + 0.3; spawn('k_tracker', Math.cos(a) * 300, Math.sin(a) * 260, 3); }
       spawn('k_frigate', 360, -40, 3);
       R.tut.total = 7;
       const P = R.player, a = P.acts;
@@ -120,7 +120,7 @@ SA.Tutorial = (() => {
         if (T.cardA <= 0) { T.card = null; go(1); }
         break;
       case 1: {
-        T.goal = `추격기 격추 ${2 - alive(1)}/2  (WASD 이동 · 좌클릭 사격)`;
+        T.goal = `추적기 격추 ${2 - alive(1)}/2  (WASD 이동 · 좌클릭 사격)`;
         if (!alive(1) && T.t > 1 && !T.prompt && !T.pq.length) go(2);
         break;
       }
@@ -164,7 +164,7 @@ SA.Tutorial = (() => {
         else x.prog = Math.max(0, x.prog - dt * 3);
         T.goal = `귀환 포트 안에서 버티기 ${x.prog.toFixed(1)}/${E}초 — 벗어나면 줄어든다`;
         T.wave -= dt;
-        if (T.wave <= 0 && alive(5) < 6) { T.wave = 5; for (let i = 0; i < 2; i++) { const a = Math.random() * 6.28; spawn('k_fighter', Math.cos(a) * 360, Math.sin(a) * 300, 5); } }
+        if (T.wave <= 0 && alive(5) < 6) { T.wave = 5; for (let i = 0; i < 2; i++) { const a = Math.random() * 6.28; spawn('k_tracker', Math.cos(a) * 360, Math.sin(a) * 300, 5); } }
         if (x.prog >= E - 1.4) go(6);
         break;
       }

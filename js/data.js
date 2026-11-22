@@ -446,6 +446,9 @@ SA.ENEMIES = {
   // 왕국군: 파란 회색 + 크림 띠, 정석적인 조준 사격 / 제국군: 검정 + 붉은 날개, 공격적인 연사
   k_fighter: { name: '왕국 전투기', faction: 'kingdom', ai: 'fighter', hp: 14, r: 9, speed: 95, img: 'assets/k_fighter.png', size: [26, 24],
                drops: [['scrap', .6], ['wire', .25], ['bp:일반', .02]] },
+  // 튜토리얼 전용: 정체를 숨긴 왕국 추적기. 이름만 '미확인'으로 두고 진영은 왕국
+  k_tracker: { name: '미확인 추적기', faction: 'kingdom', ai: 'fighter', hp: 14, r: 9, speed: 100, img: 'assets/k_tracker.png', size: [28, 28],
+               drops: [['scrap', .3]] },
   e_fighter: { name: '제국 전투기', faction: 'empire', ai: 'fighter', hp: 16, r: 9, speed: 108, img: 'assets/e_fighter.png', size: [26, 24],
                drops: [['scrap', .6], ['core', .12], ['bp:일반', .02]] },
   k_frigate: { name: '왕국 프리깃', faction: 'kingdom', ai: 'frigate', hp: 110, r: 20, speed: 38, img: 'assets/k_frigate.png', size: [28, 48],
