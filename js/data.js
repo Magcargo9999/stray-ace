@@ -252,7 +252,7 @@ SA.AWAKEN = {
 SA.UPGRADE = {
   cost: (p, awk) => {
     const d = SA.PARTS[p.id], um = (d.slot === 'act' || d.slot === 'sub') ? 'fcore' : 'alloy';
-    if (!p.lv) return { mats: { [um]: 2, qcircuit: 1 }, cr: d.val };
+    if (!p.lv) return { mats: { [um]: 1, qcircuit: 1 }, cr: d.val };   // 첫 행성 업그레이드 문턱을 낮춤 (임시)
     return { mats: Object.assign({ qcircuit: 2, crystal: 3 }, awk ? { [SA.AWAKEN[awk].mat]: 1 } : {}), cr: d.val * 2 };
   },
   modCost: (p) => { const d = SA.PARTS[p.id]; return { mats: { [(d.slot === 'act' || d.slot === 'sub') ? 'fcore' : 'alloy']: 1 }, cr: Math.round(d.val * 0.5) }; },
@@ -301,7 +301,7 @@ SA.CODES = { box1: { name: '일반 상자 코드', uses: 5, price: 150 }, box2: 
 SA.BOX = { openHold: 1.5, hackHold: 5, r: 46 };
 SA.LOOT_LOCKED = {
   1: [['bp:일반', .5], ['bp:강화', .15], ['alloy', .5], ['cell1', .4], ['prec', .6], ['goldchip', .35], ['part:일반', .12], ['key_box1', .08]],
-  2: [['bp:강화', .5], ['alloy', 1], ['fcore', .5], ['cell2', .35], ['goldchip', .6], ['part:강화', .15], ['key_box2', .06]],
+  2: [['bp:강화', .5], ['alloy', 1], ['fcore', .5], ['qcircuit', .2], ['cell2', .35], ['goldchip', .6], ['part:강화', .15], ['key_box2', .06]],
   3: [['bp:강화', .6], ['qcircuit', 1], ['alloy', .6], ['cell3', .3], ['part:행성', .25]],
 };
 SA.LOOT_SECURE = [['part:강화', .5], ['part:행성', .25], ['bp:강화', .6], ['qcircuit', .5], ['alloy', .8], ['fcore', .4], ['key_zone', .1]];
@@ -309,7 +309,7 @@ SA.LOOT_SECURE = [['part:강화', .5], ['part:행성', .25], ['bp:강화', .6], 
 SA.PART_DROP = { size: { main: [3, 1], sub: [2, 1], act: [2, 1], pas: [2, 1], obs: [2, 1] }, dur: [40, 80],
   chance: { fighter: 0.01, turret: 0.015, frigate: 0.03, boss: 0.25 }, tierRoll: [['행성', .05], ['강화', .25], ['일반', 1]] };
 // 설계도 확률: 일반은 그대로, 강화·행성은 낮추고 네임드·보스·대형은 높인다
-SA.BP_MUL = { normal: 0.5, frigate: 1.5, boss: 2.5 };
+SA.BP_MUL = { normal: 0.8, frigate: 1.8, boss: 2.5 };
 SA.HIT_WEAR = 3;
 // 사망 처리 방식 (시작할 때 고르고, 설정에서 언제든 바꾼다)
 SA.DEATH_MODES = {
@@ -406,7 +406,7 @@ SA.MIMIC = { chance: 0.3, hp: 900 };
 SA.ITEMS.cap_raven = { name: '레이븐의 탈출 포드', w: 2, h: 2, val: 0, kind: 'capsule', img: 'assets/i_pod.png', color: '#ff4d6d', desc: '격추된 레이븐이 갇힌 탈출 포드. 들고 탈출해야 그를 붙잡는다. 들고 있으면 이속 -10%.' };
 // 난파선 (임시): 아이템 하나당 0.9초, 마지막 한 개는 4초. 벗어나면 진행 중 게이지가 초당 0.6씩 줄어든다.
 // 마지막 보상은 위에서부터 굴려 처음 당첨된 것 하나 (좋은 것 확률 높게)
-SA.WRECK = { maxItems: 5, per: 0.9, last: 4, decay: 0.6, final: [['bp:강화', .1], ['goldchip', .3], ['bp:일반', .25], ['engine', .35], ['prec', 1]] };
+SA.WRECK = { maxItems: 5, per: 0.9, last: 4, decay: 0.6, final: [['bp:강화', .15], ['goldchip', .3], ['bp:일반', .35], ['engine', .35], ['prec', 1]] };
 // 대사창 화자: 초상화는 assets/portrait_<id>.png (원화가 작업물이 오면 넣는다. 없으면 실루엣)
 SA.SPEAKERS = {
   cmd:    { name: '단장', title: '3년 전', color: '#e6edf3' },
@@ -450,16 +450,16 @@ SA.INJURY_RAIDS = 2;
 SA.ENEMIES = {
   // 왕국군: 파란 회색 + 크림 띠, 정석적인 조준 사격 / 제국군: 검정 + 붉은 날개, 공격적인 연사
   k_fighter: { name: '왕국 전투기', faction: 'kingdom', ai: 'fighter', hp: 14, r: 9, speed: 95, img: 'assets/k_fighter.png', size: [26, 24],
-               drops: [['scrap', .6], ['wire', .25], ['bp:일반', .02]] },
+               drops: [['scrap', .6], ['wire', .25], ['bp:일반', .04]] },
   // 튜토리얼 전용: 정체를 숨긴 왕국 추적기. 이름만 '미확인'으로 두고 진영은 왕국
   k_tracker: { name: '미확인 추적기', faction: 'kingdom', ai: 'fighter', hp: 14, r: 9, speed: 100, img: 'assets/k_tracker.png', size: [28, 28],
                drops: [['scrap', .3]] },
   e_fighter: { name: '제국 전투기', faction: 'empire', ai: 'fighter', hp: 16, r: 9, speed: 108, img: 'assets/e_fighter.png', size: [26, 24],
-               drops: [['scrap', .6], ['core', .12], ['bp:일반', .02]] },
+               drops: [['scrap', .6], ['core', .12], ['bp:일반', .04]] },
   k_frigate: { name: '왕국 프리깃', faction: 'kingdom', ai: 'frigate', hp: 110, r: 20, speed: 38, img: 'assets/k_frigate.png', size: [28, 48],
-               drops: [['core', .55], ['wire', .5], ['prec', .3], ['scrap', .8], ['bp:일반', .05], ['bp:강화', .03], ['key_box1', .05], ['key_zone', .03], ['bb_reward', .04]] },
+               drops: [['core', .55], ['wire', .5], ['prec', .3], ['scrap', .8], ['bp:일반', .08], ['bp:강화', .05], ['key_box1', .05], ['key_zone', .03], ['bb_reward', .04]] },
   e_frigate: { name: '제국 순양함', faction: 'empire', ai: 'frigate', hp: 130, r: 20, speed: 34, img: 'assets/e_frigate.png', size: [34, 47],
-               drops: [['core', .5], ['engine', .35], ['prec', .3], ['scrap', .8], ['bp:일반', .05], ['bp:강화', .03], ['key_box1', .05], ['key_zone', .03], ['bb_reward', .04], ['bb_empire', .08]] },
+               drops: [['core', .5], ['engine', .35], ['prec', .3], ['scrap', .8], ['bp:일반', .08], ['bp:강화', .05], ['key_box1', .05], ['key_zone', .03], ['bb_reward', .04], ['bb_empire', .08]] },
   k_turret:  { name: '왕국 포대', faction: 'kingdom', ai: 'turret', hp: 70, r: 12, speed: 0, img: 'assets/k_turret.png', size: [18, 25], pivot: [0.5, 0.67],
                drops: [['scrap', .7], ['wire', .3], ['core', .25], ['prec', .15]] },
   e_turret:  { name: '제국 쌍포대', faction: 'empire', ai: 'turret', hp: 60, r: 10, speed: 0, img: 'assets/e_turret.png', size: [14, 21], pivot: [0.5, 0.72],

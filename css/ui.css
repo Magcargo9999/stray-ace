@@ -336,3 +336,12 @@ h3 { margin: 6px 0 8px; font-size: 15px; color: #cfe3ff; } h4 { margin: 10px 0 6
 #re-prog span { position: relative; padding-left: 8px; font-size: 11px; line-height: 18px; color: #d8e6ff; }
 #rec-ed.busy #re-prog { display: block; } #rec-ed.busy .re-row button, #rec-ed.busy .set-x { pointer-events: none; opacity: .4; }
 #settings label.chk { display: flex; gap: 8px; align-items: center; cursor: pointer; font-size: 13px; margin-top: 6px; }
+
+/* 새 설계도 (결과창 · 작업대) */
+.newbp-wrap { display: flex; flex-direction: column; gap: 8px; margin: 10px 0 4px; }
+.newbp { display: flex; gap: 12px; align-items: center; border: 2px solid #ffd166; background: #151c2b; padding: 8px 12px; animation: nbpop .5s ease-out; }
+.newbp img { width: 52px; height: 52px; object-fit: contain; image-rendering: pixelated; flex: none; }
+.newbp .nbh { font-size: 11px; color: #ffd166; letter-spacing: 1px; }
+@keyframes nbpop { 0% { transform: scale(.92); opacity: 0; } 100% { transform: none; opacity: 1; } }
+.crow2.isnew { border-color: #ffd166; position: relative; }
+.crow2 .newtag { position: absolute; left: -4px; top: -6px; background: #ffd166; color: #0b1120; font-size: 10px; padding: 0 5px; z-index: 2; }

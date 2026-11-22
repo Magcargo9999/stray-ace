@@ -150,11 +150,16 @@ SA.Main = (() => {
       const done = after[0] >= after[1];
       crows.push(`<div class="rc"><b>${c.title}</b><span class="pb"><i class="was" style="width:${before[0] / after[1] * 100}%"></i><i class="now" style="left:${before[0] / after[1] * 100}%;width:${(after[0] - before[0]) / after[1] * 100}%"></i></span><span>${before[0]} → ${after[0]}/${after[1]}</span>${done ? '<span class="ok">✓</span>' : ''}</div>`);
     }
+    // 새 설계도: 결과창에서 눈에 띄게 (격납고 도착 때 자동 등록된다)
+    const newBp = [...new Set(r.brought.map(it => it.id))].filter(id => SA.ITEMS[id].kind === 'bp' && !SA.profile.recipes.includes(SA.ITEMS[id].recipe));
+    const bpHtml = newBp.length ? `<div class="newbp-wrap">${newBp.map(id => { const d = SA.ITEMS[id], pt = SA.PARTS[d.recipe]; return `<div class="newbp" style="border-color:${SA.TIER_COL[pt.tier]}"><img src="${pt.img || SA.Render.iconSrc(SA.ITEMS['pt_' + d.recipe] ? 'pt_' + d.recipe : id)}"><div><div class="nbh">새 설계도 <span style="color:${SA.TIER_COL[pt.tier]}">${pt.tier}</span></div><b>${pt.name}</b><div class="small dim">${SA.partDesc(d.recipe, 0)}</div><div class="small ok">작업대에서 제작할 수 있다</div></div></div>`; }).join('')}</div>` : '';
+    if (newBp.length) setTimeout(() => SA.Audio.sfx('rare2'), 500);
     const tm = `${Math.floor(r.time / 60)}:${String(Math.floor(r.time % 60)).padStart(2, '0')}`;
     w.querySelector('.inner').innerHTML = `
       <h1 class="${r.ok ? 'ok' : 'bad'}">${r.ok ? '탈출 성공' : '격추'}</h1>
       <div class="dim">${sub}</div>
       <div class="stats"><span title="출격 시간">시간 <b>${tm}</b></span><span title="격추한 적">격추 <b>${r.kills}</b></span><span title="스친 탄">스침 <b>${r.graze}</b></span><span title="침식률">침식 <b>${Math.floor(r.corr)}%</b></span></div>
+      ${bpHtml}
       <h3>가져온 것 <span class="ok">₵${r.value}</span></h3><div class="icons">${list(r.brought)}</div>
       ${r.lost.length ? `<h3>잃은 것</h3><div class="icons lost">${list(r.lost)}</div>` : ''}
       ${notes.length ? `<div class="notes">${notes.join('')}</div>` : ''}

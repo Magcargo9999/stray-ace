@@ -111,7 +111,7 @@ SA.Hangar = (() => {
     $('#hg-panel').style.display = 'flex';
     render();
   };
-  const closePanel = () => { panel = null; $('#hg-panel').style.display = 'none'; document.querySelectorAll('.ctx').forEach(x => x.remove()); SA.UI.hideTip(); if (ready) hud(); };
+  const closePanel = () => { if (panel === 'bench' && (P().newRecipes || []).length) { P().newRecipes = []; save(); } panel = null; $('#hg-panel').style.display = 'none'; document.querySelectorAll('.ctx').forEach(x => x.remove()); SA.UI.hideTip(); if (ready) hud(); };
   const render = () => {
     hud();
     if (!panel) return;
@@ -136,7 +136,7 @@ SA.Hangar = (() => {
     for (const it of st.items.slice()) {
       const d = SA.ITEMS[it.id];
       if (d.kind === 'bp' && !P().recipes.includes(d.recipe)) {
-        P().recipes.push(d.recipe); P().bpMiss = 0; SA.Grid.remove(st, it.uid);
+        P().recipes.push(d.recipe); (P().newRecipes = P().newRecipes || []).push(d.recipe); P().bpMiss = 0; SA.Grid.remove(st, it.uid);
         toast(`설계도 등록: ${SA.PARTS[d.recipe].name} — 작업대에서 제작 가능`, '#ffd166');
       }
     }
@@ -491,7 +491,7 @@ SA.Hangar = (() => {
       const r = SA.RECIPES[rid], d = SA.PARTS[rid]; if (!r || !d || (benchKind !== 'all' && d.slot !== benchKind)) continue;
       const fromOk = !r.from || prof.parts.some(p => p.id === r.from), lock = d.tier !== '일반' && !prof.rescued.teo;
       const ok = !lock && fromOk && Object.keys(r.mats).every(k => have(k) >= r.mats[k]);
-      rows.push({ ok, lock, tier: d.tier, html: `${d.img ? `<img class="pimg" src="${d.img}">` : ico(KIND_IC[d.slot], 'pimg')}<span class="nm" style="color:${SA.TIER_COL[d.tier]}">${d.name}</span><span class="mats">${r.from ? `<span class="mat ${fromOk ? 'ok' : 'bad'}">${SA.PARTS[r.from].name}</span>` : ''}${matIcons(r.mats, have)}</span>`, tip: `<b>${d.name}</b> <span class="dim">${d.tier}</span><br><span class="desc">${d.desc}</span>${lock ? '<br><span class="bad">테오를 구조하면 만들 수 있다</span>' : ''}`, fn: () => craft(rid) });
+      rows.push({ ok, lock, tier: d.tier, isNew: (prof.newRecipes || []).includes(rid), html: `${d.img ? `<img class="pimg" src="${d.img}">` : ico(KIND_IC[d.slot], 'pimg')}<span class="nm" style="color:${SA.TIER_COL[d.tier]}">${d.name}</span><span class="mats">${r.from ? `<span class="mat ${fromOk ? 'ok' : 'bad'}">${SA.PARTS[r.from].name}</span>` : ''}${matIcons(r.mats, have)}</span>`, tip: `<b>${d.name}</b> <span class="dim">${d.tier}</span><br><span class="desc">${d.desc}</span>${lock ? '<br><span class="bad">테오를 구조하면 만들 수 있다</span>' : ''}`, fn: () => craft(rid) });
     }
     // 동력원·소모품·상위 재료
     if (['all', 'item', 'mat'].includes(benchKind)) for (const id in SA.CRAFT) {
@@ -499,10 +499,10 @@ SA.Hangar = (() => {
       const r = SA.CRAFT[id], d = SA.ITEMS[id], ok = Object.keys(r.mats).every(m => have(m) >= r.mats[m]);
       rows.push({ ok, tier: tierOf(id), html: `<img class="pimg" src="${SA.Render.iconSrc(id)}"><span class="nm">${d.name} <span class="dim small">${have(id)}개</span></span><span class="mats">${matIcons(r.mats, have)}</span>`, tip: `<b>${d.name}</b><br><span class="desc">${d.desc}</span>`, fn: () => craftItem(id) });
     }
-    rows.sort((a, b) => (b.ok - a.ok) || TIERS.indexOf(a.tier) - TIERS.indexOf(b.tier));
+    rows.sort((a, b) => (!!b.isNew - !!a.isNew) || (b.ok - a.ok) || TIERS.indexOf(a.tier) - TIERS.indexOf(b.tier));
     if (!rows.length) list.appendChild(h('div', 'dim small pad', '만들 수 있는 것이 없다. 설계도는 필드에서 줍는다.'));
     for (const r of rows) {
-      const row = h('div', 'crow2' + (r.ok ? '' : ' no') + (r.lock ? ' lock' : ''), r.html + (r.lock ? ico('ic_lock', 'lk') : ''));
+      const row = h('div', 'crow2' + (r.ok ? '' : ' no') + (r.lock ? ' lock' : '') + (r.isNew ? ' isnew' : ''), (r.isNew ? '<span class="newtag">NEW</span>' : '') + r.html + (r.lock ? ico('ic_lock', 'lk') : ''));
       tip(row, r.tip);
       const b = h('button', 'btn small' + (r.ok ? '' : ' dis'), '제작'); b.onclick = r.fn; row.appendChild(b);
       list.appendChild(row);

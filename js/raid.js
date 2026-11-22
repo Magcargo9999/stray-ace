@@ -4,8 +4,8 @@ SA.Raid = (() => {
 
   const LOOT = {
     // 'bp:강화'는 dropLoot에서 출처별 배율(SA.BP_MUL)이 곱해진다. 'part:등급' = 부품 완성품
-    wreck: [['scrap', 1], ['scrap', .7], ['wire', .5], ['core', .5], ['engine', .25], ['debris', .22], ['goldchip', .15], ['prec', .15], ['bp:일반', .06], ['key_box1', .03], ['key_zone', .015], ['stardata', .08], ['bb_reward', .05]],
-    crate: [['core', .4], ['repairkit', .35], ['canister', .3], ['goldchip', .2], ['wire', .5], ['prec', .3], ['bp:일반', .12], ['bp:강화', .04], ['cell1', .2], ['key_box1', .06], ['stardata', .1], ['bb_reward', .04]],
+    wreck: [['scrap', 1], ['scrap', .7], ['wire', .5], ['core', .5], ['engine', .25], ['debris', .22], ['goldchip', .15], ['prec', .15], ['bp:일반', .12], ['bp:강화', .03], ['alloy', .06], ['key_box1', .03], ['key_zone', .015], ['stardata', .08], ['bb_reward', .05]],
+    crate: [['core', .4], ['repairkit', .35], ['canister', .3], ['goldchip', .2], ['wire', .5], ['prec', .3], ['bp:일반', .2], ['bp:강화', .06], ['alloy', .08], ['fcore', .06], ['cell1', .2], ['key_box1', .06], ['stardata', .1], ['bb_reward', .04]],
     cache: [['core', 1], ['engine', .6], ['scrap', 1], ['prec', .8], ['prec', .4], ['bp:일반', .15], ['bp:강화', .12], ['alloy', .25], ['key_box1', .15]],
     nest:  [['goldchip', .6], ['engine', 1], ['debris', .7], ['canister', .6], ['prec', .6], ['bp:강화', .5], ['key_box1', .4], ['part:강화', .2]],
     distress: [['repairkit', 1], ['canister', .8], ['goldchip', .8], ['scrap', 1], ['prec', .4], ['bp:강화', .25], ['cell1', .5]],
@@ -256,7 +256,7 @@ SA.Raid = (() => {
   const grazeDmg = () => Math.min(grazeCap()[1], grazeTier() * SA.GRAZE.dmg);
 
   // 불운 보정: 새 설계도 없이 출격할수록 설계도 확률 +25%씩 (최대 3배). 새 설계도를 등록하면 초기화.
-  const pity = (id) => id.startsWith('bp') ? Math.min(3, 1 + .25 * (SA.profile.bpMiss || 0)) : 1;
+  const pity = (id) => id.startsWith('bp') ? Math.min(4, 1 + .5 * (SA.profile.bpMiss || 0)) : 1;
   // 'bp:강화' → 그 등급의 설계도 하나. 모르는 설계도를 70% 우선.
   const resolve = (id) => {
     if (id.startsWith('part:')) { const pool = SA.BP_POOL[id.slice(5)] || SA.BP_POOL['일반']; return 'pt_' + U.pick(pool); }

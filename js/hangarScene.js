@@ -165,6 +165,7 @@ SA.HangarScene = (() => {
     const K = SA.Contracts;
     if (SA.STORY.contracts.some(c => K.open(c) && K.st(c.id).accepted && !K.st(c.id).done && K.canClaim(c))) out.board = 'gift';
     if ((prof.logsNew || []).length || (prof.signals || []).length) out.decoder = 'star';
+    if ((prof.newRecipes || []).length) out.workbench = 'star';
     if (guide) out[guide.target] = 'ex';
     return out;
   };
@@ -498,7 +499,7 @@ SA.HangarScene = (() => {
 
   const bench = (n = 30) => { const t = performance.now(); for (let i = 0; i < n; i++) { update(0.016); draw(); } return (performance.now() - t) / n; };   // 개발용: 한 프레임 평균 ms
   const setBarHi = (pid) => { barHi = pid; };
-  const alerts = () => { const b = badges(), out = {}; if (b.board) out.contracts = 1; if (b.decoder) out.decoder = 1; return out; };
+  const alerts = () => { const b = badges(), out = {}; if (b.board) out.contracts = 1; if (b.decoder) out.decoder = 1; if (b.workbench) out.bench = 1; return out; };
   const step = (dt) => { if (!on) return; T += dt; update(dt); draw(); };   // 자동 촬영용 한 프레임
   return { step, init, load, start, stop, play, react, say, startGuide, fit, IMG, sprite, bench, setBarHi, alerts, sortieState: () => shipState(), isAnim: () => !!anim, guideOn: () => !!guide };
 })();

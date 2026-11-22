@@ -54,6 +54,7 @@ SA.Save = (() => {
       stats: { raids: 0, extracts: 0, deaths: 0, kills: 0, bestValue: 0 },
       settings: { music: 0.5, sfx: 0.7 },
       seenTips: false, tierMig: true, tutDone: false,
+      newRecipes: [],         // 새로 등록돼 작업대에서 아직 안 본 설계도
       bpMiss: 0,              // 새 설계도 없이 출격한 횟수 (불운 보정)
       deliv: { slot: -1, stock: [] },   // 배달 상점 재고 (20분마다 교체)
       bring: {},              // 이번 출격에 가져갈 소모품 개수
