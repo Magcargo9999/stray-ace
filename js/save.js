@@ -70,6 +70,11 @@ SA.Save = (() => {
   // 예전 세이브 정리: 사라진 아이템(연료 전지 등)은 판매가로 환불, 모르는 부품·제작법은 뺀다
   const LEGACY = { fuel: 60 };
   const migrate = (p) => {
+    // 블랙박스 개편 (v0.42): 기록 번호 → id, 신호 1개 → 여러 개, 맡기기 1개 → 목록
+    if (p.logs.some(x => typeof x === 'number')) p.logs = [...new Set(p.logs.map(x => typeof x === 'number' ? ['k1', 'r1', 'k2'][x] : x).filter(Boolean))];
+    if (p.signal !== undefined) { if (p.signal !== null) p.signals = (p.signals || []).concat([p.signal]); delete p.signal; }
+    if (p.decoding && !Array.isArray(p.decoding)) p.decoding = [p.decoding];
+    if (p.lastDecode && typeof p.lastDecode.log === 'object') p.lastDecode = null;
     if (!p.tierMig) { p.tierMig = true; tierMig(p); }
     for (const it of p.stash.items.slice()) if (!SA.ITEMS[it.id]) { p.credits += LEGACY[it.id] || 0; SA.Grid.remove(p.stash, it.uid); }
     p.parts = p.parts.filter(q => SA.PARTS[q.id]);

@@ -3,7 +3,7 @@ SA.Raid = (() => {
   const U = SA.U, C = () => SA.Combat;
 
   const LOOT = {
-    // 'bp:강화'·'bp:행성'은 dropLoot에서 출처별 배율(SA.BP_MUL)이 곱해진다. 'part:등급' = 부품 완성품
+    // 'bp:강화'는 dropLoot에서 출처별 배율(SA.BP_MUL)이 곱해진다. 'part:등급' = 부품 완성품
     wreck: [['scrap', 1], ['scrap', .7], ['wire', .5], ['core', .5], ['engine', .25], ['debris', .22], ['goldchip', .15], ['prec', .15], ['bp:일반', .06], ['key_box1', .03], ['key_zone', .015], ['stardata', .08], ['bb_reward', .05]],
     crate: [['core', .4], ['repairkit', .35], ['canister', .3], ['goldchip', .2], ['wire', .5], ['prec', .3], ['bp:일반', .12], ['bp:강화', .04], ['cell1', .2], ['key_box1', .06], ['stardata', .1], ['bb_reward', .04]],
     cache: [['core', 1], ['engine', .6], ['scrap', 1], ['prec', .8], ['prec', .4], ['bp:일반', .15], ['bp:강화', .12], ['alloy', .25], ['key_box1', .15]],
@@ -193,14 +193,14 @@ SA.Raid = (() => {
     for (let i = 0; i < 6; i++) { const p = place(0.3, 0.8, 300); S.spawnEnemy(R, F() + 'fighter', p.x, p.y); }
 
     // 보상형 블랙박스 해독 결과: 이번 출격 맵에 신호 지점 (한 번뿐)
-    if (SA.profile.signal !== undefined && SA.profile.signal !== null) {
-      const bb = SA.STORY.bbReward[SA.profile.signal]; SA.profile.signal = null;
-      if (bb) {
-        const sg = addPoi('signal', place(0.25, 0.85, 500), { label: bb.signal.label, seen: true, clear: 90, bb });
-        const box = S.spawnEnemy(R, 'crate', sg.x, sg.y, { crate: true, def: { hp: 30, r: 11 }, loot: bb.signal.loot, signalOf: sg });
-        sg.box = box;
-      }
+    for (const si of (SA.profile.signals || [])) {
+      const bb = SA.STORY.bbReward[si]; if (!bb) continue;
+      const sg = addPoi('signal', place(0.25, 0.85, 500), { label: bb.signal.label, seen: true, clear: 90, bb });
+      const box = S.spawnEnemy(R, 'crate', sg.x, sg.y, { crate: true, def: { hp: 30, r: 11 }, loot: bb.signal.loot, signalOf: sg });
+      sg.box = box;
+      if (bb.signal.kind === 'nest') for (let i = 0; i < 4; i++) { const a = i / 4 * 6.28; S.spawnEnemy(R, 'corrode', sg.x + Math.cos(a) * 70, sg.y + Math.sin(a) * 70); }   // 침식 둥지: 침식체 4기가 지킨다
     }
+    SA.profile.signals = [];
     // 회수 모드: 지난 출격에서 떨어뜨린 잔해 (이번 한 번뿐)
     if (SA.profile.lostCache) {
       R.lostCache = SA.profile.lostCache; SA.profile.lostCache = null;
@@ -259,8 +259,8 @@ SA.Raid = (() => {
   // 'bp:강화' → 그 등급의 설계도 하나. 모르는 설계도를 70% 우선.
   const resolve = (id) => {
     if (id.startsWith('part:')) { const pool = SA.BP_POOL[id.slice(5)] || SA.BP_POOL['일반']; return 'pt_' + U.pick(pool); }
-    if (!id.startsWith('bp:')) return id;
-    const pool = SA.BP_POOL[id.slice(3)] || [], unk = pool.filter(r => !SA.profile.recipes.includes(r));
+    if (!id.startsWith('bp:')) return SA.Decode.dropId(SA.profile, id);   // 다 모은 출처의 스토리 블랙박스 → 신호 블랙박스
+    const pool = (SA.BP_POOL[id.slice(3)] || []).length ? SA.BP_POOL[id.slice(3)] : SA.BP_POOL['강화'], unk = pool.filter(r => !SA.profile.recipes.includes(r));
     return 'bp_' + U.pick(unk.length && Math.random() < 0.7 ? unk : pool);
   };
   const dropLoot = (e) => {
@@ -459,7 +459,7 @@ SA.Raid = (() => {
     if (p.loot.length) {
       const id = p.loot.shift();
       spawnItem(R, id, p.x, p.y, 100);
-      if (id === 'blackbox') msg('블랙박스 발견', '#ff8f3d');
+      if (id === 'blackbox') msg(SA.Decode.dropId(SA.profile, id) === id ? '블랙박스 발견' : '신호 블랙박스 발견', '#ff8f3d');
       SA.Audio.sfx('open');
     } else {
       let got = null;
@@ -489,7 +489,7 @@ SA.Raid = (() => {
     p.prog += dt; SA.Audio.sfx(p.type === 'secure' ? 'hack' : 'salvage', Math.min(1, p.prog / need));
     if (p.prog >= need) {
       p.done = true;
-      if (p.type === 'locked') { codes()[code]--; for (const [id, pr] of SA.LOOT_LOCKED[p.grade]) if (Math.random() < pr * ((id === 'bp:강화' || id === 'bp:행성') ? 1 : 1)) spawnItem(R, id, p.x, p.y, 90); }
+      if (p.type === 'locked') { codes()[code]--; for (const [id, pr] of SA.LOOT_LOCKED[p.grade]) if (Math.random() < pr) spawnItem(R, id, p.x, p.y, 90); }
       else for (const [id, pr] of SA.LOOT_SECURE) if (Math.random() < pr) spawnItem(R, id, p.x, p.y, 90);
       msg(p.type === 'locked' ? `잠긴 상자 개방 — ${SA.CODES[code].name} 남은 ${codes()[code]}회` : '보안상자 해킹 완료', '#5dffb0', 3); SA.Audio.sfx('unlock');
     }

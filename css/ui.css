@@ -156,3 +156,8 @@ h3 { margin: 6px 0 8px; font-size: 15px; color: #cfe3ff; } h4 { margin: 10px 0 6
 .ctx button.dis { opacity: .55; }
 .ctx.wide { max-height: 420px; }
 .btn.tiny.up { border-color: #8a6a1a; color: #ffd166; }
+/* 블랙박스 기록 탭: 출처별 묶음 · ??? 칸 · NEW */
+.log-src { margin: 12px 0 4px; border-bottom: 1px solid #1f2a3d; padding-bottom: 3px; }
+.card.log.unknown { opacity: .55; border-style: dashed; }
+.new { background: #ff8f3d; color: #0b0e14; font-size: 10px; font-weight: 700; padding: 0 4px; border-radius: 2px; }
+#hg-tabs button.has-new::after { content: ''; display: inline-block; width: 6px; height: 6px; margin-left: 4px; border-radius: 50%; background: #ff8f3d; vertical-align: middle; }

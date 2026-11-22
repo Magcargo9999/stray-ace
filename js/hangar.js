@@ -38,6 +38,7 @@ SA.Hangar = (() => {
     document.querySelectorAll('#hg-tabs button').forEach(b => b.classList.toggle('on', b.dataset.tab === tab));
     const body = $('#hg-body'); body.innerHTML = '';
     ({ sortie, stash, bench, shop, contracts, records })[tab](body);
+    { const rb = document.querySelector('#hg-tabs button[data-tab=records]'); if (rb) rb.classList.toggle('has-new', (P().logsNew || []).length > 0); }   // 새 기록이 있으면 탭에 점
     { const rs = P().rescued || {}; $('#hg-line').textContent = SA.U.pick([...SA.STORY.broker, ...(rs.teo ? SA.STORY.mechanic : SA.STORY.mechanic0), ...(rs.deliv ? SA.STORY.deliv : [])]); }
     $('#hg-quest').innerHTML = `<b>목표</b>${SA.Quest.label()}${SA.Quest.rewardText()}`;
   };
@@ -230,9 +231,10 @@ SA.Hangar = (() => {
         const d = SA.ITEMS[it.id];
         if (d.kind === 'ticket') return [['고용하기', () => hireRaven(it, grid)]];
         const a = [[`판매 ₵${SA.itemVal(it)}`, () => { SA.Grid.remove(grid, it.uid); prof.credits += SA.itemVal(it); SA.Audio.sfx('buy'); save(); render(); }]];
-        if (it.id === 'blackbox' || it.id === 'bb_reward') {
+        if (it.id === 'bb_reward' || SA.Decode.srcOf(it.id)) {
           a.unshift([`즉시 해독 ₵${SA.DECODE.instant}`, () => decode(it, true)]);
-          if (!prof.decoding) a.unshift(['해독 맡기기 (다음 출격 뒤 완료)', () => decode(it, false)]);
+          const q = (prof.decoding || []).length;
+          if (q < SA.DECODE.slots) a.unshift([`해독 맡기기 (${q}/${SA.DECODE.slots}, 다음 출격 뒤 완료)`, () => decode(it, false)]);
         }
         if (d.kind === 'key') a.unshift([`해독기에 등록 (+${SA.CODES[d.code].uses}회)`, () => registerKey(it)]);
         if (d.kind === 'part') a.unshift(['부품함으로 옮기기', () => { SA.Grid.remove(prof.stash, it.uid); prof.parts.push(SA.Save.fromItem(it)); save(); render(); }]);
@@ -292,7 +294,7 @@ SA.Hangar = (() => {
   const decode = (it, instant) => {
     const prof = P();
     if (instant && prof.credits < SA.DECODE.instant) { toast('크레딧이 부족하다.', '#ffb3b3'); SA.Audio.sfx('deny'); return; }
-    if (!instant && prof.decoding) { toast('해독기가 이미 다른 블랙박스를 돌리고 있다.', '#ffb3b3'); SA.Audio.sfx('deny'); return; }
+    if (!instant && (prof.decoding || []).length >= SA.DECODE.slots) { toast(`해독은 ${SA.DECODE.slots}개까지 맡길 수 있다.`, '#ffb3b3'); SA.Audio.sfx('deny'); return; }
     SA.Grid.remove(prof.stash, it.uid);
     const r = SA.Decode.start(prof, it.id, instant);
     toast(r.text, '#ff8f3d'); SA.Audio.sfx('unlock'); save(); render();
@@ -581,13 +583,22 @@ SA.Hangar = (() => {
   // ── 기록 ──
   const records = (body) => {
     const prof = P(), c1 = h('div', 'col wide'), c2 = h('div', 'col');
-    if (prof.decoding) c1.appendChild(h('div', 'warn small', `해독 중: ${SA.ITEMS[prof.decoding.id].name} — 다음 출격이 끝나면 완료`));
-    if (prof.lastDecode && prof.lastDecode.log && !SA.STORY.blackbox.includes(prof.lastDecode.log)) {   // 보상형은 기록에 안 남고 최근 해독으로만 보인다
-      const b = prof.lastDecode.log; c1.appendChild(h('div', 'card log', `<span class="dim small">최근 신호 해독 · ${b.src}</span><br><b>${b.title}</b>${b.lines.map(l => `<div class="small">${l}</div>`).join('')}<div class="small warn">다음 출격: ${b.signal.label}</div>`));
+    const ST = SA.STORY;
+    if ((prof.decoding || []).length) c1.appendChild(h('div', 'warn small', `해독 중 (${prof.decoding.length}/${SA.DECODE.slots}): ${prof.decoding.map(d => SA.ITEMS[d.id].name).join(', ')} — 다음 출격이 끝나면 완료`));
+    if ((prof.signals || []).length) {   // 해독한 신호: 다음 출격 맵에 뜬다 (기록에는 안 남는다)
+      for (const i of prof.signals) { const b = ST.bbReward[i]; c1.appendChild(h('div', 'card log', `<span class="dim small">해독한 신호 · ${b.src}</span><br><b>${b.title}</b>${b.lines.map(l => `<div class="small">${l}</div>`).join('')}<div class="small warn">다음 출격: ${b.signal.label}</div>`)); }
     }
-    c1.appendChild(h('h3', '', `블랙박스 기록 ${prof.logs.length}/${SA.STORY.blackbox.length}`));
-    if (!prof.logs.length) c1.appendChild(h('div', 'dim', '아직 해독한 기록이 없다. 블랙박스는 추락한 정찰선과 네임드에게서 나온다.'));
-    for (const i of prof.logs) { const b = SA.STORY.blackbox[i]; c1.appendChild(h('div', 'card log', `<b>${b.title}</b>${b.lines.map(l => `<div class="small">${l}</div>`).join('')}`)); }
+    c1.appendChild(h('h3', '', `블랙박스 기록 ${prof.logs.length}/${ST.blackbox.length}`));
+    const fresh = new Set(prof.logsNew || []);
+    for (const src in ST.bbSrc) {   // 출처별 묶음. 못 찾은 기록은 ??? 칸 (어디서 나오는지만)
+      const S = ST.bbSrc[src], L = ST.blackbox.filter(b => b.src === src), got = L.filter(b => prof.logs.includes(b.id)).length;
+      c1.appendChild(h('div', 'log-src', `<b>${S.name}</b> <span class="dim small">${got}/${L.length}</span>`));
+      for (const b of L) {
+        if (prof.logs.includes(b.id)) c1.appendChild(h('div', 'card log', `${fresh.has(b.id) ? '<span class="new">NEW</span> ' : ''}<b>${b.title}</b>${b.lines.map(l => `<div class="small">${l}</div>`).join('')}`));
+        else c1.appendChild(h('div', 'card log unknown', `<b>???</b> <span class="dim small">— ${S.where}</span>`));
+      }
+    }
+    if (fresh.size) { prof.logsNew = []; save(); }   // 한 번 보면 NEW 표시는 사라진다
     const s = prof.stats;
     c2.appendChild(h('h3', '', '전적'));
     c2.appendChild(h('div', 'card', `출격 ${s.raids} · 탈출 ${s.extracts} · 격추당함 ${s.deaths}<br>격추 ${s.kills}기<br>최고 운반 가치 ₵${s.bestValue}`));

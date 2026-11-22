@@ -28,7 +28,11 @@ SA.ITEMS = {
   raven_ticket: { name: '레이븐 고용권', w: 2, h: 1, val: 0, kind: 'ticket', img: 'assets/raven_ticket.png', color: '#c49ac0', desc: '창고에서 사용하면 레이븐이 용병단에 합류한다.' },
   crystal:  { name: '침식 결정', w: 1, h: 1, val: 220, kind: 'mat', tier: '강화', img: 'assets/i_crystal.png', color: '#b98cff', desc: '침식체가 남긴 결정. 만지면 손끝이 저린다.' },
   debris:   { name: '대형 잔해', w: 2, h: 3, val: 300, kind: 'mat', color: '#9aa3ad', desc: '크고 무겁고 비싸다. 화물칸이 운다.' },
-  blackbox: { name: '블랙박스', w: 1, h: 1, val: 150, kind: 'lore', img: 'assets/i_blackbox.png', color: '#ff8f3d', desc: '격추된 함선의 기록 장치. 팔거나, 격납고에서 해독하거나.' },
+  blackbox: { name: '블랙박스 (왕국 정찰선)', w: 1, h: 1, val: 150, kind: 'lore', img: 'assets/i_blackbox.png', color: '#ff8f3d', desc: '추락한 왕국 정찰선의 기록 장치. 팔거나, 격납고에서 해독하거나.' },
+  bb_raven:  { name: '블랙박스 (레이븐)', w: 1, h: 1, val: 200, kind: 'lore', img: 'assets/i_blackbox.png', color: '#ff4d6d', desc: '레이븐 기체의 비행 기록 장치. 해독하면 그녀의 개인 로그가 나온다.' },
+  bb_mimic:  { name: '블랙박스 (실험 무인기)', w: 1, h: 1, val: 200, kind: 'lore', img: 'assets/i_blackbox.png', color: '#c08bff', desc: '제국 실험 무인기의 학습 기록 장치.' },
+  bb_empire: { name: '블랙박스 (제국 순양함)', w: 1, h: 1, val: 150, kind: 'lore', img: 'assets/i_blackbox.png', color: '#ff8f3d', desc: '제국 순양함의 기록 장치. 함장의 보고서가 남아 있을지도.' },
+  bb_hunter: { name: '블랙박스 (심연)', w: 1, h: 1, val: 250, kind: 'lore', img: 'assets/i_blackbox.png', color: '#8a5cff', desc: '사냥꾼의 몸속에 박혀 있던 기록 장치. 차갑다.' },
   canister: { name: '정화 캐니스터', w: 1, h: 2, val: 70, kind: 'use', img: 'assets/i_canister.png', color: '#7ff0e0', desc: '사용: 침식률 -25%.' },
   repairkit:{ name: '수리킷', w: 1, h: 1, val: 60, kind: 'use', img: 'assets/i_repairkit.png', color: '#9df07f', desc: '사용: 체력 40 회복. Tab 화물칸에서 장착 부품에 끌어다 놓으면 그 부품 내구도 +40.' },
   // 상위 재료: 하위 재료 2~3개를 합성 (설계도 없이). 강화·행성 부품 제작에 들어간다 (임시)
@@ -318,7 +322,7 @@ SA.RECOVER = { hold: 3 };
 // 시야: 화면 배율 단계 (관측 장비 등급만큼 더 넓게) · 미니맵 레이더 범위 · 지도 안개 칸 크기·밝히는 반경 (임시)
 SA.OBS = { levels: [2, 1.75, 1.5, 1.3], radar: [350, 600, 900, 1200], fogCell: 80, reveal: 330 };
 // 블랙박스 해독: 출격 1회가 지나면 완료, 크레딧을 내면 즉시
-SA.DECODE = { raids: 1, instant: 300 };   // 회수 잔해: 머물러서 회수하는 시간   // 피격 시 무작위 장착 부품 내구도 감소
+SA.DECODE = { raids: 1, instant: 300, slots: 3 };   // 맡기기 최대 3개 (임시)   // 회수 잔해: 머물러서 회수하는 시간   // 피격 시 무작위 장착 부품 내구도 감소
 SA.START_RECIPES = ['pulse', 'mg', 'magnet', 'decoder', 'obs1'];   // 보안해독기는 처음부터 안다 (강화라 테오 구조 후 제작)   // 처음 아는 제작법은 이것뿐 (임시). 나머지는 초반 퀘스트 보상·설계도 드랍으로
 // 설계도 아이템은 부품마다 자동 생성. 등급별 풀에서 무작위로 떨어진다 (loot의 'bp:일반' 등)
 SA.BP_POOL = { 일반: [], 강화: [] };
@@ -443,7 +447,7 @@ SA.ENEMIES = {
   k_frigate: { name: '왕국 프리깃', faction: 'kingdom', ai: 'frigate', hp: 110, r: 20, speed: 38, img: 'assets/k_frigate.png', size: [28, 48],
                drops: [['core', .55], ['wire', .5], ['prec', .3], ['scrap', .8], ['bp:일반', .05], ['bp:강화', .03], ['key_box1', .05], ['key_zone', .03], ['bb_reward', .04]] },
   e_frigate: { name: '제국 순양함', faction: 'empire', ai: 'frigate', hp: 130, r: 20, speed: 34, img: 'assets/e_frigate.png', size: [34, 47],
-               drops: [['core', .5], ['engine', .35], ['prec', .3], ['scrap', .8], ['bp:일반', .05], ['bp:강화', .03], ['key_box1', .05], ['key_zone', .03], ['bb_reward', .04]] },
+               drops: [['core', .5], ['engine', .35], ['prec', .3], ['scrap', .8], ['bp:일반', .05], ['bp:강화', .03], ['key_box1', .05], ['key_zone', .03], ['bb_reward', .04], ['bb_empire', .08]] },
   k_turret:  { name: '왕국 포대', faction: 'kingdom', ai: 'turret', hp: 70, r: 12, speed: 0, img: 'assets/k_turret.png', size: [18, 25], pivot: [0.5, 0.67],
                drops: [['scrap', .7], ['wire', .3], ['core', .25], ['prec', .15]] },
   e_turret:  { name: '제국 쌍포대', faction: 'empire', ai: 'turret', hp: 60, r: 10, speed: 0, img: 'assets/e_turret.png', size: [14, 21], pivot: [0.5, 0.72],
@@ -455,9 +459,9 @@ SA.ENEMIES = {
   n_serena:  { name: '세레나 전용기', ai: 'none', img: 'assets/w_serena.png', size: [28, 31], hp: 1, r: 7 },
   n_volk:    { name: '볼크 전용기', ai: 'none', img: 'assets/w_volk.png', size: [31, 29], hp: 1, r: 7 },
   convoy_ship: { name: '호위 화물선', ai: 'none', img: 'assets/convoy.png', size: [27, 75], hp: 1, r: 18 },
-  hunter:  { name: '심연의 사냥꾼', ai: 'hunter', img: 'assets/hunter_0.png', anim: { n: 6, fps: 8 }, size: [64, 81], hp: 1400, r: 28, speed: 90, color: '#8a5cff', boss: true, drops: [['crystal', 1], ['crystal', 1], ['crystal', .5], ['ace', 1], ['ace', .4], ['abyss', 1], ['qcircuit', .6], ['goldchip', 1], ['goldchip', .5]] },
-  raven:   { name: '네임드 용병 레이븐', ai: 'raven', img: 'assets/raven_hull.png', size: [30, 27], pivot: [0.5, 0.5], hp: 1500, r: 12, speed: 150, color: '#ff4d6d', boss: true, drops: [['chip', 1], ['bp_raven', .5], ['bp_sensor', .3], ['ace', 1], ['ace', .4], ['bp:강화', .8], ['goldchip', 1], ['goldchip', .6], ['blackbox', .8], ['engine', .5], ['key_box2', .3]] },
-  mimic:   { name: '제국 실험 무인기', ai: 'raven', img: 'assets/raven_hull.png', size: [30, 27], pivot: [0.5, 0.5], hp: 900, r: 12, speed: 150, color: '#c08bff', boss: true, drops: [['chip', 1], ['goldchip', 1], ['prec', 1], ['bp:강화', .5], ['qcircuit', .3], ['ace', .3]] },
+  hunter:  { name: '심연의 사냥꾼', ai: 'hunter', img: 'assets/hunter_0.png', anim: { n: 6, fps: 8 }, size: [64, 81], hp: 1400, r: 28, speed: 90, color: '#8a5cff', boss: true, drops: [['crystal', 1], ['crystal', 1], ['crystal', .5], ['ace', 1], ['ace', .4], ['abyss', 1], ['bb_hunter', 1], ['qcircuit', .6], ['goldchip', 1], ['goldchip', .5]] },
+  raven:   { name: '네임드 용병 레이븐', ai: 'raven', img: 'assets/raven_hull.png', size: [30, 27], pivot: [0.5, 0.5], hp: 1500, r: 12, speed: 150, color: '#ff4d6d', boss: true, drops: [['chip', 1], ['bp_raven', .5], ['bp_sensor', .3], ['ace', 1], ['ace', .4], ['bp:강화', .8], ['goldchip', 1], ['goldchip', .6], ['bb_raven', 1], ['engine', .5], ['key_box2', .3]] },
+  mimic:   { name: '제국 실험 무인기', ai: 'raven', img: 'assets/raven_hull.png', size: [30, 27], pivot: [0.5, 0.5], hp: 900, r: 12, speed: 150, color: '#c08bff', boss: true, drops: [['chip', 1], ['bb_mimic', 1], ['goldchip', 1], ['prec', 1], ['bp:강화', .5], ['qcircuit', .3], ['ace', .3]] },
 };
 
 // 침식 단계: at = 침식률 하한(%)

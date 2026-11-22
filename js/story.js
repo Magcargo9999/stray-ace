@@ -51,35 +51,62 @@ SA.STORY = {
     { id: 'e_engine', title: '납품: 엔진 부품', giver: '제국 보급관', fac: 'empire', type: 'deliver', mats: { engine: 2, core: 2 },
       brief: '엔진 2기, 코어 2개. 각인은 긁어 오지 않아도 된다.', reward: { credits: 800 } },
   ],
+  // 스토리형 블랙박스 (1막 7개, 출처별 묶음). 해독하면 그 묶음에서 안 읽은 다음 기록이 열린다. 대사: Claude 초안 (검토 대기)
+  // 원칙: 주인공의 비밀은 냄새만 — '격리 명령'과 '명령을 거부한 왕국 에이스'가 있었다는 것까지. 그게 단장이라는 건 말하지 않는다
+  bbSrc: {
+    kingdom: { name: '왕국 정찰선', item: 'blackbox', where: '추락한 정찰선 (매 출격 난파선 중 1곳)' },
+    raven:   { name: '레이븐', item: 'bb_raven', where: '레이븐 재대결에서 격추' },
+    mimic:   { name: '제국 실험 무인기', item: 'bb_mimic', where: '제국 실험 무인기 격추 (레이븐 합류 뒤)' },
+    empire:  { name: '제국 순양함', item: 'bb_empire', where: '제국 순양함 격추 (가끔)' },
+    hunter:  { name: '심연의 사냥꾼', item: 'bb_hunter', where: '심연의 사냥꾼 격추' },
+  },
   blackbox: [
-    { title: '정찰선 KR-07 교신 기록', lines: [
-      '[KR-07] 소행성대 외곽, 이상 없음.',
-      '[KR-07] ...잠깐. 제국 신호가 아니다. 왕국 주파수인데, 왕국 함선이 우릴 따라오고 있다.',
-      '[관제] KR-07, 아군이다. 경계 해제.',
-      '[KR-07] 아군이 왜 무기를 켜고— (기록 끊김)' ] },
-    { title: '용병 레이븐의 개인 로그', lines: [
-      '[레이븐] 이번 주 의뢰: 왕국 3건, 제국 2건. 같은 화물을 양쪽에 팔았다.',
-      '[레이븐] 장군 휘하 함대가 소행성대에 뭘 숨기고 있다. 지도에 없는 정거장.',
-      '[레이븐] 이걸 아는 놈은 오래 못 산다는데. 그럼 나도 곧이겠군.' ] },
-    { title: '광산 정거장 최후 방송', lines: [
-      '[방송] 전 광부에게 알림. 왕국군이 정거장을 접수합니다.',
-      '[방송] 제국 국적 광부는 격납고로... 아니, 정정합니다. 격납고로 가지 마십시오.',
-      '[방송] 반복합니다. 격납고로 가지 마— (잡음)' ] },
+    { id: 'k1', src: 'kingdom', title: '정찰선 KR-07 교신 기록', lines: [
+      '[KR-07] 소행성대 외곽 순찰 중. 이상 없음.',
+      '[KR-07] 잠깐, 왕국 주파수다. 아군 함선이 무기를 켜고 따라온다.',
+      '[관제] KR-07, 귀함은 격리 대상으로 분류됐다. 엔진을 끄고 대기하라.',
+      '[KR-07] 격리? 우린 오염된 적 없— (기록 끊김)' ] },
+    { id: 'k2', src: 'kingdom', title: 'KR-07 승무원의 사적 메모', lines: [
+      '[승무원] 3년 전 그 함대도 이렇게 끝났다고들 한다. 격리 명령 한 줄로.',
+      '[승무원] 그때 명령을 거부한 에이스가 하나 있었다지. 이름은 기록에서 지워졌고.',
+      '[승무원] 오염된 함선에서 사람을 끌어냈다던데. 살아 있다면 지금 어디서 뭘 하고 있을까.' ] },
+    { id: 'r1', src: 'raven', title: '레이븐의 개인 로그', lines: [
+      '[레이븐] 대장이 사라진 지 3년. 남긴 건 비행 습관 몇 개랑 빚뿐이다.',
+      '[레이븐] 요즘 양쪽 다 이 소행성대에서 빛나는 결정을 캐 간다. 만지면 손끝이 저리다.',
+      '[레이븐] 오늘 붙은 그 용병단, 회피 기동이 낯익었다. …설마.' ] },
+    { id: 'm1', src: 'mimic', title: '제국 실험 무인기 학습 기록', lines: [
+      '[학습 기록] 표본 R(용병 레이븐) 비행 데이터 412시간 학습 완료.',
+      '[학습 기록] 표본 R의 회피 기동 중 37%는 왕국군 교범에 없는 동작. 출처 추정: 왕국 에이스 1명의 개인 기술.',
+      '[학습 기록] 해당 에이스의 기록은 말소됨. 표본 R을 통해 간접 학습을 계속한다.' ] },
+    { id: 'e1', src: 'empire', title: '제국 순양함 함장 보고서', lines: [
+      '[함장] 왕국이 이 소행성대에서 결정을 캐 간다. 우리도 캔다. 누가 먼저 쓰느냐의 문제다.',
+      '[함장] 결정 근처에 오래 있던 승무원 둘이 말을 잃었다. 기술부는 피로라고 한다.',
+      '[함장] 피로가 선체에 금을 내나?' ] },
+    { id: 'e2', src: 'empire', title: '제국 기술부 지시문', lines: [
+      '[기술부] 침식 결정 회수를 최우선으로 한다. 함선 손실은 감수한다.',
+      '[기술부] 왕국은 이미 결정을 무기로 썼다. 3년 전, 자기 함대에.',
+      '[기술부] 같은 실수를 하지 않으려면, 우리가 먼저 제대로 써야 한다.' ] },
+    { id: 'h1', src: 'hunter', title: '침식된 함선의 마지막 기록', lines: [
+      '[???] 선체 온도 정상. 승무원 전원 정상. 정상. 정상.',
+      '[???] 밖에서 누가 선체를 두드린다. 여긴 진공인데.',
+      '[???] 문을 열지 마라. 열지 마라. 열지— (긴 잡음) …깨어 있다. 아래에서.' ] },
   ],
-  // 보상형 블랙박스 (1막, 임시 대사): 해독하면 다음 출격 맵에 정해진 신호 지점이 뜬다. 기록에는 남지 않는다
+  // 보상형 블랙박스 (신호 7개): 해독하면 다음 출격 맵에 신호 지점. 무작위, 바로 전 신호는 다시 안 나온다. 기록에는 안 남는다
   bbReward: [
-    { src: '왕국', title: '왕국 보급선 KS-12', lines: ['[KS-12] 보급품 일부를 소행성 그늘에 내려 둔다. 회수조가 올 때까지.', '[KS-12] 좌표 남긴다. …회수조가 오기는 할까.'],
+    { src: '왕국', title: '왕국 보급선 KS-12', lines: ['[KS-12] 보급품 일부를 소행성 그늘에 내려 둔다. 회수조가 올 때까지만.', '[KS-12] 좌표를 남긴다. …회수조가 오기는 할까.'],
       signal: { kind: 'cache', label: '왕국 숨은 보급고', loot: [['alloy', 1], ['cell2', .6], ['prec', 1], ['goldchip', .7], ['bp:강화', .5]] } },
-    { src: '제국', title: '제국 순찰대 교신', lines: ['[순찰대] 이 좌표는 함정이다. 용병이 오면 기다렸다 친다.', '[순찰대] 미끼 상자에는 진짜 설계도를 넣어라. 그래야 문다.'],
+    { src: '제국', title: '제국 순찰대 교신', lines: ['[순찰대] 이 좌표는 함정이다. 용병이 오면 기다렸다가 친다.', '[순찰대] 미끼 상자에는 진짜 설계도를 넣어 둬라. 그래야 문다.'],
       signal: { kind: 'ambush', label: '수상한 미끼 상자', loot: [['bp:강화', 1], ['part:강화', .4], ['goldchip', 1]] } },
-    { src: '폐광', title: '폐광 감독관 일지', lines: ['[감독관] 금고 해독키는 내 책상 서랍에. 금고는 B갱 끝.', '[감독관] 왕국군이 오기 전에 누가 가져가 주면 좋겠군.'],
+    { src: '폐광', title: '폐광 감독관 일지', lines: ['[감독관] 금고 해독키는 내 책상 서랍에 있다. 금고는 B갱 끝.', '[감독관] 왕국군이 오기 전에 누가 가져가 주면 좋겠군. 장부만은 넘기기 싫다.'],
       signal: { kind: 'cache', label: '감독관의 서랍', loot: [['key_box2', 1], ['alloy', 1], ['cell1', 1]] } },
     { src: '정체불명', title: '정체불명 송신', lines: ['[???] ……다음 좌표. 다음 좌표. 다음 좌표.', '[???] 받는 이가 있다면, 이어서 들어라.'],
       signal: { kind: 'next', label: '정체불명 송신원', loot: [['bb_reward', 1], ['stardata', 1], ['crystal', .7]] } },
     { src: '왕국', title: '왕국 기술병의 메모', lines: ['[기술병] 보안 구역 해독키를 정비창에 두고 왔다. 들키면 끝장인데.', '[기술병] 폐광에 왕국 보안 구역이 있다는 걸 아는 사람은 거의 없다.'],
       signal: { kind: 'cache', label: '정비창 잔해', loot: [['key_zone', 1], ['cell2', 1], ['prec', 1]] } },
-    { src: '제국', title: '제국 에이스 비행 기록', lines: ['[에이스] 소행성대 사냥 기록. 오늘은 셋.', '[에이스] 내 격납고 좌표를 아는 놈이 있으면… 상대해 주지.'],
-      signal: { kind: 'ambush', label: '제국 에이스의 은신처', elite: true, loot: [['part:강화', 1], ['bp:행성', .3], ['ace', .6], ['qcircuit', .5]] } },
+    { src: '제국', title: '제국 에이스 비행 기록', lines: ['[에이스] 소행성대 사냥 기록. 오늘은 셋.', '[에이스] 내 격납고 좌표를 아는 놈이 있다면… 와 봐라. 상대해 주지.'],
+      signal: { kind: 'ambush', label: '제국 에이스의 은신처', elite: true, loot: [['part:강화', 1], ['part:행성', .3], ['ace', .6], ['qcircuit', .5]] } },
+    { src: '폐광', title: '광부 대피 방송 잔향', lines: ['[방송] B갱 폐쇄. 결정 노출 구역입니다. 접근하지 마십시오.', '[방송] 갱 안에서 움직이는 것은 광부가 아닙니다. 반복합니다. 광부가 아닙니다.'],
+      signal: { kind: 'nest', label: '침식 둥지', loot: [['crystal', 1], ['crystal', 1], ['crystal', .6], ['qcircuit', .4], ['part:강화', .3], ['goldchip', .8]] } },
   ],
   // 메인퀘스트: '다음에 뭘 해야 하는지'만. 한 번에 하나, HUD 한 줄로 보인다.
   main: [
@@ -109,31 +136,52 @@ SA.STORY = {
   ],
 };
 
-// 블랙박스 해독: 기지에 맡기면 출격 1회 뒤 완료, 크레딧을 내면 즉시. 한 번에 하나씩.
-// 스토리형(blackbox) → 기록 탭에 남는 메인 단서 · 보상형(bb_reward) → 다음 출격 맵에 신호 지점 (기록에는 안 남음)
+// 블랙박스 해독: 맡기면(최대 SA.DECODE.slots개) 다음 출격이 끝날 때 한꺼번에 완료, 크레딧을 내면 즉시.
+// 스토리형 → 그 출처 묶음의 다음 기록 (기록 탭). 묶음을 다 모았으면 신호로 바뀐다 · 보상형(bb_reward) → 다음 출격 맵에 신호 지점
 SA.Decode = (() => {
+  const srcOf = (id) => Object.keys(SA.STORY.bbSrc).find(k => SA.STORY.bbSrc[k].item === id);
+  const nextLog = (prof, src) => SA.STORY.blackbox.find(b => b.src === src && !prof.logs.includes(b.id));
+  const srcDone = (prof, src) => !nextLog(prof, src);
+  const signal = (prof) => {
+    const L = SA.STORY.bbReward; let i;
+    do { i = Math.floor(Math.random() * L.length); } while (L.length > 1 && i === prof.lastSignal);
+    prof.lastSignal = i; prof.signals = prof.signals || []; prof.signals.push(i);
+    const b = L[i]; return { text: `신호 해독: ${b.title} — 다음 출격 맵에 '${b.signal.label}' 신호가 뜬다`, sig: i };
+  };
   const done = (prof, id) => {
-    if (id === 'blackbox') {
-      const next = SA.STORY.blackbox.findIndex((_, i) => !prof.logs.includes(i));
-      if (next < 0) { prof.credits += 150; return { text: '이미 다 아는 내용이다. 부품값 ₵150을 받았다.' }; }
-      prof.logs.push(next); const b = SA.STORY.blackbox[next];
-      return { text: `기록 해독: ${b.title} — 기록 탭`, log: b };
+    const src = srcOf(id);
+    if (src) {
+      const b = nextLog(prof, src);
+      if (!b) { const r = signal(prof); r.text = `${SA.STORY.bbSrc[src].name} 기록은 이미 다 안다 — 남은 좌표를 풀었다. ` + r.text; return r; }
+      prof.logs.push(b.id); prof.logsNew = prof.logsNew || []; prof.logsNew.push(b.id);
+      return { text: `기록 해독: ${b.title} — 기록 탭`, log: b.id };
     }
-    const L = SA.STORY.bbReward, i = (prof.bbNext || 0) % L.length; prof.bbNext = (prof.bbNext || 0) + 1;
-    prof.signal = i; const b = L[i];
-    return { text: `신호 해독: ${b.title} — 다음 출격 맵에 '${b.signal.label}' 신호가 뜬다`, log: b };
+    return signal(prof);
   };
+  const remember = (prof, r) => { prof.lastDecode = r; prof.recentSig = (prof.recentSig || []).concat(r.sig !== undefined ? [r.sig] : []).slice(-3); };
   const start = (prof, id, instant) => {
-    if (instant) { if (prof.credits < SA.DECODE.instant) return null; prof.credits -= SA.DECODE.instant; const r = done(prof, id); prof.lastDecode = r; return r; }
-    if (prof.decoding) return null;
-    prof.decoding = { id, raids: SA.DECODE.raids }; return { text: '해독을 맡겼다 — 다음 출격이 끝나면 완료된다' };
+    if (instant) { if (prof.credits < SA.DECODE.instant) return null; prof.credits -= SA.DECODE.instant; const r = done(prof, id); remember(prof, r); return r; }
+    prof.decoding = prof.decoding || [];
+    if (prof.decoding.length >= SA.DECODE.slots) return null;
+    prof.decoding.push({ id, raids: SA.DECODE.raids }); return { text: `해독을 맡겼다 (${prof.decoding.length}/${SA.DECODE.slots}) — 다음 출격이 끝나면 완료된다` };
   };
-  // 출격이 끝날 때마다 호출 (탈출·격추 상관없이)
+  // 출격이 끝날 때마다 호출 (탈출·격추 상관없이). 다 된 것을 한꺼번에 푼다
   const tick = (prof) => {
-    if (!prof.decoding) return null;
-    if (--prof.decoding.raids > 0) return null;
-    const id = prof.decoding.id; prof.decoding = null;
-    const r = done(prof, id); prof.lastDecode = r; return r;
+    if (!prof.decoding || !prof.decoding.length) return null;
+    const out = [];
+    for (const d of prof.decoding) if (--d.raids <= 0) { const r = done(prof, d.id); remember(prof, r); out.push(r.text); }
+    prof.decoding = prof.decoding.filter(d => d.raids > 0);
+    return out.length ? { text: out.join('<br>') } : null;
   };
-  return { start, tick };
+  // 드랍할 때: 다 모은 출처의 스토리형은 신호 블랙박스로 바뀐다 (가지고 있는 것·맡긴 것까지 센다)
+  const dropId = (prof, id) => {
+    const src = srcOf(id); if (!src) return id;
+    const total = SA.STORY.blackbox.filter(b => b.src === src).length;
+    const read = prof.logs.filter(l => (SA.STORY.blackbox.find(b => b.id === l) || {}).src === src).length;
+    const held = prof.stash.items.filter(it => it.id === id).length + (prof.decoding || []).filter(d => d.id === id).length + ((SA.R && SA.R.cargo) ? SA.R.cargo.items.concat(SA.R.secure.items).filter(it => it.id === id).length : 0);
+    // 메인퀘스트 '블랙박스 가져오기'가 남아 있으면 정찰선 블랙박스는 그대로
+    if (src === 'kingdom' && SA.Quest && SA.Quest.cur && (SA.Quest.cur().q || {}).id === 'm4') return id;
+    return read + held >= total ? 'bb_reward' : id;
+  };
+  return { start, tick, srcOf, dropId, srcDone };
 })();
