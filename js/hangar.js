@@ -28,7 +28,7 @@ SA.Hangar = (() => {
     S().init();
     const bar = $('#hg-bar');
     BAR.forEach(([id, ic, nm], i) => {
-      const b = h('button', 'hb', `${ico(ic)}<span>${nm}</span><i>${i + 1}</i>`); b.dataset.p = id; b.style.setProperty('--ac', AC[id]);
+      const b = h('button', 'hb', `${ico(ic)}<span>${nm}</span><i>${i + 1}</i>`); b.dataset.p = id;
       b.onclick = () => openPanel(id);
       tip(b, () => locked(id) ? '도리를 구조하면 열린다' : `${nm} <span class="dim">(${i + 1})</span>`);
       bar.appendChild(b);
@@ -89,7 +89,7 @@ SA.Hangar = (() => {
     hud();
     if (!panel) return;
     const pn = $('#hg-panel .pn'), body = $('#hg-body');
-    pn.className = 'pn p-' + panel; pn.style.setProperty('--ac', AC[panel] || '#3a4a6b');
+    pn.className = 'pn p-' + panel;
     $('#hg-panel .ttl').textContent = TITLE[panel];
     const who = WHO[panel] && WHO[panel](), por = $('#hg-panel .por');
     const N = who && SA.HG_NPC[who];

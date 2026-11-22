@@ -78,7 +78,7 @@ SA.HangarScene = (() => {
     const key = name + '@' + h + 'rim'; if (HALO[key]) return HALO[key];
     const s = sprite(name, h); if (!s) return null;
     const c = document.createElement('canvas'); c.width = s.w; c.height = s.h; const x = c.getContext('2d');
-    x.drawImage(s.c, 0, 0); x.globalCompositeOperation = 'source-in'; x.fillStyle = '#8f9bb8'; x.fillRect(0, 0, s.w, s.h);
+    x.drawImage(s.c, 0, 0); x.globalCompositeOperation = 'source-in'; x.fillStyle = '#05070d'; x.fillRect(0, 0, s.w, s.h);
     return (HALO[key] = c);
   };
   const floorLight = (cx, cy, rx, ry, col, a) => {   // 바닥 빛웅덩이 / 그림자
@@ -143,26 +143,24 @@ SA.HangarScene = (() => {
     ctx.fillStyle = '#05070d'; ctx.fillRect(0, 0, W, H);
     // 뒷벽: 화면보다 조금 크게 깔아 시차로 가장자리가 안 보이게
     if (IMG.bg) { const [px, py] = par(0.25); ctx.drawImage(IMG.bg, -16 + px, -9 + py, W + 32, H + 18); }
-    ctx.fillStyle = 'rgba(11,17,32,0.46)'; ctx.fillRect(0, 0, W, H);   // 배경을 한 겹 어둡게: 물건이 앞으로 나온다 (그림 파일은 그대로)
+    ctx.fillStyle = 'rgba(8,12,24,0.5)'; ctx.fillRect(0, 0, W, H);   // 배경을 한 겹 어둡게: 물건이 앞으로 나온다 (그림 파일은 그대로)
     const bd = badges(), launching = anim && anim.type === 'launch';
     for (const o of OBJ) {
       if (o.pilots) { drawPilots(); continue; }
       if (o.npc) { if (visible(o)) drawNpc(o); continue; }
       if (!visible(o)) { if (hover === o) lockedSpot(o); continue; }
       const p = placed(o); if (!p) continue;
-      const ac = ACCENT[o.id], hv = hover === o, cx = p.x + p.s.w / 2, by = p.y + p.s.h;
-      floorLight(cx, by - 4, p.s.w * 0.5, 14, 'rgba(0,0,0,A)', 0.55);   // 바닥 그림자
-      if (ac) {   // 기능별 색: 바닥 빛웅덩이 + 뒤쪽 후광 (깜빡이지 않는다)
-        floorLight(cx, by - 6, p.s.w * 0.62, 22, rgba(ac), hv ? 0.42 : 0.26);
-        const ha = halo(o.img, o.h, ac); if (ha) { ctx.globalAlpha = hv ? 0.95 : 0.6; ctx.drawImage(ha.c, p.x - ha.pad, p.y - ha.pad); ctx.globalAlpha = 1; }
-      }
+      const hv = hover === o, cx = p.x + p.s.w / 2, by = p.y + p.s.h;
+      floorLight(cx, by - 4, p.s.w * 0.55, 16, 'rgba(0,0,0,A)', 0.7);   // 바닥 그림자
+      // 어두운 명암만: 뒤쪽 그늘 + 짙은 테두리로 배경과 떼어 놓는다 (색 빛은 쓰지 않는다)
+      const ha = halo(o.img, o.h, '#000000'); if (ha) { ctx.globalAlpha = 0.7; ctx.drawImage(ha.c, p.x - ha.pad + 3, p.y - ha.pad + 4); ctx.globalAlpha = 1; }
       if (hv) for (const [dx, dy] of [[-2, 0], [2, 0], [0, -2], [0, 2]]) ctx.drawImage(p.s.sil, p.x + dx, p.y + dy);
-      else { const r = rim(o.img, o.h); if (r) { ctx.globalAlpha = 0.45; for (const [dx, dy] of [[-1, 0], [1, 0], [0, -1]]) ctx.drawImage(r, p.x + dx, p.y + dy); ctx.globalAlpha = 1; } }
+      else { const r = rim(o.img, o.h); if (r) { ctx.globalAlpha = 0.85; for (const [dx, dy] of [[-2, 0], [2, 0], [0, -2], [0, 2]]) ctx.drawImage(r, p.x + dx, p.y + dy); ctx.globalAlpha = 1; } }
       ctx.drawImage(p.s.c, p.x, p.y);
       if (o.rack !== undefined) drawRackShip(o, p);
       if (o.ship && !launching) drawMainShip(o, p);
       if (o.id === 'decoder') drawDecoder(p);
-      if (o.id === 'terminal') screenGlow(p, SCREEN.terminal, 0.10, '63,237,227');
+      if (o.id === 'terminal') screenGlow(p, SCREEN.terminal, 0.08);
       if (o.id === 'workbench' && P().rescued.teo) weld(p, 0.17, 0.52);
       if (bd[o.id]) icon(bd[o.id], o.x + par(o.d)[0], p.y - 18);
     }
@@ -182,7 +180,7 @@ SA.HangarScene = (() => {
   };
   const drawDecoder = (p) => {
     const dec = P().decoding || [];
-    const [x, y, w, h] = screenGlow(p, SCREEN.decoder, dec.length ? 0.13 : 0.06, '240,57,96');
+    const [x, y, w, h] = screenGlow(p, SCREEN.decoder, dec.length ? 0.1 : 0.04);
     if (dec.length) {   // 해독 중: 파형이 흐른다
       ctx.strokeStyle = '#d8e6ff'; ctx.lineWidth = 1.5; ctx.beginPath();
       for (let i = 0; i <= 40; i++) { const xx = x + 6 + (w - 12) * i / 40, yy = y + h / 2 + Math.sin(i * 0.7 + T * 2) * h * 0.22 * Math.sin(i / 40 * Math.PI); i ? ctx.lineTo(xx, yy) : ctx.moveTo(xx, yy); }
