@@ -38,8 +38,11 @@ SA.Tutorial = (() => {
   const say = (t) => SA.Raid.say('cmd', t);
   const msg = (t, c, l) => SA.Raid.msg(t, c, l);
   const alive = (tag) => R.enemies.filter(e => !e.dead && e.tut === tag).length;
+  // 튜토리얼 적 드랍: 화물칸이 작고 어차피 잃으니 기본 재료 조금만 (설계도·해독키·블랙박스·부품 완성품 없음)
+  const LOOT = { fighter: [['scrap', .3]], frigate: [['scrap', 1], ['core', .4], ['wire', .3]] };
   const spawn = (type, dx, dy, tag) => {
-    const P = R.player, e = C().spawnEnemy(R, type, U.clamp(P.x + dx, 40, R.map.w - 40), U.clamp(P.y + dy, 40, R.map.h - 40), { awake: true, noRespawn: true });
+    const P = R.player, ai = (SA.ENEMIES[type] || {}).ai;
+    const e = C().spawnEnemy(R, type, U.clamp(P.x + dx, 40, R.map.w - 40), U.clamp(P.y + dy, 40, R.map.h - 40), { awake: true, noRespawn: true, noDrop: true, loot: LOOT[ai] || [] });
     e.tut = tag; return e;
   };
   // 조작 안내: 시간이 느려지고 화면 가운데에 누를 키가 뜬다. 해내면 풀린다 (한 번에 하나씩)
