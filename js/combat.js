@@ -336,7 +336,7 @@ SA.Combat = (() => {
   };
 
   const useActive = (R, P, a) => {
-    const id = a.part.id, m = a.part.mod;
+    const id = a.part.id, m = a.part.mod, X = SA.LV_RANGE[a.part.lv || 0] || 1;   // X: 행성·은하 액티브 범위·지속 배율
     if (id !== 'cannon') spendAct(P, a);
     wear(a.part, 1.5);
     if (m === 'a_inv') P.invuln = Math.max(P.invuln, 0.5);           // 개조: 사용 시 0.5초 무적
@@ -347,33 +347,33 @@ SA.Combat = (() => {
       SA.Audio.sfx('missile');
     } else if (id === 'purge') {
       let n = 0;
-      R.eb = R.eb.filter(b => { if (U.d2(b.x, b.y, P.x, P.y) < 130 * 130) { n++; fx(R, b.x, b.y, 1, '#7ff0e0', 30, 0.3); return false; } return true; });
-      R.rings.push({ x: P.x, y: P.y, r: 10, max: 130, life: 0.35, col: m === 'a_conv' ? '#ffd166' : '#7ff0e0' });
+      R.eb = R.eb.filter(b => { if (U.d2(b.x, b.y, P.x, P.y) < (130 * X) * (130 * X)) { n++; fx(R, b.x, b.y, 1, '#7ff0e0', 30, 0.3); return false; } return true; });
+      R.rings.push({ x: P.x, y: P.y, r: 10, max: 130 * X, life: 0.35, col: m === 'a_conv' ? '#ffd166' : '#7ff0e0' });
       if (m === 'a_conv' && !R.range) {                               // 개조 '변환': 지운 탄을 고철·금빛 회로로
         for (let i = 0; i < Math.min(4, Math.floor(n / 10)); i++) SA.Raid.spawnItem(R, 'scrap', P.x, P.y, 90);
         if (n >= 40) SA.Raid.spawnItem(R, 'goldchip', P.x, P.y, 90);
       }
       SA.Audio.sfx('purge');
     } else if (id === 'shield') {
-      P.invuln = Math.max(P.invuln, 1.5); P.shieldT = 1.5;
-      if (m === 'a_refl') { P.reflectT = Math.max(P.reflectT || 0, 1.5); P.reflHome = false; }
+      P.invuln = Math.max(P.invuln, 1.5 * X); P.shieldT = 1.5 * X;
+      if (m === 'a_refl') { P.reflectT = Math.max(P.reflectT || 0, 1.5 * X); P.reflHome = false; }
       SA.Audio.sfx('shield');
     } else if (id === 'emp') {             // 앞쪽 부채꼴 기절 (개조 '원형': 주변 전체)
-      const round = m === 'a_round', rr = round ? 100 : 80;
+      const round = m === 'a_round', rr = (round ? 100 : 80) * X;
       for (const e of R.enemies) {
         if (e.dead || e.crate) continue;
         const dd = Math.sqrt(U.d2(e.x, e.y, P.x, P.y));
-        if (dd < rr + e.r && (round || Math.abs(U.angDiff(P.aim, U.ang(P.x, P.y, e.x, e.y))) < 0.65)) { stun(R, e, 2); hitEnemy(R, e, 10); }
+        if (dd < rr + e.r && (round || Math.abs(U.angDiff(P.aim, U.ang(P.x, P.y, e.x, e.y))) < 0.65)) { stun(R, e, 2 * X); hitEnemy(R, e, 10); }
       }
       if (round) R.rings.push({ x: P.x, y: P.y, r: 10, max: rr, life: 0.3, col: '#8fd3ff' });
-      else R.beams.push({ x: P.x, y: P.y, a: P.aim, cone: 0.65, len: 80, life: 0.25, max: 0.25, col: '#8fd3ff' });
+      else R.beams.push({ x: P.x, y: P.y, a: P.aim, cone: 0.65, len: rr, life: 0.25, max: 0.25, col: '#8fd3ff' });
       R.shake = Math.max(R.shake, 3); SA.Audio.sfx('purge');
     } else if (id === 'harpoon') {         // 조준선 근처 적 하나를 끌어온다 (개조 '연쇄 작살': 3기)
       const cand = [];
       for (const e of R.enemies) {
         if (e.dead || e.crate) continue;
         const dd = Math.sqrt(U.d2(e.x, e.y, P.x, P.y)), da = Math.abs(U.angDiff(P.aim, U.ang(P.x, P.y, e.x, e.y)));
-        if (dd < 280 && da < 0.35) cand.push([dd * (1 + da * 3), e]);
+        if (dd < 280 * X && da < 0.35) cand.push([dd * (1 + da * 3), e]);
       }
       if (!cand.length) { if (m === 'a_two') a.ch++; else a.cd = 1; SA.Audio.sfx('deny'); return; }
       cand.sort((p, q) => p[0] - q[0]);
@@ -389,23 +389,23 @@ SA.Combat = (() => {
         const cheap = R.cargo.items.slice().sort((p, q) => SA.ITEMS[p.id].val / (SA.ITEMS[p.id].w * SA.ITEMS[p.id].h) - SA.ITEMS[q.id].val / (SA.ITEMS[q.id].w * SA.ITEMS[q.id].h)).slice(0, 2);
         for (const it of cheap) { SA.Grid.remove(R.cargo, it.uid); SA.Raid.dropToSpace(it.id, it); }
       }
-      P.invuln = Math.max(P.invuln, 1.2); P.dumpT = 2; fx(R, P.x, P.y, 16, '#ffd166', 140, 0.4); SA.Audio.sfx('boost');
+      P.invuln = Math.max(P.invuln, 1.2 * X); P.dumpT = 2 * X; fx(R, P.x, P.y, 16, '#ffd166', 140, 0.4); SA.Audio.sfx('boost');
     } else if (id === 'cannon') { a.charge = 0; P.charging = true; SA.Audio.sfx('repair');
     } else if (id === 'orbital') {
       const mx = R.mouseWorld.x, my = R.mouseWorld.y, n = m === 'a_o10' ? 10 : 6;
-      for (let i = 0; i < n; i++) R.strikes.push({ x: mx + U.rnd(-55, 55), y: my + U.rnd(-55, 55), t: 0.8 + i * (1.2 / n), r: 42, dmg: 30 });
+      for (let i = 0; i < n; i++) R.strikes.push({ x: mx + U.rnd(-55 * X, 55 * X), y: my + U.rnd(-55 * X, 55 * X), t: 0.8 + i * (1.2 / n), r: 42 * X, dmg: 30 });
       SA.Audio.sfx('missile');
-    } else if (id === 'reflect') { P.reflectT = 2.5; P.reflHome = m === 'a_home'; SA.Audio.sfx('shield');
-    } else if (id === 'gravity') { R.wells.push({ x: R.mouseWorld.x, y: R.mouseWorld.y, t: 3, r: 150, stun: m === 'a_gstun' }); SA.Audio.sfx('warp');
+    } else if (id === 'reflect') { P.reflectT = 2.5 * X; P.reflHome = m === 'a_home'; SA.Audio.sfx('shield');
+    } else if (id === 'gravity') { R.wells.push({ x: R.mouseWorld.x, y: R.mouseWorld.y, t: 3 * X, r: 150 * X, stun: m === 'a_gstun' }); SA.Audio.sfx('warp');
     } else if (id === 'overdrive') { P.odT = 5; P.odMul = m === 'a_od' ? 1.3 : 2; fx(R, P.x, P.y, 20, '#ff4d6d', 120, 0.5); SA.Audio.sfx('boost');
     } else if (id === 'discharge') {
       const n = P.gzc || 0, k = Math.min(8, 1 + Math.floor(n / 4)), dmg = 10 + Math.min(30, n / 2);
-      const ts = R.enemies.filter(e => !e.dead && !e.crate && U.d2(e.x, e.y, P.x, P.y) < 230 * 230).sort((p, q) => U.d2(p.x, p.y, P.x, P.y) - U.d2(q.x, q.y, P.x, P.y)).slice(0, k);
+      const ts = R.enemies.filter(e => !e.dead && !e.crate && U.d2(e.x, e.y, P.x, P.y) < (230 * X) * (230 * X)).sort((p, q) => U.d2(p.x, p.y, P.x, P.y) - U.d2(q.x, q.y, P.x, P.y)).slice(0, k);
       for (const e of ts) { if (m === 'a_dpierce') zap(R, P.x, P.y, e, dmg, 1, 90); else { R.bolts.push({ pts: bolt(P.x, P.y, e.x, e.y), life: 0.2, col: '#fff3a8' }); hitEnemy(R, e, dmg); } }
       P.gzc = 0; SA.Audio.sfx('purge');
     } else if (id === 'timestop') {
-      for (const b of R.eb) if (U.d2(b.x, b.y, P.x, P.y) < 220 * 220) { b.frz = m === 'a_t4' ? 4 : 2.5; b.slow = 0.4; }
-      R.rings.push({ x: P.x, y: P.y, r: 10, max: 220, life: 0.5, col: '#e6edf3' }); R.shake = 5; SA.Audio.sfx('bigboom');
+      for (const b of R.eb) if (U.d2(b.x, b.y, P.x, P.y) < (220 * X) * (220 * X)) { b.frz = (m === 'a_t4' ? 4 : 2.5) * X; b.slow = 0.4; }
+      R.rings.push({ x: P.x, y: P.y, r: 10, max: 220 * X, life: 0.5, col: '#e6edf3' }); R.shake = 5; SA.Audio.sfx('bigboom');
     }
   };
   // 지속 광선: 조준선 위 맨 앞의 적(개조 '굵은 광선'은 3기)을 태운다. 소행성에 막힌다

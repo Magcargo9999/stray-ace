@@ -270,7 +270,8 @@ SA.Raid = (() => {
     const bm = e.boss ? SA.BP_MUL.boss : D.ai === 'frigate' ? SA.BP_MUL.frigate : SA.BP_MUL.normal;
     for (const [id, p] of table) {
       const k = id === 'bp:강화' ? bm : 1;
-      if (Math.random() < (p >= 1 ? 1 : p * k * (1 + b) * pity(id))) spawnItem(R, id, e.x, e.y);
+      const sure = e.type === 'raven' && id === 'bp_raven' && !SA.profile.recipes.includes('raven');   // 레이븐 추진기 설계도는 처음 잡을 때 확정
+      if (sure || Math.random() < (p >= 1 ? 1 : p * k * (1 + b) * pity(id))) spawnItem(R, id, e.x, e.y);
     }
     // 부품 완성품 드랍 (적 격추)
     if (!e.crate && !e.noDrop) {

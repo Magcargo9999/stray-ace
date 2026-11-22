@@ -31,6 +31,8 @@ SA.STORY = {
   contracts: [
     { id: 'first', title: '첫 출격', giver: '중개인 오스', fac: 'neutral', type: 'extract', need: 1,
       brief: '아무 탈출점으로든 살아서 돌아와. 그거면 돼.', reward: { credits: 300, item: 'bp_scatter' } },
+    { id: 'decode1', title: '보안해독기 도면', giver: '중개인 오스', fac: 'neutral', type: 'extract', need: 2,
+      brief: '잠긴 상자 여는 법을 아는 놈이 있어. 두 번 살아 돌아오면 도면을 넘겨주지.', reward: { credits: 400, item: 'bp_decoder' } },
     { id: 'raven1', title: '표적: 레이븐', giver: '중개인 오스', fac: 'neutral', key: true, type: 'raven', need: 1,
       brief: '레이븐이 소행성대 중심에 둥지를 틀었어. 죽이지 말고 데려와. 할 얘기가 있거든.', reward: { credits: 1200, item: 'bp_lance' } },
     // 1막 후반 (레이븐을 붙잡은 뒤): 네임드 윙맨과 함께 출격. 윙맨·수송선이 격추되면 그 판은 실패 (수주는 유지)

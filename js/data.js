@@ -175,6 +175,8 @@ SA.RECIPES = {
 SA.TIERS = ['일반', '강화', '행성', '은하'];
 SA.TIER_COL = { 일반: '#9fb3c8', 강화: '#5dffb0', 행성: '#ffd166', 은하: '#c08bff' };
 SA.LV_MUL = [1, 1.3, 1.6];      // 주 스탯·패시브 효과 배율 (기준 / 행성 / 은하)
+// 액티브 범위·지속 배율 (행성 +15%, 은하 +30%) — 쿨타임 단축은 LV_MUL로 따로 적용 (임시)
+SA.LV_RANGE = [1, 1.15, 1.3];
 SA.LV_MAX = [100, 120, 150];    // 최대 내구도
 SA.LV_VAL = [1, 2, 3.5];        // 가치 배율
 SA.partTier = (p) => p.lv === 2 ? '은하' : p.lv === 1 ? '행성' : SA.PARTS[p.id].tier;
@@ -261,7 +263,7 @@ SA.partFullDesc = (p) => {
   let s = SA.partDesc(p.id, lv);
   if (lv && d.slot === 'main') s += ` <span class="g-up">[${SA.partTier(p)}] 피해 +${Math.round((m - 1) * 100)}%</span>`;
   if (lv && d.slot === 'sub') s += ` <span class="g-up">[${SA.partTier(p)}] 위력 +${Math.round((m - 1) * 100)}% (피해, 피해가 없으면 처리 속도)</span>`;
-  if (lv && d.slot === 'act') s += ` <span class="g-up">[${SA.partTier(p)}] 쿨타임 -${Math.round((1 - 1 / m) * 100)}%</span>`;
+  if (lv && d.slot === 'act') s += ` <span class="g-up">[${SA.partTier(p)}] 쿨타임 -${Math.round((1 - 1 / m) * 100)}% · 범위·지속 +${Math.round((SA.LV_RANGE[lv] - 1) * 100)}%</span>`;
   if (lv && d.slot === 'pas') s += ` <span class="g-up">[${SA.partTier(p)}] 효과 수치 +${Math.round((m - 1) * 100)}% (위 수치에 반영)</span>`;
   if (lv && d.slot === 'obs') s += ` <span class="g-up">[${SA.partTier(p)}] 시야 ${lv + 1}단계${lv === 2 ? ' · 보스·사냥꾼 항상 표시' : ''}</span>`;
   if (p.mod && SA.MODS[p.mod]) s += `<br><span class="g-mod">개조 · ${SA.MODS[p.mod].name}: ${SA.MODS[p.mod].desc}</span>`;
@@ -300,9 +302,9 @@ SA.BOX = { openHold: 1.5, hackHold: 5, r: 46 };
 SA.LOOT_LOCKED = {
   1: [['bp:일반', .5], ['bp:강화', .15], ['alloy', .5], ['cell1', .4], ['prec', .6], ['goldchip', .35], ['part:일반', .12], ['key_box1', .08]],
   2: [['bp:강화', .5], ['alloy', 1], ['fcore', .5], ['cell2', .35], ['goldchip', .6], ['part:강화', .15], ['key_box2', .06]],
-  3: [['bp:강화', .6], ['qcircuit', 1], ['alloy', .6], ['cell3', .3], ['part:행성', .1]],
+  3: [['bp:강화', .6], ['qcircuit', 1], ['alloy', .6], ['cell3', .3], ['part:행성', .25]],
 };
-SA.LOOT_SECURE = [['part:강화', .5], ['part:행성', .12], ['bp:강화', .6], ['qcircuit', .5], ['alloy', .8], ['fcore', .4], ['key_zone', .1]];
+SA.LOOT_SECURE = [['part:강화', .5], ['part:행성', .25], ['bp:강화', .6], ['qcircuit', .5], ['alloy', .8], ['fcore', .4], ['key_zone', .1]];
 // 부품 완성품 필드 드랍: 화물칸 크기 (주무기 3×1, 그 외 2×1), 내구도 40~80 무작위. 적 격추 확률 (임시)
 SA.PART_DROP = { size: { main: [3, 1], sub: [2, 1], act: [2, 1], pas: [2, 1], obs: [2, 1] }, dur: [40, 80],
   chance: { fighter: 0.01, turret: 0.015, frigate: 0.03, boss: 0.25 }, tierRoll: [['행성', .05], ['강화', .25], ['일반', 1]] };
@@ -323,7 +325,7 @@ SA.RECOVER = { hold: 3 };
 SA.OBS = { levels: [2, 1.75, 1.5, 1.3], radar: [350, 600, 900, 1200], fogCell: 80, reveal: 330 };
 // 블랙박스 해독: 출격 1회가 지나면 완료, 크레딧을 내면 즉시
 SA.DECODE = { raids: 1, instant: 300, slots: 3 };   // 맡기기 최대 3개 (임시)   // 회수 잔해: 머물러서 회수하는 시간   // 피격 시 무작위 장착 부품 내구도 감소
-SA.START_RECIPES = ['pulse', 'mg', 'magnet', 'decoder', 'obs1'];   // 보안해독기는 처음부터 안다 (강화라 테오 구조 후 제작)   // 처음 아는 제작법은 이것뿐 (임시). 나머지는 초반 퀘스트 보상·설계도 드랍으로
+SA.START_RECIPES = ['pulse', 'mg', 'magnet', 'obs1'];   // 처음 아는 제작법은 이것뿐 (임시). 보안해독기(강화)는 오스의 의뢰 '보안해독기 도면' 보상이나 설계도 드랍으로 얻는다 (제작은 테오 구조 후)
 // 설계도 아이템은 부품마다 자동 생성. 등급별 풀에서 무작위로 떨어진다 (loot의 'bp:일반' 등)
 SA.BP_POOL = { 일반: [], 강화: [] };
 for (const id in SA.PARTS) {
@@ -466,9 +468,9 @@ SA.ENEMIES = {
   n_serena:  { name: '세레나 전용기', ai: 'none', img: 'assets/w_serena.png', size: [28, 31], hp: 1, r: 7 },
   n_volk:    { name: '볼크 전용기', ai: 'none', img: 'assets/w_volk.png', size: [31, 29], hp: 1, r: 7 },
   convoy_ship: { name: '호위 화물선', ai: 'none', img: 'assets/convoy.png', size: [27, 75], hp: 1, r: 18 },
-  hunter:  { name: '심연의 사냥꾼', ai: 'hunter', img: 'assets/hunter_0.png', anim: { n: 6, fps: 8 }, size: [64, 81], hp: 1400, r: 28, speed: 90, color: '#8a5cff', boss: true, drops: [['crystal', 1], ['crystal', 1], ['crystal', .5], ['ace', 1], ['ace', .4], ['abyss', 1], ['bb_hunter', 1], ['qcircuit', .6], ['goldchip', 1], ['goldchip', .5]] },
+  hunter:  { name: '심연의 사냥꾼', ai: 'hunter', img: 'assets/hunter_0.png', anim: { n: 6, fps: 8 }, size: [64, 81], hp: 1400, r: 28, speed: 90, color: '#8a5cff', boss: true, drops: [['crystal', 1], ['crystal', 1], ['crystal', .5], ['ace', 1], ['ace', .4], ['abyss', 1], ['bb_hunter', 1], ['qcircuit', .6], ['part:행성', .35], ['goldchip', 1], ['goldchip', .5]] },
   raven:   { name: '네임드 용병 레이븐', ai: 'raven', img: 'assets/raven_hull.png', size: [30, 27], pivot: [0.5, 0.5], hp: 1500, r: 12, speed: 150, color: '#ff4d6d', boss: true, drops: [['chip', 1], ['bp_raven', .5], ['bp_sensor', .3], ['ace', 1], ['ace', .4], ['bp:강화', .8], ['goldchip', 1], ['goldchip', .6], ['bb_raven', 1], ['engine', .5], ['key_box2', .3]] },
-  mimic:   { name: '제국 실험 무인기', ai: 'raven', img: 'assets/raven_hull.png', size: [30, 27], pivot: [0.5, 0.5], hp: 900, r: 12, speed: 150, color: '#c08bff', boss: true, drops: [['chip', 1], ['bb_mimic', 1], ['goldchip', 1], ['prec', 1], ['bp:강화', .5], ['qcircuit', .3], ['ace', .3]] },
+  mimic:   { name: '제국 실험 무인기', ai: 'raven', img: 'assets/raven_hull.png', size: [30, 27], pivot: [0.5, 0.5], hp: 900, r: 12, speed: 150, color: '#c08bff', boss: true, drops: [['chip', 1], ['bb_mimic', 1], ['goldchip', 1], ['prec', 1], ['bp:강화', .5], ['bp_sensor', .3], ['qcircuit', .3], ['ace', .3]] },
 };
 
 // 침식 단계: at = 침식률 하한(%)

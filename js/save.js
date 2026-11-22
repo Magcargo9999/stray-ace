@@ -79,7 +79,7 @@ SA.Save = (() => {
     for (const it of p.stash.items.slice()) if (!SA.ITEMS[it.id]) { p.credits += LEGACY[it.id] || 0; SA.Grid.remove(p.stash, it.uid); }
     p.parts = p.parts.filter(q => SA.PARTS[q.id]);
     p.recipes = p.recipes.filter(r => SA.RECIPES[r]);
-    for (const r of ['pulse', 'mg', 'decoder', 'obs1']) if (!p.recipes.includes(r)) p.recipes.push(r);   // 기본 제작법은 항상 안다 (보안해독기·광역 관측기는 v0.40부터)
+    for (const r of ['pulse', 'mg', 'obs1']) if (!p.recipes.includes(r)) p.recipes.push(r);   // 기본 제작법은 항상 안다 (광역 관측기는 v0.40부터)
     for (const id in p.bring) if (!SA.ITEMS[id]) delete p.bring[id];
     // 조난 구조 도입 전 세이브: 테오·도리는 다시 구조해야 한다(이미 쌓은 메인퀘스트는 유지)
     p.rescued = Object.assign({ teo: false, deliv: false }, p.rescued || {});
