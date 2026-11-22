@@ -98,13 +98,13 @@ SA.Main = (() => {
     const s = SA.profile.settings, w = $('#settings');
     w.style.display = 'flex';
     w.querySelector('.inner').innerHTML = `
+      <button class="set-x" id="set-close" title="${inRaid ? '계속하기 (Esc)' : '닫기 (Esc)'}">✕</button>
       <h2>${inRaid ? '일시정지' : '설정'}</h2>
       <label>배경음악 <input type="range" min="0" max="1" step="0.05" value="${s.music}" id="set-music"></label>
       <label>효과음 <input type="range" min="0" max="1" step="0.05" value="${s.sfx}" id="set-sfx"></label>
       <div class="small"><b>격추 시 잃는 것</b> <span class="dim">(바로 적용)</span></div><div class="modes">${modeButtons(SA.profile.deathMode || 'normal')}</div>
       <div class="small dim keys-help">WASD 이동 · 마우스 조준 · 좌클릭 주무기 · Q/E 액티브 · Space 파일럿 기술<br>휠 주무기 교체 · 우클릭 조준 · Shift 저속 이동 · R 동력원 교체 · X 길게 비상탈출<br>Tab 화물칸(시간 30%, 화물칸 안에서 R 회전) · F 싼 것 버리고 줍기 · Esc 일시정지</div>
-      <button class="btn" id="set-close">${inRaid ? '계속하기' : '닫기'}</button>
-      ${inRaid ? (SA.R && SA.R.tut ? '' : '<button class="btn danger" id="set-abandon">출격 포기 (격추로 처리)</button>') : '<button class="btn danger" id="set-reset">저장 데이터 초기화</button>'}`;
+      <div class="danger-zone">${inRaid ? (SA.R && SA.R.tut ? '' : '<button class="btn danger" id="set-abandon">출격 포기 (격추로 처리)</button>') : '<button class="btn danger" id="set-reset">저장 데이터 초기화</button>'}</div>`;
     $('#set-music').oninput = (e) => { s.music = +e.target.value; SA.Audio.setVolumes(); SA.Save.store(SA.profile); };
     $('#set-sfx').oninput = (e) => { s.sfx = +e.target.value; SA.Audio.setVolumes(); SA.Audio.sfx('pickup', 2); SA.Save.store(SA.profile); };
     w.querySelectorAll('[data-mode]').forEach(b => b.onclick = () => { SA.profile.deathMode = b.dataset.mode; SA.profile.deathModeSet = true; SA.Save.store(SA.profile); w.querySelectorAll('[data-mode]').forEach(x => x.classList.toggle('on', x === b)); });

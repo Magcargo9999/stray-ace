@@ -121,7 +121,10 @@ SA.Hangar = (() => {
     const who = WHO[panel] && WHO[panel](), por = $('#hg-panel .por');
     const N = who && SA.HG_NPC[who];
     por.innerHTML = N ? (N.portrait ? `<img src="${N.portrait}">` : `<span class="ini" style="--c:${N.color}">${N.name[0]}</span>`) : '';
-    por.style.display = N ? '' : 'none';
+    const pt = $('#hg-panel .pt');
+    pt.style.display = N ? '' : 'none';
+    pt.querySelector('.pnm').textContent = N ? N.name : '';
+    pt.querySelector('.pjob').textContent = N ? N.title : '';
     body.innerHTML = '';
     ({ sortie, stash, bench, contracts, decoder, shop, deliv, rack })[panel](body);
   };

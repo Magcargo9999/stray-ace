@@ -50,10 +50,15 @@ h3 { margin: 6px 0 8px; font-size: 15px; color: #cfe3ff; } h4 { margin: 10px 0 6
 .hg-bubble .tx { flex: 1; line-height: 1.45; } .hg-bubble .bt { display: flex; gap: 6px; margin-top: 7px; }
 
 #hg-panel { position: fixed; inset: 0; z-index: 8; background: rgba(5,7,13,.62); display: flex; align-items: center; justify-content: center; }
-#hg-panel .pn { width: min(1180px, 95vw); height: min(690px, 92vh); background: #0b1120; border: 1px solid #3a4a6b; display: flex; flex-direction: column; }
+#hg-panel .pn { position: relative; width: min(1000px, calc(100vw - 340px)); height: min(690px, 92vh); background: #0b1120; border: 1px solid #3a4a6b; display: flex; flex-direction: column; }
 #hg-panel .pn.p-rack, #hg-panel .pn.p-shop, #hg-panel .pn.p-deliv { width: min(640px, 95vw); height: auto; max-height: 92vh; }
 #hg-panel header { display: flex; align-items: center; gap: 10px; padding: 10px 14px; border-bottom: 1px solid #1d2840; }
-#hg-panel header .por img { width: 40px; height: 40px; object-fit: cover; object-position: 50% 18%; background: #fff; border: 1px solid #3a4a6b; display: block; }
+#hg-panel .pt { position: absolute; left: calc(100% + 12px); top: -1px; width: 150px; display: flex; flex-direction: column; gap: 4px; align-items: stretch; }
+#hg-panel .pt .por { display: block; width: 150px; height: 150px; border: 1px solid #3a4a6b; background: #fff; overflow: hidden; }
+#hg-panel .pt .por img { width: 100%; height: 100%; object-fit: cover; object-position: 50% 18%; display: block; }
+#hg-panel .pt .por .ini { width: 100%; height: 100%; font-size: 64px; background: #0b1120; border: 0; }
+#hg-panel .pt .pnm { background: rgba(11,17,32,.92); border: 1px solid #3a4a6b; padding: 4px 8px; font-size: 15px; color: #d8e6ff; }
+#hg-panel .pt .pjob { color: #8f9bb8; padding-left: 8px; font-size: 12px; }
 #hg-panel header .ttl { flex: 1; font-size: 17px; color: #d8e6ff; }
 #hg-panel header .x { background: none; border: 1px solid #2a3550; color: #8f9bb8; width: 32px; height: 32px; cursor: pointer; font: inherit; }
 #hg-panel header .x:hover { color: #fff; border-color: #8fd3ff; }
@@ -295,3 +300,9 @@ h3 { margin: 6px 0 8px; font-size: 15px; color: #cfe3ff; } h4 { margin: 10px 0 6
 .crfx { position: absolute; right: 52px; top: 40px; font-size: 12px; animation: crfx 1.4s ease-out forwards; pointer-events: none; }
 .crfx.up { color: #5dffb0; } .crfx.dn { color: #ff6b7a; }
 @keyframes crfx { from { opacity: 1; transform: translateY(0); } to { opacity: 0; transform: translateY(-16px); } }
+
+/* v0.56 설정창: 닫기는 오른쪽 위 X, 초기화는 아래에 떨어뜨려 오조작 방지 */
+#settings .inner { position: relative; }
+#settings .set-x { position: absolute; right: 10px; top: 10px; width: 32px; height: 32px; background: none; border: 1px solid #2a3550; color: #8f9bb8; cursor: pointer; font: inherit; margin: 0; }
+#settings .set-x:hover { color: #fff; border-color: #8fd3ff; }
+#settings .danger-zone { margin-top: 22px; padding-top: 14px; border-top: 1px dashed #2a3550; display: flex; flex-direction: column; gap: 6px; }
