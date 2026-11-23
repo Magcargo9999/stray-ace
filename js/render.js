@@ -133,9 +133,15 @@ SA.Render = (() => {
     ctx.setTransform(1, 0, 0, 1, 0, 0);
     ctx.fillStyle = '#05070d'; ctx.fillRect(0, 0, cv.width, cv.height);
     // 카메라
-    const lead = 0.18;
+    // 기본은 기체 고정. 설정 > 조작에서 '조준점 따라가기'를 켜면 조준점 쪽으로 살짝 끌려간다
+    const aimCam = !!(SA.profile && SA.profile.settings && SA.profile.settings.camAim), lead = aimCam ? 0.18 : 0;
     const tx = P.x + (R.tabOpen ? 150 : (R.mouseWorld.x - P.x) * lead), ty = P.y + (R.mouseWorld.y - P.y) * lead;
-    R.cam.x += (tx - R.cam.x) * 0.12; R.cam.y += (ty - R.cam.y) * 0.12;
+    if (R.tabOpen) R.camEase = true;   // 화물칸을 여닫을 때만 부드럽게 옮긴다
+    if (aimCam || R.camEase) {
+      const f = aimCam ? 0.12 : 0.3;
+      R.cam.x += (tx - R.cam.x) * f; R.cam.y += (ty - R.cam.y) * f;
+      if (!aimCam && !R.tabOpen && Math.abs(tx - R.cam.x) + Math.abs(ty - R.cam.y) < 14) R.camEase = false;
+    } else { R.cam.x = tx; R.cam.y = ty; }
     const sx = (Math.random() - 0.5) * R.shake, sy = (Math.random() - 0.5) * R.shake;
     const camX = R.cam.x + sx, camY = R.cam.y + sy, Zw = R.zoom || Z;   // 시야 배율 (관측 장비로 Z키 조절)
     for (const L of starLayers) {

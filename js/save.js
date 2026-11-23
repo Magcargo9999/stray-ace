@@ -52,7 +52,7 @@ SA.Save = (() => {
       contracts: {},           // id -> { progress, done }
       logs: [],                // 해독한 블랙박스 인덱스
       stats: { raids: 0, extracts: 0, deaths: 0, kills: 0, bestValue: 0, tPlay: 0, tRaid: 0 },   // tPlay·tRaid: 초 (v0.73)
-      settings: { music: 0.5, sfx: 0.7 },
+      settings: { music: 0.5, sfx: 0.7, camAim: false },
       seenTips: false, tierMig: true, tutDone: false,
       benchLv: 1, pin: null, planetBp: [], pbpPick: 0, tierV2: true,   // 행성 설계도 · 고를 수 있는 행성 설계도 수
        // 작업대 단계 · 고정한 제작 목표

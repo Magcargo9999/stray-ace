@@ -94,22 +94,32 @@ SA.Main = (() => {
     const p = $('#rangepanel'); if (p) p.remove();
     SA.UI.tabClose(); SA.R = null; scene = 'hangar'; SA.Hangar.open();
   };
-  const openSettings = (inRaid) => {
+  const openSettings = (inRaid, tab) => {
+    tab = tab || 'gen';
     const s = SA.profile.settings, w = $('#settings');
     w.style.display = 'flex';
     w.querySelector('.inner').innerHTML = `
       <button class="set-x" id="set-close" title="${inRaid ? '계속하기 (Esc)' : '닫기 (Esc)'}">✕</button>
       <h2>${inRaid ? '일시정지' : '설정'}</h2>
+      <div class="set-tabs"><button class="stab${tab === 'gen' ? ' on' : ''}" data-stab="gen">일반</button><button class="stab${tab === 'ctl' ? ' on' : ''}" data-stab="ctl">조작</button></div>
+      ${tab === 'gen' ? `
       <label>배경음악 <input type="range" min="0" max="1" step="0.05" value="${s.music}" id="set-music"></label>
       <label>효과음 <input type="range" min="0" max="1" step="0.05" value="${s.sfx}" id="set-sfx"></label>
       <div class="small"><b>격추 시 잃는 것</b> <span class="dim">(바로 적용)</span></div><div class="modes">${modeButtons(SA.profile.deathMode || 'normal')}</div>
-      <div class="small dim keys-help">WASD 이동 · 마우스 조준 · 좌클릭 주무기 · Q/E 액티브 · Space 파일럿 기술<br>휠 주무기 교체 · 우클릭 조준 · Shift 저속 이동 · R 동력원 교체 · X 길게 비상탈출<br>Tab 화물칸(시간 30%, 화물칸 안에서 R 회전) · F 싼 것 버리고 줍기 · Esc 일시정지<br>F10 녹화 시작/끝 · F9 방금 지나간 15초 저장 (리플레이 켰을 때)</div>
       <label class="chk" title="녹화를 뒤에서 계속 돌려 두었다가 F9를 누르면 방금 지나간 15초를 저장한다. 컴퓨터 부담이 조금 는다."><input type="checkbox" id="set-replay"${s.replay ? ' checked' : ''}> 리플레이 버퍼 (F9로 방금 지나간 장면 저장)</label>
+      ` : `
+      <div class="small dim keys-help">WASD 이동 · 마우스 조준 · 좌클릭 주무기 · Q/E 액티브 · Space 파일럿 기술<br>휠 주무기 교체 · 우클릭 조준 · Shift 저속 이동 · R 동력원 교체 · X 길게 비상탈출<br>Tab 화물칸(시간 30%, 화물칸 안에서 R 회전) · F 싼 것 버리고 줍기 · Esc 일시정지<br>F10 녹화 시작/끝 · F9 방금 지나간 15초 저장 (리플레이 켰을 때)</div>
+      <label class="chk" title="끄면 화면이 항상 기체를 가운데 두고 따라간다. 켜면 조준점 쪽으로 살짝 끌려간다."><input type="checkbox" id="set-camaim"${s.camAim ? ' checked' : ''}> 카메라가 조준점 쪽으로 따라가기 <span class="dim">(끄면 기체 시점 고정)</span></label>
+      `}
       <div class="danger-zone">${inRaid ? (SA.R && SA.R.tut ? '' : '<button class="btn danger" id="set-abandon">출격 포기 (격추로 처리)</button>') : '<button class="btn danger" id="set-reset">저장 데이터 초기화</button>'}</div>`;
+    w.querySelectorAll('[data-stab]').forEach(b => b.onclick = () => openSettings(inRaid, b.dataset.stab));
+    if ($('#set-camaim')) $('#set-camaim').onchange = (e) => { s.camAim = e.target.checked; SA.Save.store(SA.profile); };
+    if (tab === 'gen') {
     $('#set-music').oninput = (e) => { s.music = +e.target.value; SA.Audio.setVolumes(); SA.Save.store(SA.profile); };
     $('#set-sfx').oninput = (e) => { s.sfx = +e.target.value; SA.Audio.setVolumes(); SA.Audio.sfx('pickup', 2); SA.Save.store(SA.profile); };
     $('#set-replay').onchange = (e) => { s.replay = e.target.checked; SA.Save.store(SA.profile); if (SA.Rec) SA.Rec.setReplay(s.replay); };
     w.querySelectorAll('[data-mode]').forEach(b => b.onclick = () => { SA.profile.deathMode = b.dataset.mode; SA.profile.deathModeSet = true; SA.Save.store(SA.profile); w.querySelectorAll('[data-mode]').forEach(x => x.classList.toggle('on', x === b)); });
+    }
     $('#set-close').onclick = () => { w.style.display = 'none'; if (SA.R) SA.R.paused = false; };
     if (inRaid && $('#set-abandon')) $('#set-abandon').onclick = () => { w.style.display = 'none'; SA.R.paused = false; if (SA.R.range) { leaveRange(); return; } SA.R.player.hp = 0; SA.Raid.playerDied(); };
     else if (!inRaid) $('#set-reset').onclick = twice($('#set-reset'), () => { SA.profile = SA.Save.reset(); w.style.display = 'none'; beginFlow(); });

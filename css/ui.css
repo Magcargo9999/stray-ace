@@ -393,3 +393,8 @@ h3 { margin: 6px 0 8px; font-size: 15px; color: #cfe3ff; } h4 { margin: 10px 0 6
 .pcard.on { border-color: #5dffb0; } .pcard:hover { border-color: #3a4a70; }
 .pcard .pc-b { flex: 1; display: flex; flex-direction: column; gap: 3px; }
 .pwrap { width: 100%; max-width: 620px; margin: 0 auto; }
+
+#settings .set-tabs { display: flex; gap: 6px; margin-bottom: 4px; }
+#settings .stab { background: #0f1830; border: 1px solid #2a3550; color: #8f9bb8; padding: 5px 16px; cursor: pointer; font: inherit; margin: 0; }
+#settings .stab.on { color: #fff; border-color: #8fd3ff; background: #16264a; }
+#settings label.chk { justify-content: flex-start; gap: 10px; }

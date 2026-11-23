@@ -47,10 +47,10 @@ SA.ITEMS = {
   key_box3: { name: '상자 해독키 (행성)', w: 1, h: 1, val: 600, kind: 'key', tier: '행성', code: 'box3', color: '#ffd166', desc: '행성 등급 잠긴 상자의 코드 칩. 등록하면 1번. 3막의 금고 규격이다.' },
   key_zone: { name: '왕국 산하 행성 해독키', w: 1, h: 1, val: 300, kind: 'key', tier: '강화', code: 'zone', color: '#8fb6ff', desc: '보안 구역 역장의 출입 코드. 어째서 이런 폐광 소행성대에 왕국 산하 행성의 해독키가…? 등록하면 3번.' },
   // 동력원: 주무기 에너지. 장착 1개 + 예비는 화물칸. 기지에 돌아오면 무료로 가득 찬다. cap = 펄스건 연사 기준 초, dmg = 주무기 피해 배율 (임시)
-  cell1:    { name: '동력원 (일반)', w: 1, h: 1, val: 60, kind: 'cell', tier: '일반', cap: 90, dmg: 1.0, color: '#7fe3ff', desc: '주무기 에너지. 펄스건으로 약 90초. 피해 ×1.0. R로 교체.' },
-  cell2:    { name: '동력원 (강화)', w: 1, h: 1, val: 180, kind: 'cell', tier: '강화', cap: 150, dmg: 1.2, color: '#5dffb0', desc: '주무기 에너지. 펄스건으로 약 150초. 피해 ×1.2. R로 교체.' },
-  cell3:    { name: '동력원 (행성)', w: 1, h: 1, val: 420, kind: 'cell', tier: '행성', cap: 240, dmg: 1.4, color: '#ffd166', desc: '주무기 에너지. 펄스건으로 약 240초. 피해 ×1.4. R로 교체.' },
-  cell4:    { name: '동력원 (은하)', w: 1, h: 1, val: 900, kind: 'cell', tier: '은하', cap: 330, dmg: 1.6, color: '#c08bff', desc: '주무기 에너지. 펄스건으로 약 330초. 피해 ×1.6. 심연 핵으로 만든다. R로 교체.' },
+  cell1:    { name: '동력원 (일반)', w: 1, h: 1, val: 60, kind: 'cell', img: 'assets/i_cell1.png', tier: '일반', cap: 90, dmg: 1.0, color: '#7fe3ff', desc: '주무기 에너지. 펄스건으로 약 90초. 피해 ×1.0. R로 교체.' },
+  cell2:    { name: '동력원 (강화)', w: 1, h: 1, val: 180, kind: 'cell', img: 'assets/i_cell2.png', tier: '강화', cap: 150, dmg: 1.2, color: '#5dffb0', desc: '주무기 에너지. 펄스건으로 약 150초. 피해 ×1.2. R로 교체.' },
+  cell3:    { name: '동력원 (행성)', w: 1, h: 1, val: 420, kind: 'cell', img: 'assets/i_cell3.png', tier: '행성', cap: 240, dmg: 1.4, color: '#ffd166', desc: '주무기 에너지. 펄스건으로 약 240초. 피해 ×1.4. R로 교체.' },
+  cell4:    { name: '동력원 (은하)', w: 1, h: 1, val: 900, kind: 'cell', img: 'assets/i_cell4.png', tier: '은하', cap: 330, dmg: 1.6, color: '#c08bff', desc: '주무기 에너지. 펄스건으로 약 330초. 피해 ×1.6. 심연 핵으로 만든다. R로 교체.' },
   // 보스 재료: 은하 각성에 들어간다 (보스마다 각성 규칙 1개)
   chip:     { name: '비행 기록 칩', w: 1, h: 1, val: 600, kind: 'umat', tier: '은하', color: '#ff8fb0', desc: '레이븐의 회피 기동이 통째로 기록된 칩. 은하 부품에 넣으면 스칠 때마다 위력이 오른다 (레이븐 각성).' },
   abyss:    { name: '심연 핵', w: 1, h: 1, val: 700, kind: 'umat', tier: '은하', color: '#a06bff', desc: '사냥꾼의 몸속에서 뛰던 것. 은하 부품에 넣으면 침식이 깊을수록 위력이 오른다 (심연 각성).' },
