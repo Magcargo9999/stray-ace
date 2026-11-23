@@ -9,7 +9,7 @@ SA.CFG = {
   GRAZE_R: 14,
   TAB_TIMESCALE: 0.3,
   EXTRACT_TIME: 10,
-  EXTRACT_R: 52,
+  EXTRACT_R: 78,   // 탈출 원 반지름 (v0.69: 52 → 78, 안에서 피할 공간 확보 · 임시)
   MAGNET_R: 42,
   SECURE_W: 2, SECURE_H: 2,
   STASH_W: 10, STASH_H: 14,

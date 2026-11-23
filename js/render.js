@@ -169,7 +169,7 @@ SA.Render = (() => {
     ctx.fillRect(-400, 0, 400, R.map.h); ctx.fillRect(R.map.w, 0, 400, R.map.h);
 
     // 탈출점
-    for (const x of R.extracts) if (x.active && vis(x.x, x.y, 80)) {
+    for (const x of R.extracts) if (x.active && vis(x.x, x.y, SA.CFG.EXTRACT_R + 10)) {
       const r = SA.CFG.EXTRACT_R, t = R.t;
       ctx.fillStyle = 'rgba(80,255,170,0.07)'; ctx.beginPath(); ctx.arc(x.x, x.y, r, 0, 6.29); ctx.fill();
       ctx.strokeStyle = '#5dffb0'; ctx.lineWidth = 1.2; ctx.setLineDash([6, 5]); ctx.lineDashOffset = -t * 20;
