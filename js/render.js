@@ -728,7 +728,7 @@ SA.Render = (() => {
       if (cd > 0) T(ctx, cd.toFixed(1), x + 78, by - 42, '#fff', 12, 'right');
       if (ch !== undefined) T(ctx, '●'.repeat(ch) + '○'.repeat(2 - ch), x + 78, by - 25, '#ffd166', 10, 'right', false);   // 2회 충전 개조
     };
-    P.acts.forEach((a, i) => slot(bx + i * 92, i ? 'E' : 'Q', a ? SA.PARTS[a.part.id].name : '비어 있음', a ? (a.part.mod === 'a_two' && a.ch > 0 ? 0 : a.cd) : 0, a ? SA.Combat.actCd(P, a) : 1, !!a && SA.Combat.eff(a.part) > 0, a && a.part.mod === 'a_two' ? (a.ch === undefined ? 2 : a.ch) : undefined));
+    P.acts.forEach((a, i) => slot(bx + i * 92, i ? 'E' : 'Q', a ? SA.PARTS[a.part.id].name : '비어 있음', a ? (SA.modsOf(a.part).includes('a_two') && a.ch > 0 ? 0 : a.cd) : 0, a ? SA.Combat.actCd(P, a) : 1, !!a && SA.Combat.eff(a.part) > 0, a && SA.modsOf(a.part).includes('a_two') ? (a.ch === undefined ? 2 : a.ch) : undefined));
     const pl = SA.PILOTS[P.pilot];
     slot(bx + 184, 'SPACE', R.tut ? '배럴 롤' : SA.PILOTS[P.pilot].title, P.skillCd, pl.cd, !!pl.skill);
 
@@ -810,7 +810,7 @@ SA.Render = (() => {
     ctx.fillStyle = 'rgba(255,110,130,0.85)';
     for (const e of R.enemies) if (!e.dead && !e.crate && !e.boss && U.d2(e.x, e.y, P.x, P.y) < rr * rr) ctx.fillRect(mx + e.x * k - 1, my + e.y * k - 1, big ? 3 : 2, big ? 3 : 2);
     for (const a of R.allies || []) if (!a.dead) { ctx.fillStyle = a.kind === 'wing' ? SA.NAMED[a.named].color : '#8fb6ff'; ctx.fillRect(mx + a.x * k - 2, my + a.y * k - 2, 4, 4); }
-    const seeBoss = (e) => e && !e.dead && (R.obsLv >= 3 || U.d2(e.x, e.y, P.x, P.y) < rr * rr || e === R.boss);
+    const seeBoss = (e) => e && !e.dead && (R.obsLv >= 2 || U.d2(e.x, e.y, P.x, P.y) < rr * rr || e === R.boss);
     if (R.hunter && seeBoss(R.hunter)) { ctx.fillStyle = Math.sin(R.t * 5) > -0.3 ? '#b98cff' : '#5a3a99'; ctx.beginPath(); ctx.arc(mx + R.hunter.x * k, my + R.hunter.y * k, 3.5, 0, 6.29); ctx.fill(); }
     if (R.boss && !R.boss.dead) { ctx.fillStyle = '#ff4d6d'; ctx.beginPath(); ctx.arc(mx + R.boss.x * k, my + R.boss.y * k, 3, 0, 6.29); ctx.fill(); }
     { const vw = ctx.canvas.width / (R.zoom || Z), vh = ctx.canvas.height / (R.zoom || Z); ctx.strokeStyle = 'rgba(255,255,255,0.35)'; ctx.strokeRect(mx + (R.cam.x - vw / 2) * k, my + (R.cam.y - vh / 2) * k, vw * k, vh * k); }

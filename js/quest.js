@@ -180,7 +180,8 @@ SA.Bench = (() => {
     return got;
   };
   const setLv = (n) => {
-    const p = SA.profile; p.benchLv = Math.max(lv(), n);
+    const p = SA.profile, was = lv(); p.benchLv = Math.max(was, n);
+    for (let i = was + 1; i <= p.benchLv; i++) p.pbpPick = (p.pbpPick || 0) + (SA.BENCH.pick[i] || 0);   // 행성 설계도 고르기
     let got = [];
     for (let i = 1; i <= p.benchLv; i++) got = got.concat(grant(SA.BENCH.give[i] || []));
     for (let i = 0; i < (SA.BENCH.bonusBp[n] || 0); i++) {
@@ -192,10 +193,12 @@ SA.Bench = (() => {
     return got;
   };
   const canTier = (t) => t === '일반' || lv() >= 2;      // 강화 등급 제작
-  const needFor = (toLv) => toLv + 1;                   // 행성(1)은 2단계, 은하(2)는 3단계
+  const needFor = (toLv) => toLv === 1 ? 2 : 99;        // 행성은 2단계 (은하는 따로 제작)
   const canUp = (toLv) => lv() >= needFor(toLv);
+  const knowsPlanet = (id) => (SA.profile.planetBp || []).includes(id);
+  const grantPlanet = (id) => { const p = SA.profile; if (!SA.PLANET[id] || knowsPlanet(id)) return false; p.planetBp.push(id); (p.newRecipes = p.newRecipes || []).push('pl:' + id); return true; };
   const contract = (n) => SA.STORY.contracts.find(c => c.reward && c.reward.bench === n);
-  return { lv, setLv, grant, canTier, canUp, needFor, contract };
+  return { lv, setLv, grant, canTier, canUp, needFor, contract, knowsPlanet, grantPlanet };
 })();
 
 // 필요 재료: 고정한 제작 목표 · 수주한 납품 의뢰 · 아는 제작법. 칸 표시와 툴팁에 쓴다

@@ -70,7 +70,7 @@ h3 { margin: 6px 0 8px; font-size: 15px; color: #cfe3ff; } h4 { margin: 10px 0 6
 .up { color: #5dffb0; } .dn { color: #ff6b7a; }
 .db { display: block; height: 4px; background: rgba(255,255,255,.08); } .db i { display: block; height: 100%; }
 .db.wide { display: inline-block; width: 120px; vertical-align: middle; }
-.t-일반 { --tc: #8f9bb8; } .t-강화 { --tc: #6ec6ff; } .t-행성 { --tc: #c08bff; } .t-은하 { --tc: #ffd166; }
+.t-일반 { --tc: #8f9bb8; } .t-강화 { --tc: #5dffb0; } .t-행성 { --tc: #ffd166; } .t-은하 { --tc: #c08bff; }
 .tier { color: var(--tc, #8f9bb8); }
 
 /* 출격 준비 */
@@ -368,3 +368,7 @@ h3 { margin: 6px 0 8px; font-size: 15px; color: #cfe3ff; } h4 { margin: 10px 0 6
 .needtip .pin { color: #ffd166; } .needtip .q { color: #5dffb0; }
 .pinl { font-size: 12px; color: #ffd166; margin-top: 3px; } .pinl.ok { color: #5dffb0; } .pinl .k { margin-right: 6px; }
 .lvcard .chip { font-size: 11px; color: #8f9bb8; border: 1px solid #2a3550; padding: 1px 6px; } .lvcard.next .chip { color: #ffd166; border-color: #ffd166; }
+/* v0.67 행성 설계도 고르기 */
+.pkgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 6px; max-height: 300px; overflow-y: auto; }
+.pk { display: flex; align-items: center; gap: 8px; text-align: left; background: #070b14; border: 1px solid #2a3550; color: #d8e6ff; padding: 6px 8px; cursor: pointer; font: inherit; font-size: 12px; }
+.pk:hover { border-color: #ffd166; } .pk img { width: 32px; height: 32px; object-fit: contain; image-rendering: pixelated; flex: none; }

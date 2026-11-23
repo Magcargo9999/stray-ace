@@ -17,6 +17,7 @@ SA.Combat = (() => {
     return d >= 0.5 ? 1 : d <= 0 ? 0 : 0.5 + d;
   };
   const wear = (part, amt) => { if (part && !(SA.R && SA.R.range)) part.dur = Math.max(0, part.dur - amt); };   // 연습장에서는 닳지 않는다
+  const pm = (P, k) => !!(P && P.pm && P.pm.has(k));   // 장착 부품에 이 개조(칩·행성 전용)가 있나
   const hasPas = (P, id) => P.pas.some(p => p && p.id === id && eff(p) > 0);
   // ── 부품 위력: 등급 배율(행성 1.3 · 은하 1.6) × 은하 각성 ──
   const awkMul = (P, p) => {
@@ -30,26 +31,26 @@ SA.Combat = (() => {
   const pv = (P, id, i = 0) => { const p = pasP(P, id); return p ? SA.fxv(id, i, pw(P, p)) : 0; };   // 패시브 효과 수치 (없으면 0)
   // 주무기 실제 수치: 기본 + 등급 배율 + 행성 개조
   const mainDef = (P, p) => {
-    const b = SA.PARTS[p.id], d = Object.assign({}, b), m = p.mod;
+    const b = SA.PARTS[p.id], d = Object.assign({}, b), m = SA.modsOf(p);
     d.dmg = b.dmg * pw(P, p); d.life = b.life || 1.1;
-    if (m === 'm_rapid') { d.rate *= 1.25; d.dmg *= 0.9; }
-    if (m === 'm_long') { d.spd *= 1.35; d.life *= 1.35; if (d.beam) d.beam *= 1.35; }
-    if (m === 'm_twin') { d.shots = 2; d.dmg *= 0.6; d.twin = true; }
-    if (m === 'm_frag') d.frag = 3;
-    if (m === 'm_crush') d.close = true;
-    if (m === 'm_pierce') { d.pierce = 99; d.spd *= 1.25; }
-    if (m === 'm_cut') d.erase = true;
-    if (m === 'm_spierce') d.pierce = 99;
-    if (m === 'm_more') { d.shots = 6; d.dmg *= 0.8; }
-    if (m === 'm_thick') d.beamN = 3;
-    d.stunCh = m === 'm_stun' ? 0.1 : 0;
-    d.eps = (SA.ENERGY.eps[p.id] || 1) * (m === 'm_eco' ? 0.65 : 1);
+    if (m.includes('m_rapid')) { d.rate *= 1.25; d.dmg *= 0.9; }
+    if (m.includes('m_long')) { d.spd *= 1.35; d.life *= 1.35; if (d.beam) d.beam *= 1.35; }
+    if (m.includes('m_twin')) { d.shots = 2; d.dmg *= 0.6; d.twin = true; }
+    if (m.includes('m_frag')) d.frag = 3;
+    if (m.includes('m_crush')) d.close = true;
+    if (m.includes('m_pierce')) { d.pierce = 99; d.spd *= 1.25; }
+    if (m.includes('m_cut')) d.erase = true;
+    if (m.includes('m_spierce')) d.pierce = 99;
+    if (m.includes('m_more')) { d.shots = 6; d.dmg *= 0.8; }
+    if (m.includes('m_thick')) d.beamN = 3;
+    d.stunCh = m.includes('m_stun') ? 0.1 : 0;
+    d.eps = (SA.ENERGY.eps[p.id] || 1) * (m.includes('m_eco') ? 0.65 : 1);
     return d;
   };
   // 액티브 쿨타임: 기본 ÷ 위력, 개조 '쿨타임' ×0.8, '2회 충전' ×1.5
-  const actCd = (P, a) => SA.PARTS[a.part.id].cd / pw(P, a.part) * (a.part.mod === 'a_cd' ? 0.8 : 1) * (a.part.mod === 'a_two' ? 1.5 : 1);
-  const spendAct = (P, a) => { if (a.part.mod === 'a_two') { a.ch = Math.max(0, (a.ch === undefined ? 2 : a.ch) - 1); if (a.cd <= 0) a.cd = actCd(P, a); } else a.cd = actCd(P, a); };
-  const actReady = (a) => a.part.mod === 'a_two' ? (a.ch === undefined ? 2 : a.ch) > 0 : a.cd <= 0;
+  const actCd = (P, a) => SA.PARTS[a.part.id].cd / pw(P, a.part) * (SA.modsOf(a.part).includes('a_cd') ? 0.8 : 1) * (SA.modsOf(a.part).includes('a_two') ? 1.5 : 1);
+  const spendAct = (P, a) => { if (SA.modsOf(a.part).includes('a_two')) { a.ch = Math.max(0, (a.ch === undefined ? 2 : a.ch) - 1); if (a.cd <= 0) a.cd = actCd(P, a); } else a.cd = actCd(P, a); };
+  const actReady = (a) => SA.modsOf(a.part).includes('a_two') ? (a.ch === undefined ? 2 : a.ch) > 0 : a.cd <= 0;
   // 차폐 장갑: 침식 디버프 감소 비율 (일반 30%, 행성 39%, 은하 48%)
   const corrResist = (P) => Math.min(0.8, pv(P, 'plating', 1));
   const corrMul = (P, v) => 1 - (1 - v) * (1 - corrResist(P));   // 연사·이속 배율(1 미만)을 장갑만큼 1에 가깝게
@@ -98,11 +99,11 @@ SA.Combat = (() => {
     const sp = spareCell(R);
     if (!sp) { if (manual) { SA.Audio.sfx('deny'); text(R, P.x, P.y - 18, '예비 동력원 없음', '#ffb3b3'); } return false; }
     if (manual && P.cell && P.cell.e >= SA.ITEMS[P.cell.id].cap - 0.01) return false;   // 가득 찬 걸 바꿀 필요 없다
-    P.reloadT = SA.ENERGY.reload; P.reloadSrc = sp; SA.Audio.sfx('reload');
+    P.reloadT = SA.ENERGY.reload * (pm(P, 'p_cool') ? 0.5 : 1); P.reloadSrc = sp; SA.Audio.sfx('reload');
     return true;
   };
   const finishReload = (R, P) => {
-    const sp = P.reloadSrc; P.reloadSrc = null;
+    const sp = P.reloadSrc; P.reloadSrc = null; if (pm(P, 'p_cool')) P.coolT = 2;
     if (!sp || !sp.g.items.includes(sp.it)) return;
     const d = SA.ITEMS[sp.it.id], ch = sp.it.ch === undefined ? 1 : sp.it.ch;
     SA.Grid.remove(sp.g, sp.it.uid);
@@ -150,6 +151,10 @@ SA.Combat = (() => {
     const ml = Math.hypot(mx, my); if (ml) { mx /= ml; my /= ml; }
     if (ml) { P.lastMx = mx; P.lastMy = my; }
     let spd = P.speed * corrMul(P, st.speed) * (1 + pv(P, 'engine2')) * (1 + pv(P, 'raven'));
+    P.coolT = Math.max(0, (P.coolT || 0) - dt); P.engT = Math.max(0, (P.engT || 0) - dt); P.gzKeepCd = Math.max(0, (P.gzKeepCd || 0) - dt);
+    if (P.engT > 0) spd *= 1.2;                                        // 행성 추진 엔진: 스친 직후 이속
+    if (pm(P, 'p_heart') && P.hp < P.maxHp * 0.5) spd *= 1.15;       // 행성 붉은 심장
+    if (pm(P, 'p_reso') && R.stage >= 2 && !R.range) P.hp = Math.min(P.maxHp, P.hp + dt);   // 행성 침식 공명기: 침식 3단계 이상 회복
     const EN = SA.ENERGY;
     P.aiming = I.mouse.right && !R.tabOpen && !R.paused;   // 우클릭 조준: 탄이 모이고 이속 감소
     P.slow = I.isDown('ShiftLeft') || I.isDown('ShiftRight');   // Shift 저속 이동
@@ -204,12 +209,12 @@ SA.Combat = (() => {
     const onCell = energyOf(P) > 0;
     if (!onCell) P.emer = Math.min(EN.emerMax, (P.emer || 0) + EN.emerRegen * dt);   // 비상 발전: 아주 느리게 찬다
     const main = P.main, me = eff(main), md = main && mainDef(P, main);
-    P.aimMax = EN.sniperCharge * (main && main.mod === 'm_quick' ? 0.5 : 1);
+    P.aimMax = EN.sniperCharge * (main && SA.modsOf(main).includes('m_quick') ? 0.5 : 1);
     if (md && md.sniper) P.aimC = P.aiming && P.swapT <= 0 ? Math.min(P.aimMax, (P.aimC || 0) + dt) : 0;   // 저격총 정조준 충전
     const firing = I.mouse.down && !R.tabOpen && !R.paused;
     if (firing && main && me > 0 && P.fireCd <= 0 && P.swapT <= 0 && !(P.reloadT > 0)) {
       const d = md;
-      const rate = d.rate * (1 + pv(P, 'cooler')) * (hasPas(P, 'resonator') ? 1 : corrMul(P, st.fire)) * me;
+      const rate = d.rate * (1 + pv(P, 'cooler')) * (hasPas(P, 'resonator') ? 1 : corrMul(P, st.fire)) * me * (P.coolT > 0 ? 1.3 : 1);
       const cost = d.eps / d.rate;   // 한 발(한 번 사격) 에너지
       const src = onCell ? 'cell' : P.emer >= cost ? 'emer' : null;   // 동력원 끝자락도 그대로 쓰고 방전 → 자동 교체
       if (!src) {
@@ -243,8 +248,8 @@ SA.Combat = (() => {
     // 서브웨폰 (자동). 위력(등급·각성)은 피해에, 피해가 없는 부품은 연사에 곱한다
     for (const s of P.subs) {
       const e = eff(s.part); if (!e) continue;
-      const id = s.part.id, d = SA.PARTS[id], m = s.part.mod, k = pw(P, s.part);
-      const range = d.range * (m === 's_range' ? 1.4 : 1), dmg = d.dmg * k, wk = m === 's_dur' ? 0.5 : 1, so = m === 's_stun' ? 0.1 : 0;
+      const id = s.part.id, d = SA.PARTS[id], m = SA.modsOf(s.part), k = pw(P, s.part);
+      const range = d.range * (m.includes('s_range') ? 1.4 : 1), dmg = d.dmg * k, wk = m.includes('s_dur') ? 0.5 : 1, so = m.includes('s_stun') ? 0.1 : 0;
       if (id === 'drone') {                // 추적 드론: 적에게 날아가 주위를 돌며 쏜다 (기체에서 leash 이내)
         s.orb += dt * 2.2;
         if (s.x === 0 && s.y === 0) { s.x = P.x; s.y = P.y; }
@@ -265,20 +270,20 @@ SA.Combat = (() => {
       else { s.x = P.x + s.ox; s.y = P.y + s.oy; }
       if (R.tabOpen) continue;   // 화물칸(Tab)을 여는 동안 서브웨폰은 멈춘다
       s.cd -= dt; s.boost = Math.max(0, (s.boost || 0) - dt);
-      const rate = d.rate * corrMul(P, st.fire) * e * (s.boost > 0 ? 2.5 : 1) * (m === 's_rate' ? 1.3 : 1);
+      const rate = d.rate * corrMul(P, st.fire) * e * (s.boost > 0 ? 2.5 : 1) * (m.includes('s_rate') ? 1.3 : 1);
       if (id === 'mine') {                 // 지나간 자리에 지뢰
-        if (s.cd <= 0 && Math.hypot(P.vx, P.vy) > 30) { s.cd = 1 / rate; pb(R, s.x, s.y, 0, 0, dmg, { mine: 20, aoe: 46 * (m === 's_big' ? 2 : 1), life: 9, col: '#ffcf6b', stunCh: so }); wear(s.part, 0.02 * wk); }
+        if (s.cd <= 0 && Math.hypot(P.vx, P.vy) > 30) { s.cd = 1 / rate; pb(R, s.x, s.y, 0, 0, dmg, { mine: 20, aoe: 46 * (m.includes('s_big') ? 2 : 1), life: 9, col: '#ffcf6b', stunCh: so }); wear(s.part, 0.02 * wk); }
         continue;
       }
       if (id === 'sdrone') {
         s.ecd = Math.max(0, (s.ecd || 0) - dt);
-        const er = m === 's_wide' ? 16 : 8;
+        const er = m.includes('s_wide') ? 16 : 8;
         if (s.ecd <= 0) for (const b of R.eb) if (b.life > 0 && U.d2(b.x, b.y, s.x, s.y) < (b.r + er) ** 2) {
           b.life = 0; s.ecd = 1 / (d.rate * e * k); fx(R, b.x, b.y, 4, '#8ff0ff', 50, 0.2, 1); wear(s.part, 0.004 * wk); break;
         }
         const t = nearestEnemy(R, s.x, s.y, range);
         if (t) s.ang = U.ang(s.x, s.y, t.x, t.y);
-        if (t && s.cd <= 0) { s.cd = 0.8 / (m === 's_rate' ? 1.3 : 1); pb(R, s.x, s.y, s.ang, 420, dmg, { col: '#8ff0ff', w: 1, life: 0.6, stunCh: so }); }
+        if (t && s.cd <= 0) { s.cd = 0.8 / (m.includes('s_rate') ? 1.3 : 1); pb(R, s.x, s.y, s.ang, 420, dmg, { col: '#8ff0ff', w: 1, life: 0.6, stunCh: so }); }
         continue;
       }
       if (id === 'intercept') {            // 가까운 적 탄 격추 (위력은 연사로)
@@ -287,7 +292,7 @@ SA.Combat = (() => {
         for (const b of R.eb) { const q = U.d2(b.x, b.y, s.x, s.y); if (q < bd) { bd = q; best = b; } }
         if (best) {
           s.cd = 1 / (rate * k); best.life = 0; R.bolts.push({ pts: [[s.x, s.y], [best.x, best.y]], life: 0.08, col: '#7fe3ff' }); fx(R, best.x, best.y, 3, '#7fe3ff', 40, 0.2, 1); s.ang = U.ang(s.x, s.y, best.x, best.y); wear(s.part, 0.003 * wk);
-          if (m === 's_ret' && Math.random() < 0.5) { const t = nearestEnemy(R, best.x, best.y, 400); if (t) pb(R, best.x, best.y, U.ang(best.x, best.y, t.x, t.y), 420, 6 * k, { col: '#7fe3ff', w: 1.4, life: 1 }); }
+          if (m.includes('s_ret') && Math.random() < 0.5) { const t = nearestEnemy(R, best.x, best.y, 400); if (t) pb(R, best.x, best.y, U.ang(best.x, best.y, t.x, t.y), 420, 6 * k, { col: '#7fe3ff', w: 1.4, life: 1 }); }
         }
         continue;
       }
@@ -295,10 +300,10 @@ SA.Combat = (() => {
       if (t) s.ang = U.ang(s.x, s.y, t.x, t.y);
       if (!t || s.cd > 0) continue;
       s.cd = 1 / rate;
-      if (id === 'flamer') pb(R, s.x, s.y, s.ang + U.rnd(-0.25, 0.25), U.rnd(300, 380) * (range / d.range), dmg, { col: U.pick(['#ffb347', '#ff7a3d', '#ffe08a']), w: 3, life: 0.2, flame: true, stunCh: so * 0.2, burn: m === 's_burn' ? 4 * k : 0 });
-      else if (id === 'hturret') { for (let i = 0; i < (m === 's_dbl' ? 2 : 1); i++) pb(R, s.x, s.y, s.ang + (i ? 0.35 : 0) * (i % 2 ? 1 : -1), 140, dmg, { homing: 6, life: 2.4 * (range / d.range), missile: true, col: '#ffb347', w: 2.2, stunCh: so }); SA.Audio.sfx('missile'); }
-      else if (id === 'chain') { zap(R, s.x, s.y, t, dmg, m === 's_jump' ? 4 : 2, 70); if (so && Math.random() < so) stun(R, t, 0.6); }
-      else pb(R, s.x, s.y, s.ang + U.rnd(-0.05, 0.05), 460, dmg, { col: m === 's_graze' ? '#fff3a8' : '#ffe6a8', w: 1.2, life: 0.7 * (range / d.range), stunCh: so });
+      if (id === 'flamer') pb(R, s.x, s.y, s.ang + U.rnd(-0.25, 0.25), U.rnd(300, 380) * (range / d.range), dmg, { col: U.pick(['#ffb347', '#ff7a3d', '#ffe08a']), w: 3, life: 0.2, flame: true, stunCh: so * 0.2, burn: m.includes('s_burn') ? 4 * k : 0 });
+      else if (id === 'hturret') { for (let i = 0; i < (m.includes('s_dbl') ? 2 : 1); i++) pb(R, s.x, s.y, s.ang + (i ? 0.35 : 0) * (i % 2 ? 1 : -1), 140, dmg, { homing: 6, life: 2.4 * (range / d.range), missile: true, col: '#ffb347', w: 2.2, stunCh: so }); SA.Audio.sfx('missile'); }
+      else if (id === 'chain') { zap(R, s.x, s.y, t, dmg, m.includes('s_jump') ? 4 : 2, 70); if (so && Math.random() < so) stun(R, t, 0.6); }
+      else pb(R, s.x, s.y, s.ang + U.rnd(-0.05, 0.05), 460, dmg, { col: m.includes('s_graze') ? '#fff3a8' : '#ffe6a8', w: 1.2, life: 0.7 * (range / d.range), stunCh: so });
       wear(s.part, 0.003 * wk);
       SA.Audio.sfx('sub');
     }
@@ -307,12 +312,12 @@ SA.Combat = (() => {
     ['KeyQ', 'KeyE'].forEach((key, i) => {
       const a = P.acts[i]; if (!a) return;
       a.cd = Math.max(0, a.cd - dt * (a.part.id === 'overdrive' ? 1 : cdk));
-      if (a.part.mod === 'a_two') {        // 2회 충전: 쿨타임이 돌 때마다 1개씩 모인다
+      if (SA.modsOf(a.part).includes('a_two')) {        // 2회 충전: 쿨타임이 돌 때마다 1개씩 모인다
         if (a.ch === undefined) a.ch = 2;
         if (a.cd <= 0 && a.ch < 2) { a.ch++; if (a.ch < 2) a.cd = actCd(P, a); }
       }
       if (a.charge !== undefined) {        // 충전 캐논: 누르는 동안 충전, 떼면 발사
-        a.charge = Math.min(1.5, a.charge + dt * (a.part.mod === 'a_half' ? 2 : 1));
+        a.charge = Math.min(1.5, a.charge + dt * (SA.modsOf(a.part).includes('a_half') ? 2 : 1));
         if (!I.isDown(key) || R.tabOpen) { fireCannon(R, P, a.charge, pw(P, a.part)); delete a.charge; P.charging = false; spendAct(P, a); }
         return;
       }
@@ -336,30 +341,30 @@ SA.Combat = (() => {
   };
 
   const useActive = (R, P, a) => {
-    const id = a.part.id, m = a.part.mod, X = SA.LV_RANGE[a.part.lv || 0] || 1;   // X: 행성·은하 액티브 범위·지속 배율
+    const id = a.part.id, m = SA.modsOf(a.part), X = SA.LV_RANGE[a.part.lv || 0] || 1;   // X: 행성·은하 액티브 범위·지속 배율
     if (id !== 'cannon') spendAct(P, a);
     wear(a.part, 1.5);
-    if (m === 'a_inv') P.invuln = Math.max(P.invuln, 0.5);           // 개조: 사용 시 0.5초 무적
-    if (m === 'a_gz') R.graze += 10;                                  // 개조: 스침 스택 +10
+    if (m.includes('a_inv')) P.invuln = Math.max(P.invuln, 0.5);           // 개조: 사용 시 0.5초 무적
+    if (m.includes('a_gz')) R.graze += 10;                                  // 개조: 스침 스택 +10
     if (id === 'missile') {
-      const n = m === 'a_m10' ? 10 : 6;
+      const n = m.includes('a_m10') ? 10 : 6;
       for (let i = 0; i < n; i++) pb(R, P.x, P.y, P.aim + (i - (n - 1) / 2) * (2.1 / n), 150, 24, { homing: 7, life: 2.4, missile: true, col: '#ffb347', w: 2 });
       SA.Audio.sfx('missile');
     } else if (id === 'purge') {
       let n = 0;
       R.eb = R.eb.filter(b => { if (U.d2(b.x, b.y, P.x, P.y) < (130 * X) * (130 * X)) { n++; fx(R, b.x, b.y, 1, '#7ff0e0', 30, 0.3); return false; } return true; });
-      R.rings.push({ x: P.x, y: P.y, r: 10, max: 130 * X, life: 0.35, col: m === 'a_conv' ? '#ffd166' : '#7ff0e0' });
-      if (m === 'a_conv' && !R.range) {                               // 개조 '변환': 지운 탄을 고철·금빛 회로로
+      R.rings.push({ x: P.x, y: P.y, r: 10, max: 130 * X, life: 0.35, col: m.includes('a_conv') ? '#ffd166' : '#7ff0e0' });
+      if (m.includes('a_conv') && !R.range) {                               // 개조 '변환': 지운 탄을 고철·금빛 회로로
         for (let i = 0; i < Math.min(4, Math.floor(n / 10)); i++) SA.Raid.spawnItem(R, 'scrap', P.x, P.y, 90);
         if (n >= 40) SA.Raid.spawnItem(R, 'goldchip', P.x, P.y, 90);
       }
       SA.Audio.sfx('purge');
     } else if (id === 'shield') {
       P.invuln = Math.max(P.invuln, 1.5 * X); P.shieldT = 1.5 * X;
-      if (m === 'a_refl') { P.reflectT = Math.max(P.reflectT || 0, 1.5 * X); P.reflHome = false; }
+      if (m.includes('a_refl')) { P.reflectT = Math.max(P.reflectT || 0, 1.5 * X); P.reflHome = false; }
       SA.Audio.sfx('shield');
     } else if (id === 'emp') {             // 앞쪽 부채꼴 기절 (개조 '원형': 주변 전체)
-      const round = m === 'a_round', rr = (round ? 100 : 80) * X;
+      const round = m.includes('a_round'), rr = (round ? 100 : 80) * X;
       for (const e of R.enemies) {
         if (e.dead || e.crate) continue;
         const dd = Math.sqrt(U.d2(e.x, e.y, P.x, P.y));
@@ -375,9 +380,9 @@ SA.Combat = (() => {
         const dd = Math.sqrt(U.d2(e.x, e.y, P.x, P.y)), da = Math.abs(U.angDiff(P.aim, U.ang(P.x, P.y, e.x, e.y)));
         if (dd < 280 * X && da < 0.35) cand.push([dd * (1 + da * 3), e]);
       }
-      if (!cand.length) { if (m === 'a_two') a.ch++; else a.cd = 1; SA.Audio.sfx('deny'); return; }
+      if (!cand.length) { if (m.includes('a_two')) a.ch++; else a.cd = 1; SA.Audio.sfx('deny'); return; }
       cand.sort((p, q) => p[0] - q[0]);
-      cand.slice(0, m === 'a_chain' ? 3 : 1).forEach(([, best], i) => {
+      cand.slice(0, m.includes('a_chain') ? 3 : 1).forEach(([, best], i) => {
         R.bolts.push({ pts: [[P.x, P.y], [best.x, best.y]], life: 0.25, col: '#e6edf3' });
         const D = SA.ENEMIES[best.type] || {};
         if (!best.boss && D.speed) { const o = (i - (i ? 1.5 : 0)) * 0.5; best.pullX = P.x + Math.cos(P.aim + o) * (42 + i * 14); best.pullY = P.y + Math.sin(P.aim + o) * (42 + i * 14); best.pullT = 0.25; }
@@ -385,26 +390,26 @@ SA.Combat = (() => {
       });
       SA.Audio.sfx('ram');
     } else if (id === 'dump') {            // 값싼 화물 2개를 버리고 무적+가속 (개조 '무투기': 버리지 않음)
-      if (m !== 'a_free') {
+      if (!m.includes('a_free')) {
         const cheap = R.cargo.items.slice().sort((p, q) => SA.ITEMS[p.id].val / (SA.ITEMS[p.id].w * SA.ITEMS[p.id].h) - SA.ITEMS[q.id].val / (SA.ITEMS[q.id].w * SA.ITEMS[q.id].h)).slice(0, 2);
         for (const it of cheap) { SA.Grid.remove(R.cargo, it.uid); SA.Raid.dropToSpace(it.id, it); }
       }
       P.invuln = Math.max(P.invuln, 1.2 * X); P.dumpT = 2 * X; fx(R, P.x, P.y, 16, '#ffd166', 140, 0.4); SA.Audio.sfx('boost');
     } else if (id === 'cannon') { a.charge = 0; P.charging = true; SA.Audio.sfx('repair');
     } else if (id === 'orbital') {
-      const mx = R.mouseWorld.x, my = R.mouseWorld.y, n = m === 'a_o10' ? 10 : 6;
+      const mx = R.mouseWorld.x, my = R.mouseWorld.y, n = m.includes('a_o10') ? 10 : 6;
       for (let i = 0; i < n; i++) R.strikes.push({ x: mx + U.rnd(-55 * X, 55 * X), y: my + U.rnd(-55 * X, 55 * X), t: 0.8 + i * (1.2 / n), r: 42 * X, dmg: 30 });
       SA.Audio.sfx('missile');
-    } else if (id === 'reflect') { P.reflectT = 2.5 * X; P.reflHome = m === 'a_home'; SA.Audio.sfx('shield');
-    } else if (id === 'gravity') { R.wells.push({ x: R.mouseWorld.x, y: R.mouseWorld.y, t: 3 * X, r: 150 * X, stun: m === 'a_gstun' }); SA.Audio.sfx('warp');
-    } else if (id === 'overdrive') { P.odT = 5; P.odMul = m === 'a_od' ? 1.3 : 2; fx(R, P.x, P.y, 20, '#ff4d6d', 120, 0.5); SA.Audio.sfx('boost');
+    } else if (id === 'reflect') { P.reflectT = 2.5 * X; P.reflHome = m.includes('a_home'); SA.Audio.sfx('shield');
+    } else if (id === 'gravity') { R.wells.push({ x: R.mouseWorld.x, y: R.mouseWorld.y, t: 3 * X, r: 150 * X, stun: m.includes('a_gstun') }); SA.Audio.sfx('warp');
+    } else if (id === 'overdrive') { P.odT = 5; P.odMul = m.includes('a_od') ? 1.3 : 2; fx(R, P.x, P.y, 20, '#ff4d6d', 120, 0.5); SA.Audio.sfx('boost');
     } else if (id === 'discharge') {
       const n = P.gzc || 0, k = Math.min(8, 1 + Math.floor(n / 4)), dmg = 10 + Math.min(30, n / 2);
       const ts = R.enemies.filter(e => !e.dead && !e.crate && U.d2(e.x, e.y, P.x, P.y) < (230 * X) * (230 * X)).sort((p, q) => U.d2(p.x, p.y, P.x, P.y) - U.d2(q.x, q.y, P.x, P.y)).slice(0, k);
-      for (const e of ts) { if (m === 'a_dpierce') zap(R, P.x, P.y, e, dmg, 1, 90); else { R.bolts.push({ pts: bolt(P.x, P.y, e.x, e.y), life: 0.2, col: '#fff3a8' }); hitEnemy(R, e, dmg); } }
+      for (const e of ts) { if (m.includes('a_dpierce')) zap(R, P.x, P.y, e, dmg, 1, 90); else { R.bolts.push({ pts: bolt(P.x, P.y, e.x, e.y), life: 0.2, col: '#fff3a8' }); hitEnemy(R, e, dmg); } }
       P.gzc = 0; SA.Audio.sfx('purge');
     } else if (id === 'timestop') {
-      for (const b of R.eb) if (U.d2(b.x, b.y, P.x, P.y) < (220 * X) * (220 * X)) { b.frz = (m === 'a_t4' ? 4 : 2.5) * X; b.slow = 0.4; }
+      for (const b of R.eb) if (U.d2(b.x, b.y, P.x, P.y) < (220 * X) * (220 * X)) { b.frz = (m.includes('a_t4') ? 4 : 2.5) * X; b.slow = 0.4; }
       R.rings.push({ x: P.x, y: P.y, r: 10, max: 220 * X, life: 0.5, col: '#e6edf3' }); R.shake = 5; SA.Audio.sfx('bigboom');
     }
   };
@@ -464,6 +469,8 @@ SA.Combat = (() => {
     m *= 1 + SA.Raid.grazeDmg();   // 스침 스택 피해 보너스
     if (b && b.main && P.hp < P.maxHp * 0.5) m *= 1 + pv(P, 'redheart');
     if (b && b.close) { if (d < 70 + e.r) m *= 2; if (e.stun > 0) m *= 1.5; }
+    if (pm(P, 'p_crush') && d < 70 + e.r) m *= 2;                                         // 행성 충격 장갑
+    if (b && b.main && pm(P, 'p_crit') && Math.random() < 0.1) { m *= 2; text(R, e.x, e.y - 12, '약점', '#ffd166'); }   // 행성 조준 센서
     damageEnemy(R, e, dmg * m);
   };
 
@@ -515,19 +522,24 @@ SA.Combat = (() => {
     if (P.skillState === 'slip') return;   // 레이븐 슬립스트림: 피격 무효
     if (R.range && R.rangeGod) { P.invuln = 0.3; R.hurtFlash = 0.15; return; }   // 연습장 피해 무효
     if (P.odT > 0) dmg *= P.odMul || 2;
+    if (pm(P, 'p_exit') && R.inPort > 0) dmg *= 0.5;   // 행성 탈출 가속기: 포트 안 피해 절반
     const vlt = pv(P, 'vault'); if (vlt) dmg *= 1 - Math.min(vlt, (SA.Grid.value(R.cargo) + SA.Grid.value(R.secure)) / 4000 * vlt / 0.25);
+    if (pm(P, 'p_bar') && P.barrierMax > 0 && P.barrier >= P.barrierMax - 0.5) { R.eb = R.eb.filter(b => U.d2(b.x, b.y, P.x, P.y) > 110 * 110); R.rings.push({ x: P.x, y: P.y, r: 10, max: 110, life: 0.3, col: '#8fd3ff' }); }   // 행성 베리어: 가득 찬 채 맞으면 탄 소거
     if (P.barrier > 0) { const b = Math.min(P.barrier, dmg); P.barrier -= b; dmg -= b; }
     P.barrierT = 0;
     P.hp -= dmg; P.invuln = SA.CFG.HIT_INVULN;
     R.shake = 6; R.hurtFlash = 0.35;
-    R.graze = Math.floor(R.graze * SA.GRAZE.hitKeep); P.rvStk = 0;   // 레이븐 각성 스택은 맞으면 초기화
+    if (pm(P, 'p_gzkeep') && P.gzKeepCd <= 0) P.gzKeepCd = 5;   // 행성 스침 증폭기: 5초에 한 번 스택 보존
+    else R.graze = Math.floor(R.graze * SA.GRAZE.hitKeep);
+    P.rvStk = 0;
     const eq = [...P.mains, ...P.subs.map(s => s.part), ...P.acts.map(a => a && a.part), ...P.pas, P.obs].filter(Boolean);
     if (eq.length) wear(U.pick(eq), SA.HIT_WEAR);
-    if (P.main && P.main.id === 'glass') eq.forEach(p => wear(p, P.main.mod === 'm_tough' ? 2 : 4));
+    if (P.main && P.main.id === 'glass') eq.forEach(p => wear(p, SA.modsOf(P.main).includes('m_tough') ? 2 : 4));
     if (hasPas(P, 'counter') && P.counterCd <= 0) {
       P.counterCd = 5; P.invuln += pv(P, 'counter');
       R.eb = R.eb.filter(b => U.d2(b.x, b.y, P.x, P.y) > 90 * 90);
       R.rings.push({ x: P.x, y: P.y, r: 10, max: 90, life: 0.3, col: '#ff8a8a' });
+      if (pm(P, 'p_ctr')) for (const e of R.enemies) if (!e.dead && !e.crate && U.d2(e.x, e.y, P.x, P.y) < 110 * 110) stun(R, e, 1);   // 행성 반격 장치
     }
     SA.Audio.sfx('hurt');
     fx(R, P.x, P.y, 14, '#ff8a8a', 120, 0.4);
@@ -805,6 +817,7 @@ SA.Combat = (() => {
       R.rings.push({ x: e.x, y: e.y, r: 4, max: e.r * 2.5, life: 0.3, col: '#ffcf8a' });
       R.shake = Math.max(R.shake, e.boss ? 12 : 2 * big);
       if (e.boss) SA.Raid.bossKilled(e);
+      if (e.stun > 0 && pm(R.player, 'p_exec')) for (const o of R.enemies) if (!o.dead && !o.crate && o !== e && U.d2(o.x, o.y, e.x, e.y) < 100 * 100) stun(R, o, 0.6);   // 행성 처형 회로
       SA.Raid.queueRespawn(e);
     }
     SA.Raid.dropLoot(e);
@@ -848,8 +861,15 @@ SA.Combat = (() => {
           if (slip) P.skillCd = Math.max(0, P.skillCd - 0.2);
           P.gzc = Math.min(40, (P.gzc || 0) + 1);
           P.rvStk = Math.min(10, (P.rvStk || 0) + 1);   // 레이븐 각성 스택
-          for (const sb of P.subs) if (sb.part.mod === 's_graze') sb.boost = 1.5;
+          for (const sb of P.subs) if (SA.modsOf(sb.part).includes('s_graze')) sb.boost = 1.5;
           const gf = pv(P, 'grazeflow'); if (gf && R.grazeN % 5 === 0) for (const a of P.acts) if (a) a.cd = Math.max(0, a.cd - gf);
+          if (pm(P, 'p_flow') && R.grazeN % 5 === 0 && P.cell && !R.range) P.cell.e = Math.min(SA.ITEMS[P.cell.id].cap, P.cell.e + SA.ITEMS[P.cell.id].cap * 0.03);   // 행성 스침 환류기
+          if (pm(P, 'p_engine')) P.engT = 1;                                    // 행성 추진 엔진
+          if (pm(P, 'p_slip')) P.skillCd = Math.max(0, P.skillCd - 0.1);        // 행성 레이븐 추진기
+          if (pm(P, 'p_defl') && Math.random() < 0.1) {                         // 행성 편향기: 스친 탄을 되돌린다
+            const t = nearestEnemy(R, b.x, b.y, 500);
+            if (t) { pb(R, b.x, b.y, U.ang(b.x, b.y, t.x, t.y), 320, 8, { col: '#cfe3ff', w: 2, life: 1.5 }); continue; }
+          }
           if (P.invuln <= 0 || P.rollT > 0) SA.Audio.sfx('graze');
           fx(R, (b.x + P.x) / 2, (b.y + P.y) / 2, 2, '#fff7c2', 60, 0.18, 1);
         }
@@ -1037,7 +1057,7 @@ SA.Combat = (() => {
       const P = R.player, PC = SA.HUNTER.pool; let inPool = false;
       for (const p of R.pools) { p.t -= dt; if (p.t > 0 && U.d2(p.x, p.y, P.x, P.y) < p.r * p.r) inPool = true; }
       R.pools = R.pools.filter(p => p.t > 0);
-      if (inPool && !P.dead && R.state === 'play' && P.skillState !== 'slip') {
+      if (inPool && !P.dead && R.state === 'play' && P.skillState !== 'slip' && !pm(P, 'p_plate')) {
         P.hp -= PC.dps * dt; R.corr = Math.min(100, R.corr + PC.corr * dt); R.inPool = 0.2;
         if (Math.random() < 0.3) fx(R, P.x + U.rnd(-8, 8), P.y + U.rnd(-8, 8), 1, '#b98cff', 30, 0.4, 1);
         if (P.hp <= 0) { P.hp = 0; SA.Raid.playerDied(); }
@@ -1056,5 +1076,5 @@ SA.Combat = (() => {
     for (const b of R.beams) b.life -= dt; R.beams = R.beams.filter(b => b.life > 0);
   };
 
-  return { corrResist, corrMul, startReload, energyOf, updateAllies, hurtAlly, updateExtra, stun, hitEnemy, eff, wear, eb, ring, fan, fx, text, updatePlayer, updateEnemies, updateBullets, spawnEnemy, hurtPlayer, damageEnemy, insideAsteroid, hasPas, pw, pv, mainDef, actCd, actReady };
+  return { pm, corrResist, corrMul, startReload, energyOf, updateAllies, hurtAlly, updateExtra, stun, hitEnemy, eff, wear, eb, ring, fan, fx, text, updatePlayer, updateEnemies, updateBullets, spawnEnemy, hurtPlayer, damageEnemy, insideAsteroid, hasPas, pw, pv, mainDef, actCd, actReady };
 })();

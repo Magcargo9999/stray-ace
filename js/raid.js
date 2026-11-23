@@ -4,10 +4,10 @@ SA.Raid = (() => {
 
   const LOOT = {
     // 'bp:강화'는 dropLoot에서 출처별 배율(SA.BP_MUL)이 곱해진다. 'part:등급' = 부품 완성품
-    wreck: [['scrap', 1], ['scrap', .7], ['wire', .5], ['core', .5], ['engine', .25], ['debris', .22], ['goldchip', .15], ['prec', .15], ['bp:일반', .12], ['bp:강화', .03], ['alloy', .06], ['key_box1', .03], ['key_zone', .015], ['stardata', .08], ['bb_reward', .05]],
-    crate: [['core', .4], ['repairkit', .35], ['canister', .3], ['goldchip', .2], ['wire', .5], ['prec', .3], ['bp:일반', .2], ['bp:강화', .06], ['alloy', .08], ['fcore', .06], ['cell1', .2], ['key_box1', .06], ['stardata', .1], ['bb_reward', .04]],
+    wreck: [['scrap', 1], ['scrap', .7], ['wire', .5], ['core', .5], ['engine', .25], ['debris', .22], ['goldchip', .15], ['prec', .15], ['bp:일반', .12], ['bp:강화', .03], ['pbp', .04], ['mchip', .04], ['alloy', .06], ['key_box1', .03], ['key_zone', .015], ['stardata', .08], ['bb_reward', .05]],
+    crate: [['core', .4], ['repairkit', .35], ['canister', .3], ['goldchip', .2], ['wire', .5], ['prec', .3], ['bp:일반', .2], ['bp:강화', .06], ['pbp', .05], ['mchip', .06], ['alloy', .08], ['fcore', .06], ['cell1', .2], ['key_box1', .06], ['stardata', .1], ['bb_reward', .04]],
     cache: [['core', 1], ['engine', .6], ['scrap', 1], ['prec', .8], ['prec', .4], ['bp:일반', .15], ['bp:강화', .12], ['alloy', .25], ['key_box1', .15]],
-    nest:  [['goldchip', .6], ['engine', 1], ['debris', .7], ['canister', .6], ['prec', .6], ['bp:강화', .5], ['key_box1', .4], ['part:강화', .2]],
+    nest:  [['goldchip', .6], ['engine', 1], ['debris', .7], ['canister', .6], ['prec', .6], ['bp:강화', .5], ['pbp', .3], ['key_box1', .4], ['part:강화', .2]],
     distress: [['repairkit', 1], ['canister', .8], ['goldchip', .8], ['scrap', 1], ['prec', .4], ['bp:강화', .25], ['cell1', .5]],
   };
 
@@ -37,7 +37,7 @@ SA.Raid = (() => {
     };
     const subs = (lo.sub || []).slice(0, ship.sub).map((u, i) => part(u) && SA.PARTS[part(u).id].slot === 'sub'
       ? { part: part(u), cd: 0, ang: -Math.PI / 2, ox: ship.subMounts[i][0], oy: ship.subMounts[i][1], orb: i * Math.PI, x: 0, y: 0 } : null).filter(Boolean);
-    for (const s of subs.slice()) if (s.part.mod === 's_two') subs.push(Object.assign({}, s, { orb: s.orb + Math.PI, cd: 0.2 }));   // 추적 드론 개조 '2기'
+    for (const s of subs.slice()) if (SA.modsOf(s.part).includes('s_two')) subs.push(Object.assign({}, s, { orb: s.orb + Math.PI, cd: 0.2 }));   // 추적 드론 개조 '2기'
     const pas = (lo.pas || []).slice(0, ship.pas).map(part).filter(Boolean);
     const hasBarrier = pas.some(p => p.id === 'barrier');
     R.player = {
@@ -49,7 +49,8 @@ SA.Raid = (() => {
       acts: [0, 1].map(i => { const p = part((lo.act || [])[i]); return p ? { part: p, cd: 0 } : null; }),
       skillCd: 0, skillT: 0, skillState: null, dash: 0, rollT: 0, shieldT: 0, dead: false, lastMx: 0, lastMy: -1,
     };
-    { const bm = C().pv(R.player, 'barrier'); R.player.barrier = R.player.barrierMax = Math.round(bm); }   // 베리어 발생기 (등급 배율)
+    { const bm = C().pv(R.player, 'barrier'); R.player.barrier = R.player.barrierMax = Math.round(bm); }
+    { const P0 = R.player; P0.pm = new Set([...P0.mains, ...P0.subs.map(s => s.part), ...P0.acts.map(a => a && a.part), ...P0.pas, P0.obs].flatMap(SA.modsOf)); }   // 장착 부품의 칩·행성 전용 개조   // 베리어 발생기 (등급 배율)
     R.range = !!opt.range;
     if (R.range) return startRange(R, prof, lo);
     if (opt.tut) return SA.Tutorial.setup(R);   // 튜토리얼 프롤로그
@@ -258,7 +259,20 @@ SA.Raid = (() => {
   // 불운 보정: 새 설계도 없이 출격할수록 설계도 확률 +25%씩 (최대 3배). 새 설계도를 등록하면 초기화.
   const pity = (id) => id.startsWith('bp') ? Math.min(4, 1 + .5 * (SA.profile.bpMiss || 0)) : 1;
   // 'bp:강화' → 그 등급의 설계도 하나. 모르는 설계도를 70% 우선.
+  // 행성 설계도: 모르는 것 중에서, 장착 중인 부품(×6)·가진 부품(×3)·아는 제작법(×1.5) 쪽으로 기울여 뽑는다
+  const pickPlanetBp = () => {
+    const pr = SA.profile, known = pr.planetBp || [], eq = new Set(), own = new Set(pr.parts.map(p => p.id));
+    for (const s in pr.loadouts) for (const u of SA.loUids(pr.loadouts[s])) { const p = pr.parts.find(x => x.uid === u); if (p) eq.add(p.id); }
+    const c = Object.keys(SA.PLANET).filter(id => !known.includes(id) && id !== 'raven');
+    if (!c.length) return null;
+    const w = c.map(id => eq.has(id) ? 6 : own.has(id) ? 3 : pr.recipes.includes(id) ? 1.5 : 1);
+    let r = Math.random() * w.reduce((a, b) => a + b, 0);
+    for (let i = 0; i < c.length; i++) { r -= w[i]; if (r <= 0) return c[i]; }
+    return c[c.length - 1];
+  };
   const resolve = (id) => {
+    if (id === 'pbp') { const k = pickPlanetBp(); return k ? 'pbp_' + k : U.pick(SA.BENCH.fallback); }
+    if (id === 'mchip') return 'mc_' + U.pick(SA.CHIPS);
     if (id.startsWith('part:')) { const pool = SA.BP_POOL[id.slice(5)] || SA.BP_POOL['일반']; return 'pt_' + U.pick(pool); }
     if (!id.startsWith('bp:')) return SA.Decode.dropId(SA.profile, id);   // 다 모은 출처의 스토리 블랙박스 → 신호 블랙박스
     const tier = id.slice(3), known = (r) => SA.profile.recipes.includes(r);
@@ -279,6 +293,7 @@ SA.Raid = (() => {
     }
     // 부품 완성품 드랍 (적 격추)
     if (!e.crate && !e.noDrop) {
+      const pp = e.boss ? SA.PART_DROP.pbp.boss : SA.PART_DROP.pbp[D.ai] || 0; if (Math.random() < pp) spawnItem(R, 'pbp', e.x, e.y);   // 행성 설계도
       const ch = e.boss ? SA.PART_DROP.chance.boss : SA.PART_DROP.chance[D.ai] || 0;
       if (Math.random() < ch * (1 + b)) { const r = Math.random(); const t = (SA.PART_DROP.tierRoll.find(([, p]) => r < p) || ['일반'])[0]; spawnItem(R, 'part:' + (e.boss && t === '일반' ? '강화' : t), e.x, e.y); }
     }
@@ -288,14 +303,15 @@ SA.Raid = (() => {
   const PLANET_POOL = () => Object.keys(SA.PARTS).filter(k => SA.canUp(k) && k !== 'raven');
   const spawnItem = (R, id, x, y, spd = 70) => {
     let ex = null;
-    if (id === 'part:행성') { const k = U.pick(PLANET_POOL()); id = 'pt_' + k; ex = { lv: 1 }; const m = SA.randMod(k); if (m) ex.mod = m; }
+    if (id === 'part:행성') { const k = U.pick(PLANET_POOL()); id = 'pt_' + k; ex = { lv: 1 }; }
     else id = resolve(id);
+    if (id.startsWith('pt_') && Math.random() < SA.PART_DROP.chip) { const c = SA.randChip(id.slice(3)); if (c) (ex = ex || {}).mod = c; }   // 드랍 부품에 칩이 끼워져 나온다
     const a = Math.random() * 6.28, s = U.rnd(20, spd), d = SA.ITEMS[id];
     const it = Object.assign({ id, x, y, vx: Math.cos(a) * s, vy: Math.sin(a) * s, full: false, chk: 0, t: 0 }, ex || {});
     if (d.kind === 'part') it.dur = Math.round(U.rnd(SA.PART_DROP.dur[0], SA.PART_DROP.dur[1]) * SA.LV_MAX[it.lv || 0] / 100);
     R.items.push(it);
     // 좋은 것이 나오면: 등급별 짧은 효과음 + 빛 (부담스럽지 않게)
-    const g = it.lv === 2 ? '은하' : it.lv === 1 ? '행성' : gradeOf(id);
+    const g = it.lv ? '행성' : SA.ITEMS[id].kind === 'pbp' ? '행성' : gradeOf(id);
     if (g !== '일반' && R.state === 'play') {
       const hi = g === '행성' || g === '은하', big = hi && (d.kind === 'part' || d.kind === 'bp');
       SA.Audio.sfx(big ? 'rare3' : hi ? 'rare2' : 'rare1');
@@ -384,6 +400,7 @@ SA.Raid = (() => {
     const placed = SA.Grid.add(R.cargo, it.id, itemState(it));
     if (placed) {
       it.taken = true;
+      if (C().pm(R.player, 'p_magnet')) R.graze += 1;   // 행성 자력 수집기
       SA.Audio.sfx('pickup', d.val >= 150 ? 3 : d.val >= 60 ? 2 : 1);
       R.pickLog.push({ text: `+ ${d.kind === 'part' && it.lv ? SA.partName({ id: d.part, lv: it.lv, mod: it.mod }) : d.name}`, val: SA.itemVal(it), col: it.lv ? SA.TIER_COL[it.lv === 2 ? '은하' : '행성'] : d.color, life: 3 });
       if (R.pickLog.length > 5) R.pickLog.shift();
@@ -745,12 +762,13 @@ SA.Raid = (() => {
     } else R.emHold = 0;
   };
   const updateExtraction = (R, dt) => {
-    const P = R.player;
+    const P = R.player; R.inPort = Math.max(0, (R.inPort || 0) - dt);
     if (R.state !== 'play' || P.dead) return;
     for (const x of R.extracts) {
       if (!x.active) continue;
       const inside = U.d2(x.x, x.y, P.x, P.y) < SA.CFG.EXTRACT_R ** 2;
       if (inside) {
+        R.inPort = 0.2;
         const before = Math.floor(x.prog);
         x.prog += dt / (1 - Math.min(0.6, C().pv(R.player, 'exitacc')));
         if (Math.floor(x.prog) !== before) SA.Audio.sfx('beep');
@@ -818,7 +836,10 @@ SA.Raid = (() => {
     if (R.range) { SA.Main.leaveRange(); return; }   // 연습장은 정산 없이 격납고로
     const isCap = (it) => SA.ITEMS[it.id].kind === 'capsule';
     const brought = (ok ? [...R.cargo.items, ...R.secure.items] : R.secure.items.slice()).filter(it => !isCap(it));
-    const lost = ok ? [] : R.cargo.items.filter(it => !isCap(it));
+    let lost = ok ? [] : R.cargo.items.filter(it => !isCap(it));
+    if (!ok && lost.length && C().pm(R.player, 'p_vault') && SA.Grid.value(R.cargo) >= 2000) {   // 행성 금고 장갑: 가장 비싼 화물 1개를 지킨다
+      const keep = lost.slice().sort((a, b) => SA.itemVal(b) - SA.itemVal(a))[0]; lost = lost.filter(x => x !== keep); brought.push(keep);
+    }
     // 구조 캡슐: 탈출해야 확정. 격추되면 잃고 신호가 다음 출격에 다시 뜬다.
     const rescuedMsgs = [], caps = [...R.cargo.items, ...R.secure.items].filter(isCap);
     if (R.ravenFled && prof.raven.stage < 1) prof.raven.stage = 1;

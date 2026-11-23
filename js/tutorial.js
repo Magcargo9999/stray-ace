@@ -12,8 +12,8 @@ SA.Tutorial = (() => {
     const mk = (id, lv = 0, mod = null) => { const p = SA.Save.newPart(id); p.lv = lv; if (mod) p.mod = mod; p.max = p.dur = SA.LV_MAX[lv]; parts.push(p); return p.uid; };
     const tp = {
       ship: 'ace', pilot: 'kai', parts, stash: SA.Grid.make(1, 1), bring: {}, recipes: [], credits: 0,
-      loadouts: { ace: { main: mk('lance', 2, 'm_pierce'), main2: null, sub: [mk('hturret', 1, 's_dbl'), mk('hturret', 1, 's_dbl')],   // 양쪽 날개 포 2문
-        act: [mk('orbital', 1, 'a_o10'), mk('timestop')], pas: [mk('barrier', 2), mk('sensor'), mk('cooler', 1)], obs: null, cell: null } },
+      loadouts: { ace: { main: mk('lance', 1), main2: null, sub: [mk('hturret', 1), mk('hturret', 1)],   // 양쪽 날개 포 2문
+        act: [mk('orbital', 1), mk('timestop')], pas: [mk('barrier', 1), mk('sensor'), mk('cooler', 1)], obs: null, cell: null } },
     };
     return SA.Raid.start(tp, { tut: true });
   };

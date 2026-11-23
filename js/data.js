@@ -174,12 +174,12 @@ SA.RECIPES = {
 // ── 등급 · 행성/은하 강화 · 개조 · 각성 ──
 SA.TIERS = ['일반', '강화', '행성', '은하'];
 SA.TIER_COL = { 일반: '#9fb3c8', 강화: '#5dffb0', 행성: '#ffd166', 은하: '#c08bff' };
-SA.LV_MUL = [1, 1.3, 1.6];      // 주 스탯·패시브 효과 배율 (기준 / 행성 / 은하)
+SA.LV_MUL = [1, 1.3, 1.3];      // 주 스탯·패시브 효과 배율 (기준 / 행성). 은하는 별도 부품 (2번 칸은 옛 세이브 호환)
 // 액티브 범위·지속 배율 (행성 +15%, 은하 +30%) — 쿨타임 단축은 LV_MUL로 따로 적용 (임시)
-SA.LV_RANGE = [1, 1.15, 1.3];
-SA.LV_MAX = [100, 120, 150];    // 최대 내구도
-SA.LV_VAL = [1, 2, 3.5];        // 가치 배율
-SA.partTier = (p) => p.lv === 2 ? '은하' : p.lv === 1 ? '행성' : SA.PARTS[p.id].tier;
+SA.LV_RANGE = [1, 1.15, 1.15];
+SA.LV_MAX = [100, 120, 120];    // 최대 내구도
+SA.LV_VAL = [1, 2, 2];        // 가치 배율
+SA.partTier = (p) => p.lv ? '행성' : SA.PARTS[p.id].tier;
 SA.itemVal = (it) => Math.round(SA.ITEMS[it.id].val * SA.LV_VAL[it.lv || 0]);   // 화물 아이템 가치 (행성급 부품 완성품 포함)
 SA.partVal = (p) => Math.round(SA.PARTS[p.id].val * SA.LV_VAL[p.lv || 0]);
 SA.canUp = (id) => { const d = SA.PARTS[id]; return !!d && !d.noUp; };
@@ -243,6 +243,49 @@ SA.MODS = {
 };
 SA.modsFor = (id) => { const d = SA.PARTS[id]; if (!d || !['main', 'sub', 'act'].includes(d.slot)) return []; return Object.keys(SA.MODS).filter(k => SA.MODS[k].slot === d.slot && (!SA.MODS[k].only || SA.MODS[k].only.includes(id))); };
 SA.randMod = (id) => { const l = SA.modsFor(id); return l.length ? l[Math.floor(Math.random() * l.length)] : null; };
+// 행성 전용 (패시브·관측): 행성으로 올리면 붙는다 (임시)
+Object.assign(SA.MODS, {
+  p_magnet: { slot: 'pas', only: ['magnet'], name: '흡수 공명', desc: '아이템을 흡수할 때마다 스침 스택 +1.' },
+  p_cool:   { slot: 'pas', only: ['cooler'], name: '급속 교체', desc: '동력원 교체 시간 절반, 교체 직후 2초간 연사 +30%.' },
+  p_plate:  { slot: 'pas', only: ['plating'], name: '장판 차단', desc: '침식 장판 위에서 피해를 받지 않는다.' },
+  p_engine: { slot: 'pas', only: ['engine2'], name: '잔상 추진', desc: '스칠 때마다 1초간 이동 속도 +20%.' },
+  p_exit:   { slot: 'pas', only: ['exitacc'], name: '포트 방벽', desc: '귀환 포트 안에서 받는 피해 -50%.' },
+  p_crush:  { slot: 'pas', only: ['shockplate'], name: '근접 분쇄', desc: '가까운 적(70)에게 피해 2배.' },
+  p_scan:   { slot: 'obs', only: ['obs1'], name: '심우주 추적', desc: '보스·네임드가 미니맵에 항상 보인다.' },
+  p_crit:   { slot: 'pas', only: ['sensor'], name: '약점 조준', desc: '주무기 탄이 10% 확률로 피해 2배.' },
+  p_bar:    { slot: 'pas', only: ['barrier'], name: '과충전', desc: '보호막이 가득 찬 채 맞으면 주변 적 탄을 지운다.' },
+  p_ctr:    { slot: 'pas', only: ['counter'], name: '역습', desc: '반격이 발동하면 주변 적이 1초 기절한다.' },
+  p_gzkeep: { slot: 'pas', only: ['grazeamp'], name: '스택 보존', desc: '맞아도 스침 스택이 줄지 않는다 (5초에 한 번).' },
+  p_flow:   { slot: 'pas', only: ['grazeflow'], name: '에너지 환류', desc: '5번 스칠 때마다 동력원 에너지 +3%.' },
+  p_heart:  { slot: 'pas', only: ['redheart'], name: '불꽃 질주', desc: '체력 50% 이하에서 이동 속도 +15%.' },
+  p_vault:  { slot: 'pas', only: ['vault'], name: '금고 요새', desc: '화물 가치가 ₵2000 이상이면 격추돼도 가장 비싼 화물 1개를 지킨다.' },
+  p_defl:   { slot: 'pas', only: ['deflect'], name: '역편향', desc: '스친 탄의 10%가 가까운 적에게 되돌아간다.' },
+  p_exec:   { slot: 'pas', only: ['execute'], name: '처형 연쇄', desc: '기절한 적을 처치하면 주변 적이 0.6초 기절한다.' },
+  p_slip:   { slot: 'pas', only: ['raven'], name: '슬립스트림', desc: '스칠 때마다 파일럿 기술 쿨타임 -0.1초.' },
+  p_reso:   { slot: 'pas', only: ['resonator'], name: '침식 동조', desc: '침식 3단계 이상에서 체력 초당 1 회복.' },
+});
+// 행성 부품: 이름 + 전용 개조 (임시). 행성 설계도가 있어야 올린다
+SA.PLANET = {
+  pulse: ['쌍열 펄스건', 'm_twin'], scatter: ['파편 산탄포', 'm_frag'], lance: ['절단 레이저', 'm_cut'],
+  mg: ['공명 기관포', 's_graze'], mine: ['기뢰 투하기', 's_big'], flamer: ['소각 포탑', 's_burn'],
+  missile: ['탄막 미사일 포드', 'a_m10'], purge: ['회수 펄스', 'a_conv'], shield: ['반사 방패', 'a_refl'], emp: ['원형 EMP', 'a_round'], harpoon: ['연쇄 작살', 'a_chain'], dump: ['비상 점화기', 'a_free'],
+  magnet: ['인력 수집기', 'p_magnet'], cooler: ['극저온 냉각기', 'p_cool'], plating: ['침식 차단막', 'p_plate'], engine2: ['잔상 엔진', 'p_engine'], exitacc: ['긴급 귀환기', 'p_exit'], shockplate: ['분쇄 장갑', 'p_crush'], obs1: ['심우주 관측기', 'p_scan'],
+  sniper: ['관통 저격총', 'm_spierce'], glass: ['강화유리 대포', 'm_tough'], beam: ['굵은 광선포', 'm_thick'], swarm: ['6연 군집 미사일', 'm_more'],
+  drone: ['쌍둥이 드론', 's_two'], sdrone: ['광역 방패 드론', 's_wide'], intercept: ['반격 요격기', 's_ret'], hturret: ['2연발 유도탄 포탑', 's_dbl'], chain: ['연쇄 번개', 's_jump'],
+  cannon: ['급속 충전 캐논', 'a_half'], orbital: ['집중 궤도 폭격', 'a_o10'], reflect: ['유도 반사막', 'a_home'], gravity: ['압착 우물', 'a_gstun'], overdrive: ['안정화 코어', 'a_od'], discharge: ['관통 방전기', 'a_dpierce'], timestop: ['장기 정지장', 'a_t4'],
+  sensor: ['정밀 센서', 'p_crit'], barrier: ['과충전 베리어', 'p_bar'], counter: ['역습 장치', 'p_ctr'], grazeamp: ['공명 증폭기', 'p_gzkeep'], grazeflow: ['에너지 환류기', 'p_flow'], redheart: ['불꽃 심장', 'p_heart'],
+  vault: ['금고 요새', 'p_vault'], deflect: ['역편향기', 'p_defl'], execute: ['처형 연쇄 회로', 'p_exec'], raven: ['슬립스트림 추진기', 'p_slip'], resonator: ['침식 동조기', 'p_reso'],
+};
+for (const id in SA.PARTS) if (!SA.PLANET[id]) SA.PARTS[id].noUp = true;   // 행성 표가 없는 부품은 올리지 않는다
+SA.planetMod = (id) => (SA.PLANET[id] || [])[1] || null;
+// 개조 칩: 공용 개조 (부품당 1칸, 빼면 돌려받는다)
+SA.CHIPS = Object.keys(SA.MODS).filter(k => !SA.MODS[k].only);
+SA.chipsFor = (id) => { const d = SA.PARTS[id]; return d ? SA.CHIPS.filter(k => SA.MODS[k].slot === d.slot) : []; };
+SA.randChip = (id) => { const l = SA.chipsFor(id); return l.length ? l[Math.floor(Math.random() * l.length)] : null; };
+// 부품에 붙은 개조 전부: 칩 + (행성이면) 전용
+SA.modsOf = (p) => { if (!p) return []; const o = []; if (p.mod) o.push(p.mod); if (p.lv && SA.planetMod(p.id)) o.push(SA.planetMod(p.id)); return o; };
+SA.SLOT_NAME = { main: '주무기', sub: '서브', act: '액티브', pas: '패시브', obs: '관측' };
+for (const k of SA.CHIPS) { const m = SA.MODS[k]; SA.ITEMS['mc_' + k] = { name: '개조 칩: ' + m.name, w: 1, h: 1, val: 80, kind: 'mchip', mod: k, color: '#7fd1ff', desc: `${SA.SLOT_NAME[m.slot]} 부품에 끼운다 (작업대 → 부품). ${m.desc}` }; }
 // 은하 각성: 넣은 보스 재료에 따라 하나. 2·3막 보스는 규칙만 여기에 추가
 SA.AWAKEN = {
   raven:  { name: '레이븐 각성', mat: 'chip', desc: '스칠 때마다 이 부품 위력 +3% (최대 +30%, 맞으면 초기화).' },
@@ -252,8 +295,7 @@ SA.AWAKEN = {
 SA.UPGRADE = {
   cost: (p, awk) => {
     const d = SA.PARTS[p.id], um = (d.slot === 'act' || d.slot === 'sub') ? 'fcore' : 'alloy';
-    if (!p.lv) return { mats: { [um]: 1, qcircuit: 1 }, cr: d.val };   // 첫 행성 업그레이드 문턱을 낮춤 (임시)
-    return { mats: Object.assign({ qcircuit: 2, crystal: 3 }, awk ? { [SA.AWAKEN[awk].mat]: 1 } : {}), cr: d.val * 2 };
+    return { mats: { [um]: 1, qcircuit: 1 }, cr: d.val };   // 행성: 행성 설계도 + 합금/융합 코어 1 + 양자 회로 1 + 부품값 (임시)
   },
   modCost: (p) => { const d = SA.PARTS[p.id]; return { mats: { [(d.slot === 'act' || d.slot === 'sub') ? 'fcore' : 'alloy']: 1 }, cr: Math.round(d.val * 0.5) }; },
 };
@@ -265,18 +307,17 @@ SA.partFullDesc = (p) => {
   if (lv && d.slot === 'sub') s += ` <span class="g-up">[${SA.partTier(p)}] 위력 +${Math.round((m - 1) * 100)}% (피해, 피해가 없으면 처리 속도)</span>`;
   if (lv && d.slot === 'act') s += ` <span class="g-up">[${SA.partTier(p)}] 쿨타임 -${Math.round((1 - 1 / m) * 100)}% · 범위·지속 +${Math.round((SA.LV_RANGE[lv] - 1) * 100)}%</span>`;
   if (lv && d.slot === 'pas') s += ` <span class="g-up">[${SA.partTier(p)}] 효과 수치 +${Math.round((m - 1) * 100)}% (위 수치에 반영)</span>`;
-  if (lv && d.slot === 'obs') s += ` <span class="g-up">[${SA.partTier(p)}] 시야 ${lv + 1}단계${lv === 2 ? ' · 보스·사냥꾼 항상 표시' : ''}</span>`;
-  if (p.mod && SA.MODS[p.mod]) s += `<br><span class="g-mod">개조 · ${SA.MODS[p.mod].name}: ${SA.MODS[p.mod].desc}</span>`;
-  if (p.awk && SA.AWAKEN[p.awk]) s += `<br><span class="g-awk">${SA.AWAKEN[p.awk].name}: ${SA.AWAKEN[p.awk].desc}</span>`;
+  if (lv && d.slot === 'obs') s += ` <span class="g-up">[${SA.partTier(p)}] 시야 ${lv + 1}단계</span>`;
+  const pm = lv && SA.MODS[SA.planetMod(p.id)];
+  if (pm) s += `<br><span class="g-up">전용 · ${pm.name}: ${pm.desc}</span>`;
+  if (p.mod && SA.MODS[p.mod]) s += `<br><span class="g-mod">칩 · ${SA.MODS[p.mod].name}: ${SA.MODS[p.mod].desc}</span>`;
   return s;
 };
 SA.partHtml = (p) => `<span style="color:${SA.TIER_COL[SA.partTier(p)]}">${SA.partName(p)}</span>`;
 // 부품 이름 (등급 표시는 색으로, 개조·각성은 뒤에)
 SA.partName = (p, short) => {
-  const d = SA.PARTS[p.id]; let s = d.name;
-  if (p.lv) s += p.lv === 2 ? ' Ⅲ' : ' Ⅱ';
+  const d = SA.PARTS[p.id]; let s = p.lv && SA.PLANET[p.id] ? SA.PLANET[p.id][0] : d.name;
   if (!short && p.mod && SA.MODS[p.mod]) s += ' · ' + SA.MODS[p.mod].name;
-  if (!short && p.awk && SA.AWAKEN[p.awk]) s += ' · ' + SA.AWAKEN[p.awk].name;
   return s;
 };
 // 에너지·사격 (임시). eps = 계속 쏠 때 초당 에너지 (펄스건 1.0 기준, 무기 성향별)
@@ -300,13 +341,14 @@ SA.CODES = { box1: { name: '일반 상자 코드', uses: 5, price: 150 }, box2: 
 // 상자: 일반(부수기) / 잠긴 상자(해독기+상자 코드, 머물러 열기) / 보안상자(해독기만, 해킹 5초 버티기) (임시)
 SA.BOX = { openHold: 1.5, hackHold: 5, r: 46 };
 SA.LOOT_LOCKED = {
-  1: [['bp:일반', .5], ['bp:강화', .15], ['alloy', .5], ['cell1', .4], ['prec', .6], ['goldchip', .35], ['part:일반', .12], ['key_box1', .08]],
-  2: [['bp:강화', .5], ['alloy', 1], ['fcore', .5], ['qcircuit', .2], ['cell2', .35], ['goldchip', .6], ['part:강화', .15], ['key_box2', .06]],
-  3: [['bp:강화', .6], ['qcircuit', 1], ['alloy', .6], ['cell3', .3], ['part:행성', .25]],
+  1: [['bp:일반', .5], ['bp:강화', .15], ['alloy', .5], ['cell1', .4], ['prec', .6], ['goldchip', .35], ['part:일반', .12], ['mchip', .2], ['key_box1', .08]],
+  2: [['bp:강화', .5], ['alloy', 1], ['fcore', .5], ['qcircuit', .2], ['pbp', .15], ['cell2', .35], ['goldchip', .6], ['part:강화', .15], ['key_box2', .06]],
+  3: [['bp:강화', .6], ['pbp', .4], ['qcircuit', 1], ['alloy', .6], ['cell3', .3], ['part:행성', .25]],
 };
-SA.LOOT_SECURE = [['part:강화', .5], ['part:행성', .25], ['bp:강화', .6], ['qcircuit', .5], ['alloy', .8], ['fcore', .4], ['key_zone', .1]];
+SA.LOOT_SECURE = [['part:강화', .5], ['part:행성', .25], ['bp:강화', .6], ['pbp', .3], ['qcircuit', .5], ['alloy', .8], ['fcore', .4], ['key_zone', .1]];
 // 부품 완성품 필드 드랍: 화물칸 크기 (주무기 3×1, 그 외 2×1), 내구도 40~80 무작위. 적 격추 확률 (임시)
 SA.PART_DROP = { size: { main: [3, 1], sub: [2, 1], act: [2, 1], pas: [2, 1], obs: [2, 1] }, dur: [40, 80],
+  chip: 0.3, pbp: { frigate: 0.06, boss: 0.5 },   // 드랍 부품에 칩이 끼워져 있을 확률 · 행성 설계도 (임시)
   chance: { fighter: 0.01, turret: 0.015, frigate: 0.03, boss: 0.25 }, tierRoll: [['행성', .05], ['강화', .25], ['일반', 1]] };
 // 설계도 확률: 일반은 그대로, 강화·행성은 낮추고 네임드·보스·대형은 높인다
 SA.BP_MUL = { normal: 0.8, frigate: 1.8, boss: 2.5 };
@@ -339,7 +381,8 @@ SA.BENCH = {
   name: ['', '기본 작업대', '정비 작업대', '정밀 작업대'],
   give: { 1: SA.START_RECIPES, 2: Object.keys(SA.RECIPES).filter(id => SA.PARTS[id] && SA.PARTS[id].tier === '일반'),
           3: ['beam', 'swarm', 'drone', 'intercept', 'cannon', 'overdrive', 'barrier', 'grazeamp'] },
-  opens: { 1: '일반 부품 기본기', 2: '일반 부품 설계도 전부 · 강화 등급 제작 · 행성 강화 · 강화 설계도 1장', 3: '강화 설계도 8장 · 은하 강화' },
+  opens: { 1: '일반 부품 기본기', 2: '일반 부품 설계도 전부 · 강화 등급 제작 · 행성 올리기 · 강화 설계도 1장 · 행성 설계도 고르기 1장', 3: '강화 설계도 8장 · 행성 설계도 고르기 1장 · 은하 제작 (준비 중)' },
+  pick: { 2: 1, 3: 1 },   // 행성 설계도 고르기 (임시)
   bonusBp: { 2: 1 },
   upRoll: 0.25,                              // 일반 설계도를 다 알면: 이 확률로 모르는 강화 설계도, 아니면 아래 재료
   fallback: ['alloy', 'fcore', 'qcircuit'],
@@ -354,7 +397,7 @@ for (const id in SA.PARTS) {
   SA.ITEMS['pt_' + id] = { name: d.name, w: sz[0], h: sz[1], val: Math.round(d.val * 0.6), kind: 'part', tier: d.tier, part: id, img: d.img, color: SA.TIER_COL[d.tier], desc: `[부품] ${SA.partDesc(id, 0)} 탈출하면 부품함으로 들어간다.` };
 }
 // 아이템 분류 이름
-SA.KIND_NAME = { mat: '재료', umat: '상위 재료', cell: '동력원', use: '소모품', key: '해독키', lore: '정보', data: '정보', bp: '설계도', capsule: '구조', part: '부품', ticket: '고용권' };
+SA.KIND_NAME = { mchip: '개조 칩', pbp: '행성 설계도', mat: '재료', umat: '상위 재료', cell: '동력원', use: '소모품', key: '해독키', lore: '정보', data: '정보', bp: '설계도', capsule: '구조', part: '부품', ticket: '고용권' };
 // 강화·행성 레시피에 상위 재료 추가 (한 번만)
 for (const id in SA.RECIPES) Object.assign(SA.RECIPES[id].mats, SA.UMAT_ADD(id));
 
@@ -508,6 +551,7 @@ SA.CORRODE_SPAWN = [null, { every: 18, n: 1, max: 3 }, { every: 10, n: 1, max: 5
 
 SA.SHOP = {
   consumables: [['canister', 150], ['repairkit', 120]],
+  chips: 300,   // 기본 개조 칩 가격 (오스 단말, 임시)
   delivery: { every: 20 * 60 * 1000, mul: 2.5, kinds: 4, pool: ['scrap', 'wire', 'core', 'engine', 'goldchip', 'prec'], rare: [['crystal', .2], ['ace', .05]] },
 };
 
@@ -517,3 +561,6 @@ SA.MAPS = {
   grave: { name: '함대 묘지', act: 3, locked: true },
   abyss: { name: '심연 균열', act: 4, locked: true },
 };
+
+// 행성 설계도: 부품마다 1장. 등록하면 그 부품을 행성으로 올릴 수 있다
+for (const id in SA.PLANET) SA.ITEMS['pbp_' + id] = { name: '행성 설계도: ' + SA.PARTS[id].name, w: 1, h: 1, val: 250, kind: 'pbp', part: id, color: '#ffd166', desc: `등록하면 ${SA.PARTS[id].name}을(를) 「${SA.PLANET[id][0]}」(으)로 올릴 수 있다. 이미 알면 판매.` };

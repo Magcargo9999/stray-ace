@@ -139,6 +139,9 @@ SA.Hangar = (() => {
       if (d.kind === 'bp' && !P().recipes.includes(d.recipe)) {
         P().recipes.push(d.recipe); (P().newRecipes = P().newRecipes || []).push(d.recipe); P().bpMiss = 0; SA.Grid.remove(st, it.uid);
         toast(`설계도 등록: ${SA.PARTS[d.recipe].name} — 작업대에서 제작 가능`, '#ffd166');
+      } else if (d.kind === 'pbp' && SA.Bench.grantPlanet(d.part)) {
+        SA.Grid.remove(st, it.uid);
+        toast(`행성 설계도 등록: ${SA.PLANET[d.part][0]} — 작업대 → 행성`, SA.TIER_COL['행성']);
       }
     }
     save();
@@ -390,7 +393,7 @@ SA.Hangar = (() => {
     right.appendChild(h('div', 'grow')); right.appendChild(jb);
     body.append(left, right);
   };
-  const isJunk = (it) => { const d = SA.ITEMS[it.id]; if (SA.Decode.srcOf(it.id) || it.id === 'bb_reward') return false; if (d.kind === 'bp') return P().recipes.includes(d.recipe); return ['mat', 'lore', 'data'].includes(d.kind) && !neededFor(it.id); };   // 이미 아는 설계도 · 안 쓰는 기본 재료 · 정보
+  const isJunk = (it) => { const d = SA.ITEMS[it.id]; if (SA.Decode.srcOf(it.id) || it.id === 'bb_reward') return false; if (d.kind === 'bp') return P().recipes.includes(d.recipe); if (d.kind === 'pbp') return SA.Bench.knowsPlanet(d.part); return ['mat', 'lore', 'data'].includes(d.kind) && !neededFor(it.id); };   // 이미 아는 설계도 · 안 쓰는 기본 재료 · 정보
   const itemActs = (it) => {
     const prof = P(), d = SA.ITEMS[it.id], grid = prof.stash;
     if (d.kind === 'ticket') return [['고용하기', () => hireRaven(it, grid)]];
@@ -445,10 +448,12 @@ SA.Hangar = (() => {
   const bench = (body) => {
     const prof = P(), top = h('div', 'bn-top');
     SA.Contracts.sync();
-    for (const [k, nm] of [['parts', '부품'], ['craft', '제작'], ['up', '강화'], ['lv', `작업대 ${SA.Bench.lv()}단계`]]) {
+    for (const [k, nm] of [['parts', '부품'], ['craft', '제작'], ['up', '행성'], ['lv', `작업대 ${SA.Bench.lv()}단계`]]) {
       const b = h('button', 'tabb' + (benchTab === k ? ' on' : '') + (k === 'lv' && benchClaimable() ? ' alert' : ''), nm);
-      if (k === 'up') tip(b, '부품을 행성·은하 등급으로 키운다');
-      if (k === 'lv') tip(b, '테오의 의뢰로 작업대를 키우면 설계도와 강화가 열린다');
+      if (k === 'up') tip(b, '부품을 행성으로 올린다 (행성 설계도 필요)');
+      if (k === 'up' && (prof.newRecipes || []).some(r => r.startsWith('pl:'))) b.classList.add('alert');
+      if (k === 'lv') tip(b, '테오의 의뢰로 작업대를 키우면 설계도와 행성이 열린다');
+      if (k === 'lv' && prof.pbpPick > 0) b.classList.add('alert');
       b.onclick = () => { benchTab = k; render(); }; top.appendChild(b);
     }
     top.appendChild(h('div', 'grow'));
@@ -491,10 +496,10 @@ SA.Hangar = (() => {
       right.appendChild(h('div', 'small desc', SA.partFullDesc(p)));
       const acts = h('div', 'acts');
       if (p.dur < p.max) { const b = h('button', 'btn small', `수리 ₵${repairCost(p)}`); tip(b, '최대 내구도가 3 준다'); b.onclick = () => { if (prof.credits < repairCost(p)) { SA.Audio.sfx('deny'); toast('크레딧이 부족하다.', '#ffb3b3'); return; } prof.credits -= repairCost(p); repair(p); SA.Audio.sfx('repair'); save(); render(); }; acts.appendChild(b); }
-      if (SA.canUp(p.id) && (p.lv || 0) < 2) { const to = (p.lv || 0) + 1, b = h('button', 'btn small up' + (SA.Bench.canUp(to) ? '' : ' dis'), `강화 → ${to === 2 ? '은하' : '행성'}`); tip(b, (to === 2 ? '주 스탯 +60% + 보스 각성 1개' : '주 스탯 +30% + 개조 1개') + (SA.Bench.canUp(to) ? '' : `<br><span class="bad">작업대 ${SA.Bench.needFor(to)}단계가 필요하다</span>`)); b.onclick = (e) => upMenu(e, p, 'up'); acts.appendChild(b); }
-      if (p.lv && SA.modsFor(p.id).length > 1) { const b = h('button', 'btn small', '개조 교체'); b.onclick = (e) => upMenu(e, p, 'mod'); acts.appendChild(b); }
+      if (SA.canUp(p.id) && !p.lv) { const [ok, why] = planetCheck(p), b = h('button', 'btn small up' + (ok ? '' : ' dis'), `행성으로 → ${SA.PLANET[p.id][0]}`); tip(b, `주 스탯 +30% · 전용 개조 「${SA.MODS[SA.planetMod(p.id)].name}」: ${SA.MODS[SA.planetMod(p.id)].desc}${ok ? '' : `<br><span class="bad">${why}</span>`}`); b.onclick = (e) => upMenu(e, p); acts.appendChild(b); }
+      if (SA.chipsFor(p.id).length) { const b = h('button', 'btn small', p.mod ? '칩 교체' : '칩 끼우기'); tip(b, '개조 칩 (부품당 1칸). 빼면 창고로 돌아온다'); b.onclick = (e) => chipMenu(e, p); acts.appendChild(b); }
       if (!equipped.has(p.uid)) { const b = h('button', 'btn small', '분해'); tip(b, salvageText(p)); b.onclick = () => salvage(p); acts.appendChild(b); }
-      if (SA.canUp(p.id) && (p.lv || 0) < 2 && !SA.Bench.canUp((p.lv || 0) + 1)) acts.appendChild(h('div', 'small dim', `강화는 작업대 ${SA.Bench.needFor((p.lv || 0) + 1)}단계부터 (작업대 단계 탭)`));
+      if (SA.canUp(p.id) && !p.lv) acts.appendChild(h('div', 'small dim', SA.Bench.canUp(1) ? (SA.Bench.knowsPlanet(p.id) ? '행성 설계도 있음' : '행성 설계도 없음 — 필드·도리 배달·수집가') : '행성은 작업대 2단계부터'));
       right.appendChild(acts);
     }
     wrap.append(left, right);
@@ -531,23 +536,21 @@ SA.Hangar = (() => {
     }
     wrap.appendChild(list);
   };
-  // [강화] 키울 수 있는 부품 목록 → 누르면 기존 강화 메뉴
+  // [행성] 올릴 수 있는 부품 목록 · 행성 설계도 현황
   const benchUp = (wrap) => {
     const prof = P(), list = h('div', 'bn-list'), have = (k) => SA.Grid.count(prof.stash, k);
     const equipped = new Set(); for (const s in prof.loadouts) SA.loUids(prof.loadouts[s]).forEach(u => equipped.add(u));
-    const L = SA.Bench.lv();
-    list.appendChild(h('div', 'small pad dim', `행성 강화: 작업대 2단계 ${L >= 2 ? '<span class="ok">✓</span>' : '(잠김)'} · 은하 강화: 작업대 3단계 ${L >= 3 ? '<span class="ok">✓</span>' : '(잠김)'} — 지금 ${L}단계`));
-    const ps = prof.parts.filter(p => SA.canUp(p.id) && (benchKind === 'all' || SA.PARTS[p.id].slot === benchKind) && ((p.lv || 0) < 2 || SA.modsFor(p.id).length > 1));
-    const row0 = (p) => { const to = (p.lv || 0) + 1; return to <= 2 && SA.Bench.canUp(to) ? 0 : 1; };
-    ps.sort((a, b) => row0(a) - row0(b) || (b.lv || 0) - (a.lv || 0) || equipped.has(b.uid) - equipped.has(a.uid));
-    if (!ps.length) list.appendChild(h('div', 'dim small pad', '키울 수 있는 부품이 없다.'));
+    const nKnow = (prof.planetBp || []).length, nAll = Object.keys(SA.PLANET).length;
+    list.appendChild(h('div', 'small pad dim', `행성으로 올리기: 작업대 2단계 ${SA.Bench.canUp(1) ? '<span class="ok">✓</span>' : '(잠김)'} · 행성 설계도 ${nKnow}/${nAll} · 주 스탯 +30% + 부품마다 정해진 전용 개조`));
+    const ps = prof.parts.filter(p => SA.canUp(p.id) && !p.lv && (benchKind === 'all' || SA.PARTS[p.id].slot === benchKind));
+    const rk = (p) => planetCheck(p)[0] ? 0 : SA.Bench.knowsPlanet(p.id) ? 1 : 2;
+    ps.sort((a, b) => rk(a) - rk(b) || equipped.has(b.uid) - equipped.has(a.uid));
+    if (!ps.length) list.appendChild(h('div', 'dim small pad', '행성으로 올릴 부품이 없다.'));
     for (const p of ps) {
-      const to = (p.lv || 0) + 1, max = to > 2, okLv = max || SA.Bench.canUp(to), c = max ? null : SA.UPGRADE.cost(p);
-      const nextT = to === 2 ? '은하' : '행성';
-      const row = h('div', 'crow2' + (okLv ? '' : ' lock'), `${partIcon(p)}<span class="nm">${SA.partHtml(p)}${equipped.has(p.uid) ? ' <span class="dim small">장착</span>' : ''}<br><span class="small"><span class="tier t-${SA.partTier(p)}">${SA.partTier(p)}</span>${max ? ' · 최대' : ` → <span style="color:${SA.TIER_COL[nextT]}">${nextT}</span>`}</span></span><span class="mats">${max ? '' : okLv ? costHtml(c, have) + (to === 2 ? ' <span class="dim small">+ 각성 재료</span>' : '') : `<span class="bad small">작업대 ${SA.Bench.needFor(to)}단계 필요</span>`}</span>`);
-      row.onmouseenter = (e) => SA.UI.showTipHtml(e, partTipHtml(p)); row.onmouseleave = SA.UI.hideTip;
-      if (p.lv && SA.modsFor(p.id).length > 1) { const b = h('button', 'btn small', '개조 교체'); b.onclick = (e) => upMenu(e, p, 'mod'); row.appendChild(b); }
-      if (!max) { const b = h('button', 'btn small up' + (okLv ? '' : ' dis'), '강화'); b.onclick = (e) => upMenu(e, p, 'up'); row.appendChild(b); }
+      const [ok, why, c] = planetCheck(p), know = SA.Bench.knowsPlanet(p.id), nw = (prof.newRecipes || []).includes('pl:' + p.id), pm = SA.MODS[SA.planetMod(p.id)];
+      const row = h('div', 'crow2' + (know && SA.Bench.canUp(1) ? '' : ' lock') + (nw ? ' isnew' : ''), `${nw ? '<span class="newtag">NEW</span>' : ''}${partIcon(p)}<span class="nm">${SA.partHtml(p)}${equipped.has(p.uid) ? ' <span class="dim small">장착</span>' : ''}<br><span class="small">→ <span style="color:${SA.TIER_COL['행성']}">${SA.PLANET[p.id][0]}</span></span></span><span class="mats">${know ? costHtml(c, have) : `<span class="small ${SA.Bench.canUp(1) ? 'bad' : 'dim'}">${why}</span>`}</span>`);
+      row.onmouseenter = (e) => SA.UI.showTipHtml(e, `${partTipHtml(p)}<br><span style="color:${SA.TIER_COL['행성']}">→ ${SA.PLANET[p.id][0]}</span>: 주 스탯 +30% · 전용 「${pm.name}」 ${pm.desc}`); row.onmouseleave = SA.UI.hideTip;
+      const b = h('button', 'btn small up' + (ok ? '' : ' dis'), '행성으로'); b.onclick = (e) => upMenu(e, p); row.appendChild(b);
       list.appendChild(row);
     }
     wrap.appendChild(list);
@@ -555,6 +558,21 @@ SA.Hangar = (() => {
   // [작업대 N단계] 단계 카드 3장 · 다음 단계는 테오의 납품 의뢰
   const benchLvTab = (wrap) => {
     const prof = P(), L = SA.Bench.lv(), K = SA.Contracts, have = (k) => SA.Grid.count(prof.stash, k), box = h('div', 'bn-lv');
+    if (prof.pbpPick > 0) {   // 행성 설계도 고르기
+      const eq = new Set(); for (const s in prof.loadouts) for (const u of SA.loUids(prof.loadouts[s])) { const q = prof.parts.find(x => x.uid === u); if (q) eq.add(q.id); }
+      const own = new Set(prof.parts.map(q => q.id)), rk = (id) => eq.has(id) ? 0 : own.has(id) ? 1 : prof.recipes.includes(id) ? 2 : 3;
+      const ids = Object.keys(SA.PLANET).filter(id => !SA.Bench.knowsPlanet(id) && id !== 'raven' && rk(id) < 3).sort((a, b) => rk(a) - rk(b));
+      const pk = h('div', 'lvcard next', `<div class="hd"><b>행성 설계도 고르기</b><span class="chip">${prof.pbpPick}장 남음</span></div><div class="small dim">테오: "하나 골라요. 도면은 제가 복원해 둘게요." — 장착 중 → 가진 부품 → 아는 제작법 순</div>`);
+      const g = h('div', 'pkgrid');
+      for (const id of ids) {
+        const pm = SA.MODS[SA.planetMod(id)], d = SA.PARTS[id], b = h('button', 'pk', `${d.img ? `<img src="${d.img}">` : ico(KIND_IC[d.slot], '')}<span><b style="color:${SA.TIER_COL['행성']}">${SA.PLANET[id][0]}</b><br><span class="small dim">${d.name}${eq.has(id) ? ' · 장착 중' : own.has(id) ? ' · 보유' : ''}</span></span>`);
+        tip(b, `<b>${SA.PLANET[id][0]}</b> ← ${d.name}<br>전용 「${pm.name}」 ${pm.desc}`);
+        b.onclick = () => { if (prof.pbpPick <= 0) return; SA.Bench.grantPlanet(id); prof.pbpPick--; toast(`행성 설계도 등록: ${SA.PLANET[id][0]}`, SA.TIER_COL['행성']); SA.Audio.sfx('unlock'); save(); render(); hud(); };
+        g.appendChild(b);
+      }
+      if (!ids.length) g.appendChild(h('div', 'small dim', '고를 수 있는 행성 설계도가 없다.'));
+      pk.appendChild(g); box.appendChild(pk);
+    }
     const pname = (id) => (SA.PARTS[id] || {}).name || id;
     for (let n = 1; n <= 3; n++) {
       const st = n <= L ? 'done' : n === L + 1 ? 'next' : 'lock';
@@ -602,39 +620,46 @@ SA.Hangar = (() => {
   };
   const repairCost = (p) => Math.ceil((p.max - p.dur) * SA.partVal(p) / 250);
   // ── 행성·은하 강화 / 개조 교체 ──
-  const upMenu = (e, p, mode) => {
-    const prof = P(), have = (k) => SA.Grid.count(prof.stash, k);
-    const toLv = mode === 'mod' ? 1 : (p.lv || 0) + 1;
-    if (!SA.Bench.canUp(toLv)) { SA.Audio.sfx('deny'); toast(`작업대 ${SA.Bench.needFor(toLv)}단계가 필요하다 — 작업대 단계 탭에서 테오의 의뢰를 보자.`, '#ffb3b3'); return; }
-    const m = h('div', 'ctx wide');
-    const closeM = () => document.querySelectorAll('.ctx').forEach(x => x.remove());
-    const can = (c) => prof.credits >= c.cr && Object.keys(c.mats).every(k => have(k) >= c.mats[k]);
-    const costLine = (c) => matIcons(c.mats, have) + ` <span class="${prof.credits >= c.cr ? 'ok' : 'bad'}">₵${c.cr}</span>`;
-    const opt = (title, desc, c, fn) => {
-      const b = h('button', can(c) ? '' : 'dis', `<b>${title}</b><div class="small dim">${desc}</div><div class="small mats">${costLine(c)}</div>`);
+  // 행성으로 올리기: 그 부품의 행성 설계도 + 비용. 전용 개조는 정해져 있다
+  const planetCheck = (p) => {
+    const prof = P(), have = (k) => SA.Grid.count(prof.stash, k), c = SA.UPGRADE.cost(p);
+    if (!SA.canUp(p.id) || p.lv) return [false, '올릴 수 없다', c];
+    if (!SA.Bench.canUp(1)) return [false, `작업대 ${SA.Bench.needFor(1)}단계 필요`, c];
+    if (!SA.Bench.knowsPlanet(p.id)) return [false, '행성 설계도 필요', c];
+    if (prof.credits < c.cr || !Object.keys(c.mats).every(k => have(k) >= c.mats[k])) return [false, '재료·크레딧 부족', c];
+    return [true, '', c];
+  };
+  const upMenu = (e, p) => {
+    const [ok, why, c] = planetCheck(p);
+    if (!ok) { SA.Audio.sfx('deny'); toast(why === '행성 설계도 필요' ? `「${SA.PLANET[p.id][0]}」 행성 설계도가 필요하다 — 필드·도리 배달·수집가에서 구한다.` : why.includes('작업대') ? `${why} — 작업대 단계 탭에서 테오의 의뢰를 보자.` : why, '#ffb3b3'); return; }
+    const prof = P();
+    SA.Grid.takeMats(prof.stash, c.mats); prof.credits -= c.cr;
+    const lost = Math.max(0, SA.LV_MAX[0] - p.max);   // 수리로 깎인 최대 내구도는 유지
+    p.lv = 1; p.max = Math.max(40, SA.LV_MAX[1] - lost); p.dur = p.max;
+    toast(`행성으로: ${SA.partName(p, true)} — 전용 개조 「${SA.MODS[SA.planetMod(p.id)].name}」`, SA.TIER_COL['행성']); SA.Quest.event('craft');
+    SA.Audio.sfx('buy'); save(); render(); hud();
+  };
+  // 개조 칩: 창고의 칩을 끼운다 (원래 칩은 창고로) · 빼면 창고로
+  const chipMenu = (e, p) => {
+    const prof = P(), opts = SA.chipsFor(p.id).filter(k => SA.Grid.count(prof.stash, 'mc_' + k) > 0);
+    const m = h('div', 'ctx wide'), closeM = () => document.querySelectorAll('.ctx').forEach(x => x.remove());
+    m.appendChild(h('div', 'pad small', `${SA.partHtml(p)} — 개조 칩 (지금: ${p.mod ? SA.MODS[p.mod].name : '없음'})`));
+    if (!opts.length) m.appendChild(h('div', 'pad small dim', `창고에 ${SA.SLOT_NAME[SA.PARTS[p.id].slot]}용 칩이 없다. 오스의 단말에서 사거나 필드에서 줍는다.`));
+    for (const k of opts) {
+      if (k === p.mod) continue;
+      const b = h('button', '', `<b>${SA.MODS[k].name}</b> <span class="dim small">×${SA.Grid.count(prof.stash, 'mc_' + k)}</span><div class="small dim">${SA.MODS[k].desc}</div>`);
       b.onclick = () => {
-        if (!can(c)) { SA.Audio.sfx('deny'); toast('재료나 크레딧이 부족하다.', '#ffb3b3'); return; }
-        SA.Grid.takeMats(prof.stash, c.mats); prof.credits -= c.cr; fn(); closeM(); SA.Audio.sfx('buy'); save(); render();
+        const it = prof.stash.items.find(x => x.id === 'mc_' + k); if (!it) return;
+        SA.Grid.remove(prof.stash, it.uid);
+        if (p.mod && !SA.Grid.add(prof.stash, 'mc_' + p.mod)) { SA.Grid.add(prof.stash, 'mc_' + k); toast('창고에 빼낸 칩을 넣을 자리가 없다.', '#ffb3b3'); SA.Audio.sfx('deny'); return; }
+        p.mod = k; closeM(); toast(`칩 장착: ${SA.partName(p)}`, '#7fd1ff'); SA.Audio.sfx('equip'); save(); render();
       };
       m.appendChild(b);
-    };
-    const up = (lv, o) => {
-      const lost = Math.max(0, SA.LV_MAX[p.lv || 0] - p.max);   // 수리로 깎인 최대 내구도는 유지
-      p.lv = lv; Object.assign(p, o); p.max = Math.max(40, SA.LV_MAX[lv] - lost); p.dur = p.max;
-      toast(`강화 완료: ${SA.partName(p)}`, SA.TIER_COL[SA.partTier(p)]); SA.Quest.event('craft');
-    };
-    if (mode === 'mod') {
-      const c = SA.UPGRADE.modCost(p);
-      m.appendChild(h('div', 'pad small', `${SA.partHtml(p)} — 개조 교체 (지금: ${SA.MODS[p.mod] ? SA.MODS[p.mod].name : '없음'})`));
-      for (const k of SA.modsFor(p.id)) if (k !== p.mod) opt(SA.MODS[k].name + (SA.MODS[k].only ? ' <span class="g-mod">전용</span>' : ''), SA.MODS[k].desc, c, () => { p.mod = k; toast(`개조 교체: ${SA.partName(p)}`, '#ffd166'); });
-    } else if (!p.lv) {
-      const c = SA.UPGRADE.cost(p), mods = SA.modsFor(p.id);
-      m.appendChild(h('div', 'pad small', `${SA.partHtml(p)} → <span style="color:${SA.TIER_COL['행성']}">행성</span> · 주 스탯 +30%${mods.length ? ' + 개조 1개 (고른다)' : ''}`));
-      if (mods.length) for (const k of mods) opt('개조: ' + SA.MODS[k].name + (SA.MODS[k].only ? ' <span class="g-mod">전용</span>' : ''), SA.MODS[k].desc, c, () => up(1, { mod: k }));
-      else opt('행성으로 강화', SA.partDesc(p.id, 1), c, () => up(1, {}));
-    } else {
-      m.appendChild(h('div', 'pad small', `${SA.partHtml(p)} → <span style="color:${SA.TIER_COL['은하']}">은하</span> · 주 스탯 +60% + 보스 각성 1개`));
-      for (const k in SA.AWAKEN) { const A = SA.AWAKEN[k]; opt(`${A.name} <span class="dim">(${SA.ITEMS[A.mat].name})</span>`, A.desc, SA.UPGRADE.cost(p, k), () => up(2, { awk: k })); }
+    }
+    if (p.mod) {
+      const b = h('button', '', '<b>칩 빼기</b> <span class="small dim">창고로 돌아간다</span>');
+      b.onclick = () => { if (!SA.Grid.add(prof.stash, 'mc_' + p.mod)) { toast('창고에 자리가 없다.', '#ffb3b3'); SA.Audio.sfx('deny'); return; } p.mod = null; closeM(); SA.Audio.sfx('click'); save(); render(); };
+      m.appendChild(b);
     }
     m.style.left = Math.min(innerWidth - 340, e.clientX) + 'px'; m.style.top = Math.min(innerHeight - 360, e.clientY) + 'px';
     closeM(); document.body.appendChild(m);
@@ -666,6 +691,19 @@ SA.Hangar = (() => {
     const prof = P(), c = h('div', 'shop');
     for (const [id, price] of SA.SHOP.consumables) {
       const d = SA.ITEMS[id], r = h('div', 'srow', `<img src="${SA.Render.iconSrc(id)}"><span class="nm">${d.name}</span><span class="dim small">창고 ${SA.Grid.count(prof.stash, id)}</span>`);
+      tip(r, `<b>${d.name}</b><br><span class="desc">${d.desc}</span>`);
+      const b = h('button', 'btn small', `₵${price}`);
+      b.onclick = () => {
+        if (prof.credits < price) { SA.Audio.sfx('deny'); toast('크레딧이 부족하다.', '#ffb3b3'); return; }
+        if (!SA.Grid.add(prof.stash, id)) { toast('창고가 가득 찼다.', '#ffb3b3'); return; }
+        prof.credits -= price; SA.Audio.sfx('buy'); save(); render();
+      };
+      r.appendChild(b); c.appendChild(r);
+    }
+    c.appendChild(h('h4', '', `개조 칩 <span class="dim small">· 작업대 → 부품에서 끼운다</span>`));
+    for (const k of SA.CHIPS) {
+      const id = 'mc_' + k, d = SA.ITEMS[id], price = SA.SHOP.chips, M = SA.MODS[k];
+      const r = h('div', 'srow', `<img src="${SA.Render.iconSrc(id)}"><span class="nm">${M.name} <span class="dim small">${SA.SLOT_NAME[M.slot]}</span></span><span class="dim small">창고 ${SA.Grid.count(prof.stash, id)}</span>`);
       tip(r, `<b>${d.name}</b><br><span class="desc">${d.desc}</span>`);
       const b = h('button', 'btn small', `₵${price}`);
       b.onclick = () => {

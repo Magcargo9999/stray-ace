@@ -152,8 +152,10 @@ SA.Main = (() => {
     }
     // 새 설계도: 결과창에서 눈에 띄게 (격납고 도착 때 자동 등록된다)
     const newBp = [...new Set(r.brought.map(it => it.id))].filter(id => SA.ITEMS[id].kind === 'bp' && !SA.profile.recipes.includes(SA.ITEMS[id].recipe));
-    const bpHtml = newBp.length ? `<div class="newbp-wrap">${newBp.map(id => { const d = SA.ITEMS[id], pt = SA.PARTS[d.recipe]; return `<div class="newbp" style="border-color:${SA.TIER_COL[pt.tier]}"><img src="${pt.img || SA.Render.iconSrc(SA.ITEMS['pt_' + d.recipe] ? 'pt_' + d.recipe : id)}"><div><div class="nbh">새 설계도 <span style="color:${SA.TIER_COL[pt.tier]}">${pt.tier}</span></div><b>${pt.name}</b><div class="small dim">${SA.partDesc(d.recipe, 0)}</div><div class="small ok">작업대에서 제작할 수 있다</div></div></div>`; }).join('')}</div>` : '';
-    if (newBp.length) setTimeout(() => SA.Audio.sfx('rare2'), 500);
+    const newPl = [...new Set(r.brought.map(it => it.id))].filter(id => SA.ITEMS[id].kind === 'pbp' && !(SA.profile.planetBp || []).includes(SA.ITEMS[id].part));
+    const plHtml = newPl.map(id => { const d = SA.ITEMS[id], pt = SA.PARTS[d.part], pm = SA.MODS[SA.planetMod(d.part)]; return `<div class="newbp" style="border-color:${SA.TIER_COL['행성']}"><img src="${pt.img || SA.Render.iconSrc(SA.ITEMS['pt_' + d.part] ? 'pt_' + d.part : id)}"><div><div class="nbh">새 설계도 <span style="color:${SA.TIER_COL['행성']}">행성</span></div><b>${SA.PLANET[d.part][0]}</b> <span class="small dim">← ${pt.name}</span><div class="small dim">전용 「${pm.name}」 ${pm.desc}</div><div class="small ok">작업대 → 행성에서 올릴 수 있다</div></div></div>`; }).join('');
+    const bpHtml = (newBp.length || newPl.length) ? `<div class="newbp-wrap">${plHtml}${newBp.map(id => { const d = SA.ITEMS[id], pt = SA.PARTS[d.recipe]; return `<div class="newbp" style="border-color:${SA.TIER_COL[pt.tier]}"><img src="${pt.img || SA.Render.iconSrc(SA.ITEMS['pt_' + d.recipe] ? 'pt_' + d.recipe : id)}"><div><div class="nbh">새 설계도 <span style="color:${SA.TIER_COL[pt.tier]}">${pt.tier}</span></div><b>${pt.name}</b><div class="small dim">${SA.partDesc(d.recipe, 0)}</div><div class="small ok">작업대에서 제작할 수 있다</div></div></div>`; }).join('')}</div>` : '';
+    if (newBp.length || newPl.length) setTimeout(() => SA.Audio.sfx('rare2'), 500);
     const tm = `${Math.floor(r.time / 60)}:${String(Math.floor(r.time % 60)).padStart(2, '0')}`;
     w.querySelector('.inner').innerHTML = `
       <h1 class="${r.ok ? 'ok' : 'bad'}">${r.ok ? '탈출 성공' : '격추'}</h1>

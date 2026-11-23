@@ -9,7 +9,7 @@ SA.Save = (() => {
   const fromItem = (it) => {
     const d = SA.ITEMS[it.id], np = newPart(d.part);
     if (it.lv) { np.lv = it.lv; np.max = SA.LV_MAX[it.lv]; }
-    if (it.mod) np.mod = it.mod; if (it.awk) np.awk = it.awk;
+    if (it.mod) np.mod = it.mod;
     np.dur = Math.min(np.max, it.dur !== undefined ? it.dur : 60);
     return np;
   };
@@ -54,7 +54,8 @@ SA.Save = (() => {
       stats: { raids: 0, extracts: 0, deaths: 0, kills: 0, bestValue: 0 },
       settings: { music: 0.5, sfx: 0.7 },
       seenTips: false, tierMig: true, tutDone: false,
-      benchLv: 1, pin: null,  // 작업대 단계 · 고정한 제작 목표
+      benchLv: 1, pin: null, planetBp: [], pbpPick: 0, tierV2: true,   // 행성 설계도 · 고를 수 있는 행성 설계도 수
+       // 작업대 단계 · 고정한 제작 목표
       newRecipes: [],         // 새로 등록돼 작업대에서 아직 안 본 설계도
       bpMiss: 0,              // 새 설계도 없이 출격한 횟수 (불운 보정)
       deliv: { slot: -1, stock: [] },   // 배달 상점 재고 (20분마다 교체)
@@ -94,6 +95,20 @@ SA.Save = (() => {
     for (const it of p.stash.items.slice()) if (SA.ITEMS[it.id].kind === 'capsule') SA.Grid.remove(p.stash, it.uid);
     // 레이븐 3단계·의뢰 수주 도입 전 세이브
     p.benchLv = p.benchLv || 1; if (p.pin === undefined) p.pin = null;
+    p.planetBp = p.planetBp || []; p.pbpPick = p.pbpPick || 0;
+    if (!p.tierV2) {   // 등급 재편 v2 (v0.67): 은하(lv2) → 행성 + 비용 환급 · 전용 개조는 행성에 고정 · 각성 정리 · 가진 행성 부품의 행성 설계도 등록
+      p.tierV2 = true;
+      const fix = (q, isPart) => {
+        if (q.lv >= 2) { q.lv = 1; if (isPart) for (const id of ['qcircuit', 'qcircuit', 'crystal', 'crystal', 'crystal']) if (!SA.Grid.add(p.stash, id)) p.credits += SA.ITEMS[id].val; }
+        if (q.mod && SA.MODS[q.mod] && SA.MODS[q.mod].only) delete q.mod;
+        if (q.mod && !SA.MODS[q.mod]) delete q.mod;
+        delete q.awk;
+        if (q.lv && SA.PLANET[q.id] && !p.planetBp.includes(q.id)) p.planetBp.push(q.id);
+        if (q.lv && !SA.PLANET[q.id]) q.lv = 0;
+      };
+      for (const q of p.parts) { fix(q, true); q.max = Math.min(q.max || 100, SA.LV_MAX[q.lv || 0]); q.dur = Math.min(q.dur, q.max); }
+      for (const it of p.stash.items) if (it.id.startsWith('pt_')) fix(it, false);
+    }
     for (const r of SA.START_RECIPES) if (!p.recipes.includes(r)) p.recipes.push(r);
     p.raven = Object.assign({ stage: 0, done: false }, p.raven || {});
     if (p.pilots.raven) { p.raven.done = true; p.raven.stage = 1; }
