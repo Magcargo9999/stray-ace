@@ -16,6 +16,8 @@ SA.Render = (() => {
     const x = c.getContext('2d'); x.imageSmoothingQuality = 'high'; x.drawImage(src, 0, 0, w, h);
     return c;
   };
+  let total = 1, loaded = 0;
+  const loadProgress = () => loaded / total;
   const load = (done) => {
     const list = [['poi_distress', 'assets/poi_distress.png'], ['hex', 'assets/hex_hull.png'], ['beacon', 'assets/beacon.png'], ['hexTurret', 'assets/hex_turret.png'], ['swift', 'assets/swift_hull.png'], ['ace', SA.SHIPS.ace.img], ['bastion', 'assets/bastion_hull.png'], ['arsenal', 'assets/arsenal_hull.png'], ['flame', 'assets/engine_flame.png'], ['ast_rock', 'assets/m_rock.png'], ['ast_planet', 'assets/m_planetoid.png'], ['ast_shard', 'assets/m_shard.png'], ['box_crate', 'assets/box_crate.png'], ['box_locked', 'assets/box_locked.png'], ['sub_drone', 'assets/sub_drone.png'], ['poi_wreck', 'assets/poi_wreck.png'], ['i_pod', 'assets/i_pod.png']];
     for (const id in SA.ENEMIES) { const d = SA.ENEMIES[id]; if (!d.img) continue; list.push(['en_' + id, d.img]);
@@ -23,10 +25,10 @@ SA.Render = (() => {
     for (const id in SA.ITEMS) if (SA.ITEMS[id].img) list.push(['it_' + id, SA.ITEMS[id].img]);
     list.push(['collector', 'assets/collector.png']);   // 수집가 함선 (사용자 도트)
     for (const id in SA.SPEAKERS) list.push(['pt_' + id, 'assets/portrait_' + id + '.png']);   // 초상화 (없으면 실루엣)
-    let left = list.length;
+    let left = list.length; total = list.length; loaded = 0;
     for (const [k, src] of list) {
       const im = new Image();
-      im.onload = im.onerror = () => { IMG[k] = im.naturalWidth ? im : null; if (--left === 0) { prep(); done(); } };
+      im.onload = im.onerror = () => { IMG[k] = im.naturalWidth ? im : null; loaded++; if (--left === 0) { prep(); done(); } };
       im.src = src;
     }
   };
@@ -852,5 +854,5 @@ SA.Render = (() => {
     }
   };
 
-  return { load, draw, icon, iconSrc, IMG, pre };
+  return { load, loadProgress, draw, icon, iconSrc, IMG, pre };
 })();

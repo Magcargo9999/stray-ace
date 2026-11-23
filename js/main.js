@@ -43,6 +43,10 @@ SA.Main = (() => {
     scene = 'raid';
     document.querySelectorAll('.ctx').forEach(x => x.remove()); SA.UI.hideTip();
     SA.Raid.start(SA.profile);
+    // 출격 로딩: 레이드는 뒤에서 미리 만들어 두고 멈춰 둔다. 장면이 끝나면 시작
+    const R = SA.R; if (R) R.paused = true;
+    const map = SA.MAPS[SA.profile.map] || SA.MAPS.mine;
+    SA.Loading.show({ label: '출격 · ' + SA.PILOTS[SA.profile.pilot].name, name: map.name, min: 1.5, done: () => { if (SA.R === R && R) R.paused = false; } });
   };
 
   // 사망 처리 방식 고르기 (처음 한 번 + 설정에서 언제든)
