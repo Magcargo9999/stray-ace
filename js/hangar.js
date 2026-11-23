@@ -752,7 +752,7 @@ SA.Hangar = (() => {
   const deliv = (body) => {
     const prof = P(), D = SA.SHOP.delivery, dv = deliveryStock(), c = h('div', 'shop');
     c.appendChild(h('div', 'small dim', '다음 출격이 끝나면 새 물건이 들어온다'));
-    const kindName = { mat: '재료', pbp: '행성 설계도', part: '부품', rare: '희귀' };
+    const kindName = { mat: '재료', ebp: '강화 설계도', pbp: '행성 설계도', part: '부품', rare: '희귀' };
     let lastKind = null;
     for (const st of dv.stock) {
       if (st.kind !== lastKind) { c.appendChild(h('h4', '', kindName[st.kind] || '')); lastKind = st.kind; }
@@ -763,7 +763,8 @@ SA.Hangar = (() => {
       b.onclick = () => {
         if (!st.n) return;
         if (prof.credits < price) { toast('크레딧이 부족하다.', '#ffb3b3'); SA.Audio.sfx('deny'); return; }
-        if (st.kind === 'pbp') { if (!SA.Bench.grantPlanet(d.part)) { st.n = 0; save(); render(); return; } toast(`행성 설계도 등록: ${SA.PLANET[d.part][0]} — 작업대 → 행성`, SA.TIER_COL['행성']); }
+        if (st.kind === 'ebp') { if (prof.recipes.includes(d.recipe)) { st.n = 0; save(); render(); return; } prof.recipes.push(d.recipe); (prof.newRecipes = prof.newRecipes || []).push(d.recipe); prof.bpMiss = 0; toast(`설계도 등록: ${SA.PARTS[d.recipe].name} — 작업대에서 제작 가능`, SA.itemCol(st.id)); }
+        else if (st.kind === 'pbp') { if (!SA.Bench.grantPlanet(d.part)) { st.n = 0; save(); render(); return; } toast(`행성 설계도 등록: ${SA.PLANET[d.part][0]} — 작업대 → 행성`, SA.TIER_COL['행성']); }
         else if (st.kind === 'part') { prof.parts.push(SA.Save.newPart(d.part)); toast(`부품함에 들어왔다: ${d.name}`, SA.itemCol(st.id)); }
         else if (!SA.Grid.add(prof.stash, st.id)) { toast('창고가 가득 찼다.', '#ffb3b3'); return; }
         prof.credits -= price; st.n--; SA.Audio.sfx('buy'); save(); render();
@@ -779,6 +780,7 @@ SA.Hangar = (() => {
       const stock = [];
       const price = (id, mul) => Math.ceil(SA.ITEMS[id].val * mul);
       for (const id of D.pool.slice().sort(() => Math.random() - 0.5).slice(0, D.matKinds)) stock.push({ kind: 'mat', id, n: D.matN[0] + Math.floor(Math.random() * (D.matN[1] - D.matN[0] + 1)), mul: D.mul, price: price(id, D.mul) });
+      if (SA.Bench.lv() >= D.ebpBench) for (const r of SA.BP_POOL['강화'].filter(r => !prof.recipes.includes(r)).sort(() => Math.random() - 0.5).slice(0, D.ebp)) stock.push({ kind: 'ebp', id: 'bp_' + r, n: 1, mul: D.ebpMul, price: price('bp_' + r, D.ebpMul) });
       const unk = Object.keys(SA.PLANET).filter(id => !SA.Bench.knowsPlanet(id)).sort(() => Math.random() - 0.5);
       for (const id of unk.slice(0, Math.random() < D.pbp2 ? 2 : 1)) stock.push({ kind: 'pbp', id: 'pbp_' + id, n: 1, mul: D.pbpMul, price: price('pbp_' + id, D.pbpMul) });
       const pn = D.partKinds[0] + Math.floor(Math.random() * (D.partKinds[1] - D.partKinds[0] + 1));

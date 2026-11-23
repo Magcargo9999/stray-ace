@@ -298,6 +298,9 @@ SA.Raid = (() => {
       const sure = e.type === 'raven' && id === 'bp_raven' && !SA.profile.recipes.includes('raven');   // 레이븐 추진기 설계도는 처음 잡을 때 확정
       if (sure || Math.random() < (p >= 1 ? 1 : p * k * (1 + b) * pity(id))) spawnItem(R, id, e.x, e.y);
     }
+    // 적별 전용 강화 설계도: 아직 모르는 것만
+    const sig = (SA.SIG_BP[e.type] || []).filter(r => !SA.profile.recipes.includes(r));
+    if (sig.length && Math.random() < (SA.SIG_RATE[D.ai] || 0) * (1 + b) * pity('bp')) spawnItem(R, 'bp_' + U.pick(sig), e.x, e.y);
     // 부품 완성품 드랍 (적 격추)
     if (!e.crate && !e.noDrop) {
       const pp = e.boss ? SA.PART_DROP.pbp.boss : SA.PART_DROP.pbp[D.ai] || 0; if (Math.random() < pp) spawnItem(R, 'pbp', e.x, e.y);   // 행성 설계도

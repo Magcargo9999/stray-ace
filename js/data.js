@@ -556,7 +556,7 @@ SA.SHOP = {
   consumables: [['canister', 150], ['repairkit', 120]],
   chips: 300,   // 기본 개조 칩 가격 (오스 단말, 임시)
   // 도리 배달 (v0.70, 전부 임시): 출격이 끝날 때마다 새 재고. 재료 4칸 + 행성 설계도 1~2 + 부품 1~2 + 희귀 확률
-  delivery: { mul: 2.5, pbpMul: 4, matKinds: 4, matN: [2, 5], pool: ['scrap', 'wire', 'core', 'engine', 'goldchip', 'prec'], pbp2: .4, partKinds: [1, 2], partEnh: .3, noPart: ['raven', 'sensor'], rare: [['crystal', .2], ['ace', .05]] },
+  delivery: { mul: 2.5, pbpMul: 4, matKinds: 4, matN: [2, 5], pool: ['scrap', 'wire', 'core', 'engine', 'goldchip', 'prec'], pbp2: .4, ebp: 1, ebpMul: 4, ebpBench: 2, partKinds: [1, 2], partEnh: .3, noPart: ['raven', 'sensor'], rare: [['crystal', .2], ['ace', .05]] },
 };
 
 SA.MAPS = {
@@ -617,3 +617,18 @@ SA.COLLECTOR = {
   buy: ['ace', 'crystal', 'flamecore', 'klens', 'abyss', 'chip'], buyMul: 1.5,       // + 블랙박스 전부(lore)
 };
 SA.collectorBuys = (id) => { const d = SA.ITEMS[id]; return !!d && (d.kind === 'lore' || SA.COLLECTOR.buy.includes(id)); };
+
+// ── 적별 전용 강화 설계도 (v0.72, 확률 임시) ──
+// 그 적을 격추하면 이 목록 중 아직 모르는 설계도가 따로 굴려진다 (불운 보정·스침 보너스 적용). 일반 랜덤 설계도 드랍은 그대로
+SA.SIG_BP = {
+  k_frigate: ['sdrone', 'chain', 'counter'],   // 왕국: 방어·제어
+  e_frigate: ['glass', 'orbital', 'redheart'],  // 제국: 공격
+  k_turret:  ['sniper', 'deflect'],
+  e_turret:  ['hturret', 'execute'],
+  m_turret:  ['vault', 'secure2', 'decoder'],   // 폐광: 약탈 (보안해독기는 보안상자가 해독기를 요구해서 여기로)
+  corrode:   ['resonator', 'timestop'],         // 침식·심연: 탄막 조작
+  hunter:    ['gravity', 'grazeflow'],
+  raven:     ['discharge'],
+  mimic:     ['reflect'],
+};
+SA.SIG_RATE = { frigate: 0.08, turret: 0.04, corrode: 0.03, hunter: 0.4, raven: 0.4 };   // 적 ai 기준
