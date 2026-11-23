@@ -472,6 +472,7 @@ SA.Raid = (() => {
     if (!p.loot) {
       p.loot = [];
       for (const [id, pr] of LOOT.wreck) if (Math.random() < pr * (1 + grazeBonus()) * pity(id)) p.loot.push(id);
+      if (R.stage >= 2 && Math.random() < 0.25) p.loot.push('crystal');   // 침식 3단계 이상: 잔해에 침식 결정
       while (p.loot.length < 2) p.loot.push('scrap');
       // 한 난파선에서 나오는 아이템은 마지막 보상까지 합쳐 최대 5개 (임시). 넘치면 값싼 것부터 뺀다
       const cap = SA.WRECK.maxItems - 1 - (p.blackbox ? 1 : 0);

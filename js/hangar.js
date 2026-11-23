@@ -448,9 +448,9 @@ SA.Hangar = (() => {
   const bench = (body) => {
     const prof = P(), top = h('div', 'bn-top');
     SA.Contracts.sync();
-    for (const [k, nm] of [['parts', '부품'], ['craft', '제작'], ['up', '행성'], ['lv', `작업대 ${SA.Bench.lv()}단계`]]) {
+    for (const [k, nm] of [['parts', '부품'], ['craft', '제작'], ['up', '행성·은하'], ['lv', `작업대 ${SA.Bench.lv()}단계`]]) {
       const b = h('button', 'tabb' + (benchTab === k ? ' on' : '') + (k === 'lv' && benchClaimable() ? ' alert' : ''), nm);
-      if (k === 'up') tip(b, '부품을 행성으로 올린다 (행성 설계도 필요)');
+      if (k === 'up') tip(b, '부품을 행성으로 올리고(행성 설계도 필요), 행성 부품으로 은하 부품을 만든다');
       if (k === 'up' && (prof.newRecipes || []).some(r => r.startsWith('pl:'))) b.classList.add('alert');
       if (k === 'lv') tip(b, '테오의 의뢰로 작업대를 키우면 설계도와 행성이 열린다');
       if (k === 'lv' && prof.pbpPick > 0) b.classList.add('alert');
@@ -553,7 +553,31 @@ SA.Hangar = (() => {
       const b = h('button', 'btn small up' + (ok ? '' : ' dis'), '행성으로'); b.onclick = (e) => upMenu(e, p); row.appendChild(b);
       list.appendChild(row);
     }
+    // 은하 제작: 행성 부품 + 특수 재료 (작업대 3단계)
+    const L3 = SA.Bench.lv() >= 3;
+    list.appendChild(h('div', 'small pad dim gal-hd', `<b class="g-awk">은하 제작</b> · 작업대 3단계 ${L3 ? '<span class="ok">✓</span>' : '(잠김)'} · 바탕 행성 부품을 써서 만든다 (칩은 옮겨진다)`));
+    for (const gid in SA.GALAXY) {
+      const g = SA.GALAXY[gid], b = SA.PARTS[g.base];
+      if (benchKind !== 'all' && b.slot !== benchKind) continue;
+      const src = galSrc(gid), c = SA.galCost(gid), okM = prof.credits >= c.cr && Object.keys(c.mats).every(k => have(k) >= c.mats[k]), ok = L3 && src && okM;
+      const row = h('div', 'crow2' + (L3 ? '' : ' lock') + (ok ? '' : ' no'), `${b.img ? `<img class="pimg" src="${b.img}">` : ico(KIND_IC[b.slot], 'pimg')}<span class="nm"><span style="color:${SA.TIER_COL['은하']}">${g.name}</span><br><span class="small ${src ? 'ok' : 'bad'}">${SA.PLANET[g.base][0]} ${src ? '있음' : '필요'}</span></span><span class="mats">${costHtml(c, have)}</span>`);
+      tip(row, `<b style="color:${SA.TIER_COL['은하']}">${g.name}</b> ← ${SA.PLANET[g.base][0]}<br><span class="desc">${g.fx}</span><br><span class="dim">주 스탯 ×${SA.GAL_MUL} · 최대 내구도 ${SA.GAL_MAX} · 전용 「${SA.MODS[SA.planetMod(g.base)].name}」 유지</span>`);
+      const bb = h('button', 'btn small up' + (ok ? '' : ' dis'), '은하 제작'); bb.onclick = () => galCraft(gid); row.appendChild(bb);
+      list.appendChild(row);
+    }
     wrap.appendChild(list);
+  };
+  const galSrc = (gid) => P().parts.filter(p => p.id === SA.GALAXY[gid].base && p.lv === 1).sort((a, b) => b.dur - a.dur)[0] || null;
+  const galCraft = (gid) => {
+    const prof = P(), src = galSrc(gid), c = SA.galCost(gid), have = (k) => SA.Grid.count(prof.stash, k);
+    if (SA.Bench.lv() < 3) { SA.Audio.sfx('deny'); toast('은하 제작은 작업대 3단계부터.', '#ffb3b3'); return; }
+    if (!src) { SA.Audio.sfx('deny'); toast(`바탕이 될 「${SA.PLANET[SA.GALAXY[gid].base][0]}」이(가) 필요하다.`, '#ffb3b3'); return; }
+    if (prof.credits < c.cr || !Object.keys(c.mats).every(k => have(k) >= c.mats[k])) { SA.Audio.sfx('deny'); toast('재료나 크레딧이 부족하다.', '#ffb3b3'); return; }
+    SA.Grid.takeMats(prof.stash, c.mats); prof.credits -= c.cr;
+    const np = SA.Save.newPart(gid); np.max = np.dur = SA.GAL_MAX; if (src.mod) np.mod = src.mod;
+    prof.parts = prof.parts.filter(p => p !== src); prof.parts.push(np);
+    for (const s in prof.loadouts) { const l = prof.loadouts[s]; for (const k of ['main', 'main2', 'obs']) if (l[k] === src.uid) l[k] = np.uid; for (const k of ['sub', 'act', 'pas']) l[k] = l[k].map(u => u === src.uid ? np.uid : u); }   // 장착 중이면 그대로 교체
+    toast(`은하 제작: ${SA.GALAXY[gid].name}`, SA.TIER_COL['은하']); SA.Audio.sfx('rare2'); SA.Quest.event('craft'); save(); render(); hud();
   };
   // [작업대 N단계] 단계 카드 3장 · 다음 단계는 테오의 납품 의뢰
   const benchLvTab = (wrap) => {
@@ -599,7 +623,7 @@ SA.Hangar = (() => {
     wrap.appendChild(box);
   };
   // 분해: 제작 재료의 절반(내림)을 돌려준다. 레시피가 없는 부품은 고철 1
-  const salvageMats = (p) => { const r = SA.RECIPES[p.id], out = {}; if (!r) return { scrap: 1 }; for (const k in r.mats) { const n = Math.floor(r.mats[k] / 2); if (n) out[k] = n; } if (p.lv) out.qcircuit = p.lv; if (!Object.keys(out).length) out.scrap = 1; return out; };
+  const salvageMats = (p) => { if (SA.PARTS[p.id].gal) return { qcircuit: 2 }; const r = SA.RECIPES[p.id], out = {}; if (!r) return { scrap: 1 }; for (const k in r.mats) { const n = Math.floor(r.mats[k] / 2); if (n) out[k] = n; } if (p.lv) out.qcircuit = p.lv; if (!Object.keys(out).length) out.scrap = 1; return out; };
   const salvageText = (p) => '분해하면: ' + Object.entries(salvageMats(p)).map(([k, n]) => `${SA.ITEMS[k].name} ${n}`).join(', ');
   const salvage = (p) => {
     const prof = P(), out = salvageMats(p), ids = []; for (const k in out) for (let i = 0; i < out[k]; i++) ids.push(k);

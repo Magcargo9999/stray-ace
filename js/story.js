@@ -50,13 +50,13 @@ SA.STORY = {
     { id: 'k_hunt', title: '소탕: 제국 초계대', giver: '왕국 보급관', fac: 'kingdom', type: 'kill', target: 'e_', need: 12,
       brief: '소행성대의 제국 함선 12기. 격추하고 살아서 돌아와야 보고가 된다.', reward: { credits: 900 } },
     { id: 'k_wire', title: '납품: 통신 부품', giver: '왕국 보급관', fac: 'kingdom', type: 'deliver', mats: { wire: 4, prec: 2 },
-      brief: '전선 다발 4개, 정밀 부품 2개. 왕국 규격이면 더 좋고.', reward: { credits: 800 } },
+      brief: '전선 다발 4개, 정밀 부품 2개. 왕국 규격이면 더 좋고.', reward: { credits: 800, item: 'klens' } },
     { id: 'blackbox1', title: '블랙박스 회수', giver: '제국 보급관', fac: 'empire', type: 'deliver', mats: { blackbox: 1 },
       brief: '소행성대에 추락한 정찰선의 블랙박스. 해독하지 말고 그대로 가져와.', reward: { credits: 500, item: 'bp_shield' } },
     { id: 'e_hunt', title: '소탕: 왕국 초계대', giver: '제국 보급관', fac: 'empire', type: 'kill', target: 'k_', need: 12,
       brief: '왕국 함선 12기. 숫자만 맞추면 돼. 살아서 돌아와야 셈에 넣는다.', reward: { credits: 900 } },
     { id: 'e_engine', title: '납품: 엔진 부품', giver: '제국 보급관', fac: 'empire', type: 'deliver', mats: { engine: 2, core: 2 },
-      brief: '엔진 2기, 코어 2개. 각인은 긁어 오지 않아도 된다.', reward: { credits: 800 } },
+      brief: '엔진 2기, 코어 2개. 각인은 긁어 오지 않아도 된다.', reward: { credits: 800, item: 'flamecore' } },
   ],
   // 스토리형 블랙박스 (1막 7개, 출처별 묶음). 해독하면 그 묶음에서 안 읽은 다음 기록이 열린다. 대사: Claude 초안 (검토 대기)
   // 원칙: 주인공의 비밀은 냄새만 — '격리 명령'과 '명령을 거부한 왕국 에이스'가 있었다는 것까지. 그게 단장이라는 건 말하지 않는다

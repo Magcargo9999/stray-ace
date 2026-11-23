@@ -54,6 +54,8 @@ SA.ITEMS = {
   // 보스 재료: 은하 각성에 들어간다 (보스마다 각성 규칙 1개)
   chip:     { name: '비행 기록 칩', w: 1, h: 1, val: 600, kind: 'umat', tier: '은하', color: '#ff8fb0', desc: '레이븐의 회피 기동이 통째로 기록된 칩. 은하 부품에 넣으면 스칠 때마다 위력이 오른다 (레이븐 각성).' },
   abyss:    { name: '심연 핵', w: 1, h: 1, val: 700, kind: 'umat', tier: '은하', color: '#a06bff', desc: '사냥꾼의 몸속에서 뛰던 것. 은하 부품에 넣으면 침식이 깊을수록 위력이 오른다 (심연 각성).' },
+  flamecore: { name: '화염 코어', w: 1, h: 1, val: 450, kind: 'umat', tier: '은하', color: '#ff7a3d', desc: '제국 순양함 기관부의 과열 코어. 아직 뜨겁다. 은하 부품 재료.' },
+  klens:    { name: '왕국 렌즈', w: 1, h: 1, val: 450, kind: 'umat', tier: '은하', color: '#8fd3ff', desc: '왕국 함선의 조준 렌즈. 빛을 한 줄로 모은다. 은하 부품 재료.' },
   bp_raven:   { name: '설계도: 레이븐 추진기', w: 1, h: 1, val: 300, kind: 'bp', recipe: 'raven', color: '#ffd166', desc: '네임드 용병 레이븐의 추진기. 그는 이걸로 탄 사이를 미끄러졌다.' },
 };
 
@@ -186,7 +188,7 @@ SA.canUp = (id) => { const d = SA.PARTS[id]; return !!d && !d.noUp; };
 // 패시브 fx 값 (i번째) × 배율
 SA.fxv = (id, i = 0, mul = 1) => { const f = SA.PARTS[id].fx; const v = Array.isArray(f) ? f[i] : f; return (v || 0) * mul; };
 SA.partDesc = (id, lv = 0) => {
-  const d = SA.PARTS[id], m = SA.LV_MUL[lv || 0], r2 = (x) => Math.round(x * 100) / 100;
+  const d = SA.PARTS[id], m = d.gal ? SA.GAL_MUL : SA.LV_MUL[lv || 0], r2 = (x) => Math.round(x * 100) / 100;
   return d.desc.replace(/\{v(\d?)\}/g, (_, i) => r2(SA.fxv(id, +i || 0, m))).replace(/\{(\d)\}/g, (_, i) => Math.round(SA.fxv(id, +i, m) * 100));
 };
 // 행성 개조: 칸마다 공용 4개 + 계열 전용 (only). 수치 임시
@@ -283,7 +285,7 @@ SA.CHIPS = Object.keys(SA.MODS).filter(k => !SA.MODS[k].only);
 SA.chipsFor = (id) => { const d = SA.PARTS[id]; return d ? SA.CHIPS.filter(k => SA.MODS[k].slot === d.slot) : []; };
 SA.randChip = (id) => { const l = SA.chipsFor(id); return l.length ? l[Math.floor(Math.random() * l.length)] : null; };
 // 부품에 붙은 개조 전부: 칩 + (행성이면) 전용
-SA.modsOf = (p) => { if (!p) return []; const o = []; if (p.mod) o.push(p.mod); if (p.lv && SA.planetMod(p.id)) o.push(SA.planetMod(p.id)); return o; };
+SA.modsOf = (p) => { if (!p) return []; const o = []; if (p.mod) o.push(p.mod); const d = SA.PARTS[p.id]; if (d && d.gal) o.push(SA.planetMod(d.base)); else if (p.lv && SA.planetMod(p.id)) o.push(SA.planetMod(p.id)); return o; };
 SA.SLOT_NAME = { main: '주무기', sub: '서브', act: '액티브', pas: '패시브', obs: '관측' };
 for (const k of SA.CHIPS) { const m = SA.MODS[k]; SA.ITEMS['mc_' + k] = { name: '개조 칩: ' + m.name, w: 1, h: 1, val: 80, kind: 'mchip', mod: k, color: '#7fd1ff', desc: `${SA.SLOT_NAME[m.slot]} 부품에 끼운다 (작업대 → 부품). ${m.desc}` }; }
 // 은하 각성: 넣은 보스 재료에 따라 하나. 2·3막 보스는 규칙만 여기에 추가
@@ -308,7 +310,8 @@ SA.partFullDesc = (p) => {
   if (lv && d.slot === 'act') s += ` <span class="g-up">[${SA.partTier(p)}] 쿨타임 -${Math.round((1 - 1 / m) * 100)}% · 범위·지속 +${Math.round((SA.LV_RANGE[lv] - 1) * 100)}%</span>`;
   if (lv && d.slot === 'pas') s += ` <span class="g-up">[${SA.partTier(p)}] 효과 수치 +${Math.round((m - 1) * 100)}% (위 수치에 반영)</span>`;
   if (lv && d.slot === 'obs') s += ` <span class="g-up">[${SA.partTier(p)}] 시야 ${lv + 1}단계</span>`;
-  const pm = lv && SA.MODS[SA.planetMod(p.id)];
+  if (d.gal) s += ` <span class="g-awk">[은하] 주 스탯 +${Math.round((SA.GAL_MUL - 1) * 100)}%</span>`;
+  const pm = d.gal ? SA.MODS[SA.planetMod(d.base)] : lv && SA.MODS[SA.planetMod(p.id)];
   if (pm) s += `<br><span class="g-up">전용 · ${pm.name}: ${pm.desc}</span>`;
   if (p.mod && SA.MODS[p.mod]) s += `<br><span class="g-mod">칩 · ${SA.MODS[p.mod].name}: ${SA.MODS[p.mod].desc}</span>`;
   return s;
@@ -381,7 +384,7 @@ SA.BENCH = {
   name: ['', '기본 작업대', '정비 작업대', '정밀 작업대'],
   give: { 1: SA.START_RECIPES, 2: Object.keys(SA.RECIPES).filter(id => SA.PARTS[id] && SA.PARTS[id].tier === '일반'),
           3: ['beam', 'swarm', 'drone', 'intercept', 'cannon', 'overdrive', 'barrier', 'grazeamp'] },
-  opens: { 1: '일반 부품 기본기', 2: '일반 부품 설계도 전부 · 강화 등급 제작 · 행성 올리기 · 강화 설계도 1장 · 행성 설계도 고르기 1장', 3: '강화 설계도 8장 · 행성 설계도 고르기 1장 · 은하 제작 (준비 중)' },
+  opens: { 1: '일반 부품 기본기', 2: '일반 부품 설계도 전부 · 강화 등급 제작 · 행성 올리기 · 강화 설계도 1장 · 행성 설계도 고르기 1장', 3: '강화 설계도 8장 · 행성 설계도 고르기 1장 · 은하 제작' },
   pick: { 2: 1, 3: 1 },   // 행성 설계도 고르기 (임시)
   bonusBp: { 2: 1 },
   upRoll: 0.25,                              // 일반 설계도를 다 알면: 이 확률로 모르는 강화 설계도, 아니면 아래 재료
@@ -510,11 +513,11 @@ SA.ENEMIES = {
   e_fighter: { name: '제국 전투기', faction: 'empire', ai: 'fighter', hp: 16, r: 9, speed: 108, img: 'assets/e_fighter.png', size: [26, 24],
                drops: [['scrap', .6], ['core', .12], ['bp:일반', .04]] },
   k_frigate: { name: '왕국 프리깃', faction: 'kingdom', ai: 'frigate', hp: 110, r: 20, speed: 38, img: 'assets/k_frigate.png', size: [28, 48],
-               drops: [['core', .55], ['wire', .5], ['prec', .3], ['scrap', .8], ['bp:일반', .08], ['bp:강화', .05], ['key_box1', .05], ['key_zone', .03], ['bb_reward', .04]] },
+               drops: [['core', .55], ['wire', .5], ['prec', .3], ['scrap', .8], ['bp:일반', .08], ['bp:강화', .05], ['key_box1', .05], ['key_zone', .03], ['bb_reward', .04], ['klens', .1]] },
   e_frigate: { name: '제국 순양함', faction: 'empire', ai: 'frigate', hp: 130, r: 20, speed: 34, img: 'assets/e_frigate.png', size: [34, 47],
-               drops: [['core', .5], ['engine', .35], ['prec', .3], ['scrap', .8], ['bp:일반', .08], ['bp:강화', .05], ['key_box1', .05], ['key_zone', .03], ['bb_reward', .04], ['bb_empire', .08]] },
+               drops: [['core', .5], ['engine', .35], ['prec', .3], ['scrap', .8], ['bp:일반', .08], ['bp:강화', .05], ['key_box1', .05], ['key_zone', .03], ['bb_reward', .04], ['bb_empire', .08], ['flamecore', .12]] },
   k_turret:  { name: '왕국 포대', faction: 'kingdom', ai: 'turret', hp: 70, r: 12, speed: 0, img: 'assets/k_turret.png', size: [18, 25], pivot: [0.5, 0.67],
-               drops: [['scrap', .7], ['wire', .3], ['core', .25], ['prec', .15]] },
+               drops: [['scrap', .7], ['wire', .3], ['core', .25], ['prec', .15], ['klens', .04]] },
   e_turret:  { name: '제국 쌍포대', faction: 'empire', ai: 'turret', hp: 60, r: 10, speed: 0, img: 'assets/e_turret.png', size: [14, 21], pivot: [0.5, 0.72],
                drops: [['scrap', .7], ['core', .3], ['prec', .15]] },
   m_turret:  { name: '폐광 포대', faction: 'mine', ai: 'turret', hp: 95, r: 13, speed: 0, img: 'assets/m_turret.png', size: [26, 33], pivot: [0.5, 0.57],
@@ -564,3 +567,26 @@ SA.MAPS = {
 
 // 행성 설계도: 부품마다 1장. 등록하면 그 부품을 행성으로 올릴 수 있다
 for (const id in SA.PLANET) SA.ITEMS['pbp_' + id] = { name: '행성 설계도: ' + SA.PARTS[id].name, w: 1, h: 1, val: 250, kind: 'pbp', part: id, color: '#ffd166', desc: `등록하면 ${SA.PARTS[id].name}을(를) 「${SA.PLANET[id][0]}」(으)로 올릴 수 있다. 이미 알면 판매.` };
+
+// 은하 부품 (2차, 임시): 행성 부품 + 특수 재료로 만드는 다른 부품. 바탕 부품의 행동·행성 전용 개조를 그대로 물려받고 효과가 하나 붙는다
+SA.GALAXY = {
+  g_pulse:    { base: 'pulse',    name: '화염 펄스포',     mats: { flamecore: 2 },             fx: '맞은 적에 화상이 쌓인다 (쌓일수록 초당 피해 증가, 최대 10중첩).' },
+  g_scatter:  { base: 'scatter',  name: '균열 산탄포',     mats: { crystal: 3 },               fx: '파편이 닿은 자리에 2초간 적만 다치는 균열이 남는다.' },
+  g_lance:    { base: 'lance',    name: '태양창',          mats: { klens: 2 },                 fx: '적을 전부 관통하고 사거리 2배, 지나간 자리의 적 탄을 지운다.' },
+  g_sniper:   { base: 'sniper',   name: '심연 저격총',     mats: { abyss: 1 },                 fx: '정조준 탄으로 처치하면 그 적이 폭발하고, 다음 발이 바로 정조준된다.' },
+  g_beam:     { base: 'beam',     name: '성운 광선',       mats: { klens: 1, crystal: 2 },     fx: '광선이 세 갈래로 갈라진다 (옆 갈래는 피해 60%).' },
+  g_missile:  { base: 'missile',  name: '소이 미사일 포드', mats: { flamecore: 2 },             fx: '미사일이 터진 자리에 3초간 화염 장판이 남는다.' },
+  g_orbital:  { base: 'orbital',  name: '태양 낙하',       mats: { flamecore: 1, klens: 1 },   fx: '거대한 포격 한 발 + 넓은 화염 장판 4초.' },
+  g_gravity:  { base: 'gravity',  name: '사건의 지평선',   mats: { abyss: 1 },                 fx: '끝날 때 빨아들인 적 탄을 사방으로 되쏜다.' },
+  g_shield:   { base: 'shield',   name: '잔상 방패',       mats: { chip: 1 },                  fx: '방패 동안 잔상이 남아, 지나간 자리로 오는 적 탄을 1초간 지운다.' },
+  g_timestop: { base: 'timestop', name: '시간 결정',       mats: { crystal: 3 },               fx: '멈춘 적 탄이 풀릴 때 내 탄으로 바뀌어 적을 노린다.' },
+};
+SA.GAL_MUL = 1.5; SA.GAL_RANGE = 1.25; SA.GAL_MAX = 150;   // 은하: 주 스탯 ×1.5 · 액티브 범위 ×1.25 · 최대 내구도 150 (임시)
+for (const gid in SA.GALAXY) {
+  const g = SA.GALAXY[gid], b = SA.PARTS[g.base];
+  SA.PARTS[gid] = Object.assign({}, b, { name: g.name, tier: '은하', val: b.val * 4, base: g.base, gal: true, noUp: true, desc: b.desc + ' ' + g.fx });
+  const sz = SA.PART_DROP.size[b.slot];
+  SA.ITEMS['pt_' + gid] = { name: g.name, w: sz[0], h: sz[1], val: Math.round(b.val * 4 * 0.6), kind: 'part', tier: '은하', part: gid, img: b.img, color: SA.TIER_COL['은하'], desc: `[부품] ${SA.PARTS[gid].desc} 탈출하면 부품함으로 들어간다.` };
+}
+SA.baseOf = (id) => (SA.PARTS[id] && SA.PARTS[id].base) || id;
+SA.galCost = (gid) => { const g = SA.GALAXY[gid], b = SA.PARTS[g.base]; return { mats: Object.assign({ qcircuit: 2 }, g.mats), cr: b.val * 2 }; };

@@ -210,6 +210,13 @@ SA.Render = (() => {
       }
     }
     // 적
+    for (const z of R.zones || []) if (vis(z.x, z.y, z.r)) {   // 은하 장판 (적만 다침)
+      const a = Math.min(1, z.t / 0.5) * 0.9;
+      ctx.globalAlpha = 0.18 * a; ctx.fillStyle = z.col; ctx.beginPath(); ctx.arc(z.x, z.y, z.r, 0, 6.29); ctx.fill();
+      ctx.globalAlpha = 0.5 * a; ctx.strokeStyle = z.col; ctx.lineWidth = 1; ctx.beginPath(); ctx.arc(z.x, z.y, z.r * (0.85 + 0.15 * Math.sin(R.t * 8 + z.x)), 0, 6.29); ctx.stroke();
+      ctx.globalAlpha = 1;
+    }
+    for (const g of R.ghosts || []) { ctx.globalAlpha = 0.35 * g.t; ctx.strokeStyle = '#ff8fb0'; ctx.lineWidth = 1; ctx.beginPath(); ctx.arc(g.x, g.y, 14, 0, 6.29); ctx.stroke(); ctx.globalAlpha = 1; }   // 잔상 방패
     for (const p of R.pools || []) if (vis(p.x, p.y, p.r)) {   // 침식 장판
       const a = Math.min(1, p.t / 2) * Math.min(1, (p.max - p.t) * 3);
       ctx.globalAlpha = 0.22 * a; ctx.fillStyle = '#8a5cff'; ctx.beginPath(); ctx.arc(p.x, p.y, p.r, 0, 6.29); ctx.fill();
