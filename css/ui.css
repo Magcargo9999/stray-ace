@@ -376,3 +376,11 @@ h3 { margin: 6px 0 8px; font-size: 15px; color: #cfe3ff; } h4 { margin: 10px 0 6
 /* 등급 글자 (v0.70): 칸 왼쪽 위에 일·강·행·은. 색을 구분하기 어려워도 읽힌다 */
 .grid .item .tg { position: absolute; left: 1px; top: 0; font-size: 9px; line-height: 10px; padding: 0 2px; background: rgba(8,12,22,.78); color: var(--c); font-weight: 700; pointer-events: none; z-index: 2; }
 .srow .tier, .iinfo .tier, .tip .tier { font-size: 10px; padding: 0 4px; border: 1px solid; margin-left: 3px; }
+/* 수집가 거래 창 (v0.71) */
+#colwin { position: fixed; inset: 0; z-index: 21; background: rgba(5,7,13,.35); }
+#colwin .panel { position: absolute; left: 50%; top: 50%; transform: translate(-50%,-50%); width: min(620px, 60vw); max-height: 88vh; overflow: auto; background: #0b1120; border: 1px solid #ff9fd8; padding: 14px 16px; }
+#colwin .hd { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
+#colwin .hd .ccr { margin-left: auto; font-size: 18px; color: #ffd166; }
+#colwin .cpor { width: 56px; height: auto; image-rendering: auto; }
+#colwin h4 { margin: 12px 0 4px; }
+#colwin .closeb { margin-top: 12px; width: 100%; }

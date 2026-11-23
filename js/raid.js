@@ -203,6 +203,13 @@ SA.Raid = (() => {
       if (bb.signal.kind === 'nest') for (let i = 0; i < 4; i++) { const a = i / 4 * 6.28; S.spawnEnemy(R, 'corrode', sg.x + Math.cos(a) * 70, sg.y + Math.sin(a) * 70); }   // 침식 둥지: 침식체 4기가 지킨다
     }
     SA.profile.signals = [];
+    // 수집가 (낮은 확률): 시작부터 미니맵에 보인다
+    const CO = SA.COLLECTOR;
+    if (SA.profile.stats.raids >= CO.minRaids && Math.random() < CO.chance) {
+      const cp = addPoi('collector', place(0.35, 0.7, 650), { label: '수집가', seen: true, clear: 220, stock: collectorStock() });
+      R.collector = cp;
+      msg('수집가 함선이 이 구역에 정박했다 — 미니맵 분홍 표시', '#ff9fd8', 6); SA.Audio.sfx('beep');
+    }
     // 회수 모드: 지난 출격에서 떨어뜨린 잔해 (이번 한 번뿐)
     if (SA.profile.lostCache) {
       R.lostCache = SA.profile.lostCache; SA.profile.lostCache = null;
@@ -333,7 +340,7 @@ SA.Raid = (() => {
       if (R.deathT <= 0) finish(false);
     }
 
-    if (SA.Input.hit('KeyF') && !R.tabOpen && R.state === 'play') doSwap();
+    if (SA.Input.hit('KeyF') && R.state === 'play') { if (document.getElementById('colwin')) SA.UI.tabClose(); else if (!R.tabOpen) { if (R.nearCol) SA.UI.collectorOpen(); else doSwap(); } }
     updateView(R, rdt);
     S.updatePlayer(R, dt, rdt);
     zoneBlock(R);
@@ -410,12 +417,35 @@ SA.Raid = (() => {
       R.hint = 'full'; R.hintT = 4;
     }
   };
+  // 수집가 재고: 행성 설계도 · 행성 부품 · 특수 재료 (출격마다 새로)
+  const collectorStock = () => {
+    const CO = SA.COLLECTOR, st = [], sh = (a) => a.slice().sort(() => Math.random() - 0.5);
+    for (const id of sh(Object.keys(SA.PLANET).filter(k => !SA.Bench.knowsPlanet(k))).slice(0, CO.pbp)) st.push({ kind: 'pbp', id: 'pbp_' + id, n: 1, price: Math.ceil(SA.ITEMS['pbp_' + id].val * CO.pbpMul) });
+    for (const k of sh(PLANET_POOL()).slice(0, CO.part)) { const ex = { lv: 1, dur: SA.LV_MAX[1] }; st.push({ kind: 'part', id: 'pt_' + k, ex, n: 1, price: Math.ceil(SA.itemVal(Object.assign({ id: 'pt_' + k }, ex)) * CO.partMul) + CO.partAdd }); }
+    for (const id of sh(CO.mats).slice(0, CO.matKinds)) st.push({ kind: 'mat', id, n: CO.matN[0] + Math.floor(Math.random() * (CO.matN[1] - CO.matN[0] + 1)), price: Math.ceil(SA.ITEMS[id].val * CO.matMul) });
+    return st;
+  };
+  const collectorBuy = (st) => {
+    const R = SA.R, prof = SA.profile;
+    if (!st.n) return '품절';
+    if (prof.credits < st.price) return '크레딧이 부족하다';
+    if (!SA.Grid.add(R.cargo, st.id, st.ex ? Object.assign({}, st.ex) : undefined)) return '화물칸에 자리가 없다';
+    prof.credits -= st.price; st.n--; SA.Save.store(prof);
+    R.pickLog.push({ text: `+ ${st.ex ? SA.partName({ id: SA.ITEMS[st.id].part, lv: 1 }) : SA.ITEMS[st.id].name}`, val: st.price, col: SA.itemCol(st.id, st.ex), life: 3 }); if (R.pickLog.length > 5) R.pickLog.shift();
+    SA.Audio.sfx('buy'); return null;
+  };
+  const collectorSell = (it, g) => {
+    const prof = SA.profile, price = Math.ceil(SA.itemVal(it) * SA.COLLECTOR.buyMul);
+    SA.Grid.remove(g, it.uid); prof.credits += price; SA.Save.store(prof); SA.Audio.sfx('buy');
+    return price;
+  };
 
   const updatePois = (R, dt) => {
     const P = R.player;
     for (const p of R.pois) {
       const d = Math.sqrt(U.d2(p.x, p.y, P.x, P.y));
       if (!p.seen && d < 380) { p.seen = true; if (p.type !== 'distress') C().text(R, p.x, p.y - 40, p.label, '#cfe3ff'); }
+      if (p.type === 'collector') { R.nearCol = !P.dead && d < SA.COLLECTOR.r; continue; }
       if (p.done || P.dead) continue;
       if (p.type === 'rescue') { updateRescue(R, p, d, dt); continue; }
       if (p.type === 'wreck') { updateWreck(R, p, d, dt); continue; }
@@ -980,5 +1010,5 @@ SA.Raid = (() => {
     return R.items.filter(it => !it.taken && U.d2(it.x, it.y, P.x, P.y) < r * r);
   };
 
-  return { start, spawnDummy, update, msg, say, swapPlan, doSwap, dropLoot, spawnItem, playerDied, bossEngaged, bossKilled, ravenGiveUp, ravenFlee, ravenFled, allyDown, convoyArrived, finish, useItem, dropToSpace, nearbyGround, grazeBonus, grazeDmg, queueRespawn, hunterWake, beaconBroken, fogged };
+  return { start, spawnDummy, update, msg, collectorBuy, collectorSell, say, swapPlan, doSwap, dropLoot, spawnItem, playerDied, bossEngaged, bossKilled, ravenGiveUp, ravenFlee, ravenFled, allyDown, convoyArrived, finish, useItem, dropToSpace, nearbyGround, grazeBonus, grazeDmg, queueRespawn, hunterWake, beaconBroken, fogged };
 })();

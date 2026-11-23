@@ -217,8 +217,47 @@ SA.UI = (() => {
     if (drag) { drag.el.remove(); drag = null; }
     hideTip(); closeMenu();
     $('#tabwin').style.display = 'none';
+    const cw = $('#colwin'); if (cw) cw.remove();
     clearInterval(statusTimer);
     if (R) { R.tabOpen = false; if (R.state === 'play') R.timeScale = 1; }
+  };
+  // ── 수집가 거래 창 (레이드 중, F) ──
+  const collectorOpen = () => {
+    const R = SA.R; if (!R || R.state !== 'play' || !R.collector) return;
+    R.tabOpen = true; R.timeScale = SA.CFG.TAB_TIMESCALE;
+    let w = $('#colwin'); if (!w) { w = h('div', ''); w.id = 'colwin'; document.body.appendChild(w); }
+    const CO = SA.COLLECTOR, stock = R.collector.stock;
+    const draw = (note) => {
+      w.innerHTML = '';
+      const pn = h('div', 'panel shop');
+      pn.appendChild(h('div', 'hd', `<img class="cpor" src="assets/collector.png"><div><b style="color:#ff9fd8">수집가</b><div class="small dim">"좋은 물건엔 좋은 값을. 둘 다 귀하지요."</div></div><span class="ccr">₵${SA.profile.credits.toLocaleString()}</span>`));
+      if (note) pn.appendChild(h('div', 'small ' + (note[1] ? 'ok' : 'bad'), note[0]));
+      pn.appendChild(h('h4', '', '판매 <span class="dim small">· 산 물건은 화물칸으로 — 들고 탈출해야 내 것</span>'));
+      for (const st of stock) {
+        const d = SA.ITEMS[st.id], nm = st.ex ? `<span style="color:${SA.itemCol(st.id, st.ex)}">${SA.partName({ id: d.part, lv: 1 })}</span> <span class="tier" style="color:${SA.itemCol(st.id, st.ex)};border-color:${SA.itemCol(st.id, st.ex)}66">행성</span>` : SA.itemNameHtml(st.id);
+        const r = h('div', 'srow', `<img src="${SA.Render.iconSrc(st.id)}"><span class="nm">${nm}</span><span class="dim small">${st.n ? st.n + '개' : ''} · ${d.w}×${d.h}칸</span>`);
+        r.addEventListener('mouseenter', (e) => st.ex ? showTipHtml(e, `<b>${SA.partHtml({ id: d.part, lv: 1 })}</b> <span class="dim">행성</span><br><span class="desc">${SA.partFullDesc({ id: d.part, lv: 1 })}</span>`) : showTip(e, st.id));
+        r.addEventListener('mouseleave', hideTip);
+        const b = h('button', 'btn small' + (st.n ? '' : ' dis'), st.n ? `₵${st.price}` : '품절');
+        b.onclick = () => { const err = SA.Raid.collectorBuy(st); if (err) SA.Audio.sfx('deny'); draw(err ? [err, false] : [`${d.name} — 화물칸에 넣었다`, true]); };
+        r.appendChild(b); pn.appendChild(r);
+      }
+      pn.appendChild(h('h4', '', `매입 <span class="dim small">· 블랙박스·에이스 각인·특수 재료를 시세의 ${CO.buyMul}배로</span>`));
+      const mine = [[R.cargo, '화물'], [R.secure, '보안']].flatMap(([g, gn]) => g.items.filter(it => SA.collectorBuys(it.id)).map(it => ({ it, g, gn })));
+      if (!mine.length) pn.appendChild(h('div', 'small dim', '팔 만한 물건이 없다.'));
+      for (const { it, g, gn } of mine) {
+        const d = SA.ITEMS[it.id], price = Math.ceil(SA.itemVal(it) * CO.buyMul);
+        const r = h('div', 'srow', `<img src="${SA.Render.iconSrc(it.id)}"><span class="nm">${SA.itemNameHtml(it.id)}</span><span class="dim small">${gn} · 시세 ₵${SA.itemVal(it)}</span>`);
+        r.addEventListener('mouseenter', (e) => showTip(e, it.id)); r.addEventListener('mouseleave', hideTip);
+        const b = h('button', 'btn small', `팔기 ₵${price}`);
+        b.onclick = () => { hideTip(); const got = SA.Raid.collectorSell(it, g); draw([`${d.name} 판매 +₵${got}`, true]); };
+        r.appendChild(b); pn.appendChild(r);
+      }
+      const x = h('button', 'btn closeb', '닫기 (F · Esc)'); x.onclick = tabClose; pn.appendChild(x);
+      w.appendChild(pn);
+    };
+    draw();
+    SA.Audio.sfx('click');
   };
   let groundSig = '';
   const renderGround = (onlyIfChanged) => {
@@ -262,5 +301,5 @@ SA.UI = (() => {
       <div class="dim small">내구도 50% 아래부터 성능이 서서히 떨어진다. 수리킷을 부품에 끌어다 놓으면 내구도 +${SA.REPAIRKIT_DUR}.</div>`;
   };
 
-  return { gridView, refreshAll, tabOpen, tabClose, showTip, showTipHtml, hideTip, h, CELL, views };
+  return { gridView, refreshAll, tabOpen, tabClose, collectorOpen, showTip, showTipHtml, hideTip, h, CELL, views };
 })();

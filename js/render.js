@@ -21,6 +21,7 @@ SA.Render = (() => {
     for (const id in SA.ENEMIES) { const d = SA.ENEMIES[id]; if (!d.img) continue; list.push(['en_' + id, d.img]);
       if (d.anim) for (let k = 1; k < d.anim.n; k++) list.push(['en_' + id + '_' + k, d.img.replace(/_0\.png$/, '_' + k + '.png')]); }   // 애니메이션 프레임 xxx_0..n-1.png
     for (const id in SA.ITEMS) if (SA.ITEMS[id].img) list.push(['it_' + id, SA.ITEMS[id].img]);
+    list.push(['collector', 'assets/collector.png']);   // 수집가 함선 (사용자 도트)
     for (const id in SA.SPEAKERS) list.push(['pt_' + id, 'assets/portrait_' + id + '.png']);   // 초상화 (없으면 실루엣)
     let left = list.length;
     for (const [k, src] of list) {
@@ -38,7 +39,7 @@ SA.Render = (() => {
       if (d.anim) for (let k = 1; k < d.anim.n; k++) if (IMG['en_' + id + '_' + k]) pre['en_' + id + '_' + k] = shrink(IMG['en_' + id + '_' + k], d.size[0] * Z, d.size[1] * Z); }
     // 필드 오브젝트 도트 (월드 크기 x ZOOM)
     const fit = (k, w, h) => { if (IMG[k]) pre[k] = shrink(IMG[k], w * Z, h * Z); };
-    fit('box_crate', 25, 14); fit('box_locked', 18, 25); fit('sub_drone', 11, 11); fit('poi_wreck', 72, 28); fit('i_pod', 13, 17); fit('poi_distress', 16, 18); fit('beacon', 40, 39);
+    fit('box_crate', 25, 14); fit('box_locked', 18, 25); fit('sub_drone', 11, 11); fit('poi_wreck', 72, 28); fit('i_pod', 13, 17); fit('poi_distress', 16, 18); fit('beacon', 40, 39); fit('collector', SA.COLLECTOR.w, SA.COLLECTOR.h);
     // 엄폐물: 크기 단계별로 미리 축소 (작은 원본은 그대로 확대)
     for (const k of ['rock', 'shard']) if (IMG['ast_' + k]) {
       const im = IMG['ast_' + k]; pre['ast_' + k] = [24, 48, 96].map(d => { const s = d * Z / Math.max(im.width, im.height); return shrink(im, im.width * s, im.height * s); });
@@ -286,6 +287,14 @@ SA.Render = (() => {
 
   const drawPoi = (ctx, R, p) => {
     const t = R.t;
+    if (p.type === 'collector') {   // 수집가 함선: 천천히 떠 있다. 가까이 오면 거래 범위 원
+      const CO = SA.COLLECTOR, bob = Math.sin(t * 1.5) * 2;
+      if (R.nearCol) { ctx.strokeStyle = 'rgba(255,159,216,0.45)'; ctx.setLineDash([4, 4]); ctx.lineWidth = 1; ctx.beginPath(); ctx.arc(p.x, p.y, CO.r, 0, 6.29); ctx.stroke(); ctx.setLineDash([]); }
+      if (pre.collector) { ctx.imageSmoothingEnabled = true; ctx.drawImage(pre.collector, p.x - CO.w / 2, p.y - CO.h / 2 + bob, CO.w, CO.h); }
+      else { ctx.fillStyle = '#2f3f6a'; ctx.fillRect(p.x - 30, p.y - 20, 60, 40); }
+      label(ctx, '수집가', p.x, p.y - CO.h / 2 - 6 + bob, '#ff9fd8', 9);
+      return;
+    }
     if (p.type === 'wreck') {
       ctx.save(); ctx.translate(p.x, p.y); ctx.rotate(p.seed * 6);
       if (pre.poi_wreck) { ctx.imageSmoothingEnabled = true; if (p.done) ctx.globalAlpha = 0.6; ctx.drawImage(pre.poi_wreck, -36, -14, 72, 28); ctx.globalAlpha = 1;
@@ -751,6 +760,7 @@ SA.Render = (() => {
     T(ctx, '보안', cx + cg.w * cs + 30, cy - 2, '#8f9bb8', 10, 'left', false);
     R.pickLog.forEach((l, i) => { ctx.globalAlpha = Math.min(1, l.life); T(ctx, `${l.text}  ₵${l.val}`, W - 24, cy - 44 - (R.pickLog.length - 1 - i) * 20, l.col, 13, 'right'); });
     ctx.globalAlpha = 1;
+    if (R.nearCol && !R.tabOpen) T(ctx, '[F] 수집가와 거래', W / 2, H - 140, '#ff9fd8', 16, 'center');
     if (R.hint === 'full') {
       const sw = SA.Raid.swapPlan();
       T(ctx, sw ? `[F] ${sw.dropNames} 버리고 ${sw.name} 줍기 (+₵${sw.gain})` : '화물칸이 가득 찼다 — Tab에서 정리하거나 버리기', W / 2, H - 110, sw ? '#ffd166' : '#ffb3b3', 15, 'center');
@@ -803,7 +813,7 @@ SA.Render = (() => {
       if (!p.seen) continue;
       const px = mx + p.x * k, py = my + p.y * k;
       if (p.type === 'zone') { ctx.strokeStyle = p.open ? 'rgba(143,182,255,0.4)' : '#8fb6ff'; ctx.lineWidth = 1; ctx.beginPath(); ctx.arc(px, py, p.r * k, 0, 6.29); ctx.stroke(); continue; }
-      ctx.fillStyle = p.done ? '#555' : { wreck: '#ffd166', container: '#ffd166', turrets: '#ff6b7a', patrol: '#ff6b7a', nest: '#ff4d6d', distress: Math.sin(R.t * 6) > 0 ? '#ffd166' : '#7a5a12', rescue: Math.sin(R.t * 6) > 0 ? '#6ee7ff' : '#1d5a66', duel: '#ff4d6d', lost: Math.sin(R.t * 5) > 0 ? '#5dffb0' : '#1d6a4a', locked: ['#9fb3c8', '#5dffb0', '#ffd166'][(p.grade || 1) - 1], secure: '#8fb6ff', signal: Math.sin(R.t * 5) > 0 ? '#ffb347' : '#7a4a12' }[p.type] || '#cfe3ff';
+      ctx.fillStyle = p.type === 'collector' ? '#ff9fd8' : p.done ? '#555' : { wreck: '#ffd166', container: '#ffd166', turrets: '#ff6b7a', patrol: '#ff6b7a', nest: '#ff4d6d', distress: Math.sin(R.t * 6) > 0 ? '#ffd166' : '#7a5a12', rescue: Math.sin(R.t * 6) > 0 ? '#6ee7ff' : '#1d5a66', duel: '#ff4d6d', lost: Math.sin(R.t * 5) > 0 ? '#5dffb0' : '#1d6a4a', locked: ['#9fb3c8', '#5dffb0', '#ffd166'][(p.grade || 1) - 1], secure: '#8fb6ff', signal: Math.sin(R.t * 5) > 0 ? '#ffb347' : '#7a4a12' }[p.type] || '#cfe3ff';
       ctx.fillRect(px - ps, py - ps, ps * 2, ps * 2);
       if (big && !p.done && p.label) { ctx.font = '11px "Galmuri11", sans-serif'; ctx.textAlign = 'left'; ctx.fillStyle = '#9aa7bd'; ctx.fillText(p.label, px + 7, py + 4); }
     }

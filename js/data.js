@@ -607,3 +607,13 @@ SA.itemTier = (id, it) => {
 SA.itemCol = (id, it) => { const t = SA.itemTier(id, it); return t ? SA.TIER_COL[t] : SA.ITEMS[id].color; };
 // 이름 + 등급 글자 (상점·목록용). 색만으로 구분하지 않도록 등급 글자를 같이 쓴다
 SA.itemNameHtml = (id, it) => { const t = SA.itemTier(id, it), d = SA.ITEMS[id]; return t ? `<span style="color:${SA.TIER_COL[t]}">${d.name}</span> <span class="tier" style="color:${SA.TIER_COL[t]};border-color:${SA.TIER_COL[t]}66">${t}</span>` : d.name; };
+
+// ── 수집가 (v0.71, 전부 임시): 출격 중 낮은 확률로 나타나는 중립 상인. 산 물건은 화물칸 → 들고 탈출해야 내 것
+SA.COLLECTOR = {
+  chance: 0.2, minRaids: 2, r: 85, w: 96, h: 88,
+  pbp: 2, pbpMul: 5,                       // 아직 모르는 행성 설계도 2장 (도리 ×4보다 비쌈)
+  part: 1, partMul: 3, partAdd: 1000,      // 행성 부품 완성품 1개 (내구도 가득) — 시세 ×3 + ₵1000 (설계도 없이 바로 행성이라)
+  mats: ['flamecore', 'klens', 'crystal'], matKinds: 2, matN: [1, 2], matMul: 3,   // 특수 재료
+  buy: ['ace', 'crystal', 'flamecore', 'klens', 'abyss', 'chip'], buyMul: 1.5,       // + 블랙박스 전부(lore)
+};
+SA.collectorBuys = (id) => { const d = SA.ITEMS[id]; return !!d && (d.kind === 'lore' || SA.COLLECTOR.buy.includes(id)); };
