@@ -54,6 +54,7 @@ SA.Save = (() => {
       stats: { raids: 0, extracts: 0, deaths: 0, kills: 0, bestValue: 0 },
       settings: { music: 0.5, sfx: 0.7 },
       seenTips: false, tierMig: true, tutDone: false,
+      benchLv: 1, pin: null,  // 작업대 단계 · 고정한 제작 목표
       newRecipes: [],         // 새로 등록돼 작업대에서 아직 안 본 설계도
       bpMiss: 0,              // 새 설계도 없이 출격한 횟수 (불운 보정)
       deliv: { slot: -1, stock: [] },   // 배달 상점 재고 (20분마다 교체)
@@ -92,6 +93,8 @@ SA.Save = (() => {
     }
     for (const it of p.stash.items.slice()) if (SA.ITEMS[it.id].kind === 'capsule') SA.Grid.remove(p.stash, it.uid);
     // 레이븐 3단계·의뢰 수주 도입 전 세이브
+    p.benchLv = p.benchLv || 1; if (p.pin === undefined) p.pin = null;
+    for (const r of SA.START_RECIPES) if (!p.recipes.includes(r)) p.recipes.push(r);
     p.raven = Object.assign({ stage: 0, done: false }, p.raven || {});
     if (p.pilots.raven) { p.raven.done = true; p.raven.stage = 1; }
     p.rep = Object.assign({ kingdom: 0, empire: 0, last: null }, p.rep || {});

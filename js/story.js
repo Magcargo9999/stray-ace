@@ -29,6 +29,11 @@ SA.STORY = {
   // 의뢰: 게시판에서 수주해야 진행된다(동시 3개). 왕국·제국 의뢰는 진영 호감도를 바꾼다 — 1막이 끝날 때 호감도가 높은 진영의 2막 루트로 간다.
   // type: extract(탈출) · deliver(납품) · kill(target 접두어의 적 격추 후 탈출) · raven(레이븐을 붙잡기, 수주 전에 했어도 인정)
   contracts: [
+    // 정비사 테오: 작업대 강화 (구조하면 자동 수주, 수주 한도에 안 센다)
+    { id: 'teo_bench2', title: '작업대 강화 I', giver: '정비사 테오', fac: 'neutral', key: true, auto: true, type: 'deliver', mats: { scrap: 6, wire: 2, core: 1 }, req: p => p.rescued.teo,
+      brief: '이 작업대로는 못 버텨요. 재료만 구해 오면 손볼게요. 그럼 일반 부품은 전부 찍어 낼 수 있어요.', reward: { credits: 0, bench: 2 } },
+    { id: 'teo_bench3', title: '작업대 강화 II', giver: '정비사 테오', fac: 'neutral', key: true, auto: true, type: 'deliver', mats: { alloy: 3, fcore: 2, qcircuit: 2 }, req: p => (p.benchLv || 1) >= 2,
+      brief: '정밀 공구까지 갖추면 은하급도 손댈 수 있어요. 강화 부품 도면도 몇 장 복원해 둘게요.', reward: { credits: 0, bench: 3 } },
     { id: 'first', title: '첫 출격', giver: '중개인 오스', fac: 'neutral', type: 'extract', need: 1,
       brief: '아무 탈출점으로든 살아서 돌아와. 그거면 돼.', reward: { credits: 300, item: 'bp_scatter' } },
     { id: 'decode1', title: '보안해독기 도면', giver: '중개인 오스', fac: 'neutral', type: 'extract', need: 2,

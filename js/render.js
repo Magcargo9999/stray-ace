@@ -192,6 +192,7 @@ SA.Render = (() => {
       ctx.fillStyle = '#1a0d33'; ctx.beginPath(); ctx.arc(w.x, w.y, 8, 0, 6.29); ctx.fill(); ctx.strokeStyle = '#b98cff'; ctx.stroke();
     }
     // 떠다니는 아이템
+    const NM = R.range ? {} : (R.needMap = R.needMap || SA.Need.map());
     for (const it of R.items) if (vis(it.x, it.y, 20)) {
       const d = SA.ITEMS[it.id], w = d.w * 8, h = d.h * 8, bob = Math.sin(it.t * 4) * 1;
       if (it.glow && !it.full) { ctx.globalAlpha = 0.25 + 0.2 * Math.sin(it.t * 6); ctx.fillStyle = SA.TIER_COL[it.glow] || '#5dffb0'; ctx.beginPath(); ctx.arc(it.x, it.y + bob, Math.max(w, h) * 0.8 + 4, 0, 6.29); ctx.fill(); }
@@ -201,6 +202,12 @@ SA.Render = (() => {
       ctx.globalAlpha = 1;
       ctx.imageSmoothingEnabled = false;
       ctx.drawImage(icon(it.id), it.x - w / 2, it.y - h / 2 + bob, w, h);
+      const nd = NM[it.id] && NM[it.id].mark;
+      if (nd) {   // 필요한 재료: 위에 작은 마름모 (노랑 = 제작 목표, 초록 = 납품 의뢰)
+        const mx = it.x, my = it.y - h / 2 - 7 + bob - Math.abs(Math.sin(it.t * 3)) * 2;
+        ctx.fillStyle = nd === 'pin' ? '#ffd166' : '#5dffb0'; ctx.strokeStyle = '#0b1120'; ctx.lineWidth = 1;
+        ctx.beginPath(); ctx.moveTo(mx, my - 4); ctx.lineTo(mx + 4, my); ctx.lineTo(mx, my + 4); ctx.lineTo(mx - 4, my); ctx.closePath(); ctx.fill(); ctx.stroke();
+      }
     }
     // 적
     for (const p of R.pools || []) if (vis(p.x, p.y, p.r)) {   // 침식 장판
@@ -630,6 +637,8 @@ SA.Render = (() => {
     // 메인 목표 한 줄 (좌상단)
     const ql = SA.Quest.label();
     if (ql) { ctx.fillStyle = 'rgba(8,10,18,0.6)'; ctx.font = 'bold 13px "Galmuri11", "Malgun Gothic", sans-serif'; const qw = ctx.measureText('목표  ' + ql).width; ctx.fillRect(14, 14, qw + 20, 26); T(ctx, '목표', 24, 32, '#8f9bb8', 13); T(ctx, ql, 60, 32, '#ffd166', 13); }
+    const pl = R.range || R.tut ? null : SA.Need.pinLine();   // 고정한 제작 목표 (보유 = 창고 + 화물칸 + 보안 칸)
+    if (pl) { const t = `${pl[0]} — ${pl[2] ? '재료 다 모았다' : pl[1]}`; ctx.font = '12px "Galmuri11", "Malgun Gothic", sans-serif'; const pw = ctx.measureText('제작  ' + t).width; ctx.fillStyle = 'rgba(8,10,18,0.6)'; ctx.fillRect(14, 42, pw + 20, 20); T(ctx, '제작', 24, 56, '#8f9bb8', 12); T(ctx, t, 56, 56, pl[2] ? '#5dffb0' : '#ffd166', 12); }
     }
     // 보스 체력
     if (R.boss && !R.boss.dead) {
@@ -639,7 +648,7 @@ SA.Render = (() => {
     }
     // 윙맨·수송선 상태 (왼쪽, 목표 줄 아래)
     if (R.allies && R.allies.length) {
-      let y = 56;
+      let y = pl ? 76 : 56;
       for (const a of R.allies) {
         const isW = a.kind === 'wing', N = isW && SA.NAMED[a.named], col = isW ? N.color : '#8fb6ff';
         T(ctx, a.dead ? `${isW ? N.name : '수송선'} — 격추` : isW ? `${N.name}${a.cover ? ' · 엄호 중' : a.retreat ? ' · 후퇴 중' : ''}` : `수송선${a.arrived ? ' · 도착' : a.waiting ? ' · 대기 (가까이 와라)' : ''}`, 24, y, a.dead ? '#777' : col, 12);

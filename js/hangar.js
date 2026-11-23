@@ -75,9 +75,10 @@ SA.Hangar = (() => {
 
   // 목표 카드 · 크레딧 · 막대 상태
   const hud = () => {
-    credits();
+    SA.Contracts.sync(); credits();
     const g = goalParts();
-    $('#hg-goal').innerHTML = `<span class="k">목표</span>${g[0]}${g[1] ? `<div class="hint">${g[1]}</div>` : ''}`;
+    const pl = SA.Need.pinLine();
+    $('#hg-goal').innerHTML = `<span class="k">목표</span>${g[0]}${g[1] ? `<div class="hint">${g[1]}</div>` : ''}${pl ? `<div class="pinl${pl[2] ? ' ok' : ''}"><span class="k">제작</span>${pl[0]} — ${pl[2] ? '재료 다 모았다, 작업대에서 제작' : pl[1]}</div>` : ''}`;
     document.querySelectorAll('#hg-bar .hb').forEach(b => b.classList.toggle('alert', !!(SA.HGUI.barAlerts && S().alerts()[b.dataset.p])));
     tip($('#hg-goal'), () => `${SA.Quest.label()}${SA.Quest.rewardText()}<br><span class="dim">누르면 의뢰 게시판</span>`);
     document.querySelectorAll('#hg-bar .hb').forEach(b => { b.classList.toggle('lock', locked(b.dataset.p)); b.classList.toggle('on', b.dataset.p === panel); });
@@ -374,8 +375,9 @@ SA.Hangar = (() => {
     else {
       const it = stashSel, d = SA.ITEMS[it.id], need = neededFor(it.id);
       right.appendChild(h('div', 'iinfo', `<img src="${SA.Render.iconSrc(it.id)}"><div><b style="color:${d.color}">${d.name}</b><div class="small dim">${SA.KIND_NAME[d.kind] || ''} · ₵${SA.itemVal(it)}</div></div>`));
-      right.appendChild(h('div', 'small use', d.kind === 'use' ? '출격 준비에서 골라 가져간다' : need ? `<span class="warn">제작·의뢰에 ${need}개 필요</span>` : SA.Decode.srcOf(it.id) || it.id === 'bb_reward' ? '해독기에 맡기면 기록이 열린다' : '<span class="dim">쓸 곳 없음</span>'));
+      right.appendChild(h('div', 'small use', d.kind === 'use' ? '출격 준비에서 골라 가져간다' : need ? '' : SA.Decode.srcOf(it.id) || it.id === 'bb_reward' ? '해독기에 맡기면 기록이 열린다' : '<span class="dim">쓸 곳 없음</span>'));
       right.appendChild(h('div', 'small desc', d.desc));
+      const nt = SA.Need.tipHtml(it.id); if (nt) right.appendChild(h('div', 'small', nt));
       const row = h('div', 'acts');
       for (const [lab, fn] of itemActs(it)) { const b = h('button', 'btn small', lab); b.onclick = () => { fn(); SA.Audio.sfx('click'); }; row.appendChild(b); }
       right.appendChild(row);
@@ -436,13 +438,20 @@ SA.Hangar = (() => {
   const CKINDS = [...KINDS, ['item', '동력원·소모품', 'pt_cell'], ['mat', '상위 재료', 'pt_pod']];
   const TIERS = ['일반', '강화', '행성', '은하'];
   const tierOf = (id) => (SA.PARTS[id] || SA.ITEMS[id] || {}).tier || '일반';
-  const matIcons = (mats, have) => Object.keys(mats).map(k => `<span class="mat ${have(k) >= mats[k] ? 'ok' : 'bad'}" title="${SA.ITEMS[k].name}"><img src="${SA.Render.iconSrc(k)}">${have(k)}/${mats[k]}</span>`).join('');
+  const matIcons = (mats, have) => Object.keys(mats).map(k => { const n = have(k), ok = n >= mats[k]; return `<span class="mat ${ok ? 'ok' : 'bad'}"><img src="${SA.Render.iconSrc(k)}">${SA.ITEMS[k].name} ${n}/${mats[k]}${ok || !n ? '' : `<i class="short">${mats[k] - n} 부족</i>`}</span>`; }).join('');
+  const costHtml = (c, have) => matIcons(c.mats, have) + ` <span class="mat ${P().credits >= c.cr ? 'ok' : 'bad'}">₵${c.cr}</span>`;
+  const benchClaimable = () => { const c = SA.Bench.contract(SA.Bench.lv() + 1); return !!c && SA.Contracts.open(c) && SA.Contracts.canClaim(c); };
+  let benchOnlyOk = false;
   const bench = (body) => {
     const prof = P(), top = h('div', 'bn-top');
-    for (const [k, nm] of [['parts', '부품'], ['craft', '제작']]) { const b = h('button', 'tabb' + (benchTab === k ? ' on' : ''), nm); b.onclick = () => { benchTab = k; render(); }; top.appendChild(b); }
-    const kinds = h('div', 'kinds');
-    for (const [k, nm, ic] of (benchTab === 'craft' ? CKINDS : KINDS)) { const b = h('button', 'kb' + (benchKind === k ? ' on' : ''), `${ico(ic)}`); tip(b, nm); b.onclick = () => { benchKind = k; render(); }; kinds.appendChild(b); }
-    top.appendChild(kinds);
+    SA.Contracts.sync();
+    for (const [k, nm] of [['parts', '부품'], ['craft', '제작'], ['up', '강화'], ['lv', `작업대 ${SA.Bench.lv()}단계`]]) {
+      const b = h('button', 'tabb' + (benchTab === k ? ' on' : '') + (k === 'lv' && benchClaimable() ? ' alert' : ''), nm);
+      if (k === 'up') tip(b, '부품을 행성·은하 등급으로 키운다');
+      if (k === 'lv') tip(b, '테오의 의뢰로 작업대를 키우면 설계도와 강화가 열린다');
+      b.onclick = () => { benchTab = k; render(); }; top.appendChild(b);
+    }
+    top.appendChild(h('div', 'grow'));
     if (benchTab === 'parts') {
       const needRep = prof.parts.filter(p => p.dur < p.max), cost = needRep.reduce((n, p) => n + repairCost(p), 0);
       const all = h('button', 'btn small' + (needRep.length ? '' : ' dis'), needRep.length ? `전부 수리 ₵${cost}` : '수리할 것 없음');
@@ -450,9 +459,16 @@ SA.Hangar = (() => {
       all.onclick = () => { if (!needRep.length) return; if (prof.credits < cost) { toast('크레딧이 부족하다.', '#ffb3b3'); SA.Audio.sfx('deny'); return; } prof.credits -= cost; needRep.forEach(repair); SA.Audio.sfx('repair'); save(); render(); };
       top.appendChild(all);
     }
+    if (benchTab === 'craft') { const b = h('button', 'btn small tog' + (benchOnlyOk ? ' on' : ''), (benchOnlyOk ? '✓ ' : '') + '만들 수 있는 것만'); b.onclick = () => { benchOnlyOk = !benchOnlyOk; render(); }; top.appendChild(b); }
     body.appendChild(top);
+    if (benchTab !== 'lv') {
+      const kinds = h('div', 'kinds');
+      for (const [k, nm, ic] of (benchTab === 'craft' ? CKINDS : KINDS)) { const b = h('button', 'kb' + (benchKind === k ? ' on' : ''), `${ico(ic)}<span>${nm}</span>`); b.onclick = () => { benchKind = k; render(); }; kinds.appendChild(b); }
+      body.appendChild(kinds);
+    }
+    if (benchTab !== 'craft' && ['item', 'mat'].includes(benchKind)) benchKind = 'all';
     const wrap = h('div', 'bn-wrap'); body.appendChild(wrap);
-    if (benchTab === 'parts') benchParts(wrap); else benchCraft(wrap);
+    ({ parts: benchParts, craft: benchCraft, up: benchUp, lv: benchLvTab })[benchTab](wrap);
   };
   const benchParts = (wrap) => {
     const prof = P(), left = h('div', 'bn-grid'), right = h('div', 'bn-info');
@@ -475,10 +491,10 @@ SA.Hangar = (() => {
       right.appendChild(h('div', 'small desc', SA.partFullDesc(p)));
       const acts = h('div', 'acts');
       if (p.dur < p.max) { const b = h('button', 'btn small', `수리 ₵${repairCost(p)}`); tip(b, '최대 내구도가 3 준다'); b.onclick = () => { if (prof.credits < repairCost(p)) { SA.Audio.sfx('deny'); toast('크레딧이 부족하다.', '#ffb3b3'); return; } prof.credits -= repairCost(p); repair(p); SA.Audio.sfx('repair'); save(); render(); }; acts.appendChild(b); }
-      if (SA.canUp(p.id) && (p.lv || 0) < 2) { const b = h('button', 'btn small up', p.lv ? '은하 강화' : '행성 강화'); tip(b, p.lv ? '주 스탯 +60% + 보스 각성 1개' : '주 스탯 +30% + 개조 1개'); b.onclick = (e) => upMenu(e, p, 'up'); acts.appendChild(b); }
+      if (SA.canUp(p.id) && (p.lv || 0) < 2) { const to = (p.lv || 0) + 1, b = h('button', 'btn small up' + (SA.Bench.canUp(to) ? '' : ' dis'), `강화 → ${to === 2 ? '은하' : '행성'}`); tip(b, (to === 2 ? '주 스탯 +60% + 보스 각성 1개' : '주 스탯 +30% + 개조 1개') + (SA.Bench.canUp(to) ? '' : `<br><span class="bad">작업대 ${SA.Bench.needFor(to)}단계가 필요하다</span>`)); b.onclick = (e) => upMenu(e, p, 'up'); acts.appendChild(b); }
       if (p.lv && SA.modsFor(p.id).length > 1) { const b = h('button', 'btn small', '개조 교체'); b.onclick = (e) => upMenu(e, p, 'mod'); acts.appendChild(b); }
       if (!equipped.has(p.uid)) { const b = h('button', 'btn small', '분해'); tip(b, salvageText(p)); b.onclick = () => salvage(p); acts.appendChild(b); }
-      if (!prof.rescued.teo && (SA.canUp(p.id) && (p.lv || 0) < 2)) acts.appendChild(h('div', 'small dim', '강화는 테오를 구조하면'));
+      if (SA.canUp(p.id) && (p.lv || 0) < 2 && !SA.Bench.canUp((p.lv || 0) + 1)) acts.appendChild(h('div', 'small dim', `강화는 작업대 ${SA.Bench.needFor((p.lv || 0) + 1)}단계부터 (작업대 단계 탭)`));
       right.appendChild(acts);
     }
     wrap.append(left, right);
@@ -489,25 +505,80 @@ SA.Hangar = (() => {
     // 부품 (아는 설계도)
     if (!['item', 'mat'].includes(benchKind)) for (const rid of prof.recipes) {
       const r = SA.RECIPES[rid], d = SA.PARTS[rid]; if (!r || !d || (benchKind !== 'all' && d.slot !== benchKind)) continue;
-      const fromOk = !r.from || prof.parts.some(p => p.id === r.from), lock = d.tier !== '일반' && !prof.rescued.teo;
+      const fromOk = !r.from || prof.parts.some(p => p.id === r.from), lock = !SA.Bench.canTier(d.tier);
       const ok = !lock && fromOk && Object.keys(r.mats).every(k => have(k) >= r.mats[k]);
-      rows.push({ ok, lock, tier: d.tier, isNew: (prof.newRecipes || []).includes(rid), html: `${d.img ? `<img class="pimg" src="${d.img}">` : ico(KIND_IC[d.slot], 'pimg')}<span class="nm" style="color:${SA.TIER_COL[d.tier]}">${d.name}</span><span class="mats">${r.from ? `<span class="mat ${fromOk ? 'ok' : 'bad'}">${SA.PARTS[r.from].name}</span>` : ''}${matIcons(r.mats, have)}</span>`, tip: `<b>${d.name}</b> <span class="dim">${d.tier}</span><br><span class="desc">${d.desc}</span>${lock ? '<br><span class="bad">테오를 구조하면 만들 수 있다</span>' : ''}`, fn: () => craft(rid) });
+      rows.push({ ok, lock, id: rid, tier: d.tier, isNew: (prof.newRecipes || []).includes(rid), html: `${d.img ? `<img class="pimg" src="${d.img}">` : ico(KIND_IC[d.slot], 'pimg')}<span class="nm" style="color:${SA.TIER_COL[d.tier]}">${d.name}</span><span class="mats">${r.from ? `<span class="mat ${fromOk ? 'ok' : 'bad'}">${SA.PARTS[r.from].name}</span>` : ''}${matIcons(r.mats, have)}</span>`, tip: `<b>${d.name}</b> <span class="dim">${d.tier}</span><br><span class="desc">${d.desc}</span>${lock ? '<br><span class="bad">작업대 2단계(테오의 의뢰)부터 만들 수 있다</span>' : ''}`, fn: () => craft(rid) });
     }
     // 동력원·소모품·상위 재료
     if (['all', 'item', 'mat'].includes(benchKind)) for (const id in SA.CRAFT) {
       const k = SA.ITEMS[id].kind; if (benchKind === 'mat' && k !== 'umat') continue; if (benchKind === 'item' && k === 'umat') continue;
       const r = SA.CRAFT[id], d = SA.ITEMS[id], ok = Object.keys(r.mats).every(m => have(m) >= r.mats[m]);
-      rows.push({ ok, tier: tierOf(id), html: `<img class="pimg" src="${SA.Render.iconSrc(id)}"><span class="nm">${d.name} <span class="dim small">${have(id)}개</span></span><span class="mats">${matIcons(r.mats, have)}</span>`, tip: `<b>${d.name}</b><br><span class="desc">${d.desc}</span>`, fn: () => craftItem(id) });
+      rows.push({ ok, id, tier: tierOf(id), html: `<img class="pimg" src="${SA.Render.iconSrc(id)}"><span class="nm">${d.name} <span class="dim small">${have(id)}개</span></span><span class="mats">${matIcons(r.mats, have)}</span>`, tip: `<b>${d.name}</b><br><span class="desc">${d.desc}</span>`, fn: () => craftItem(id) });
     }
-    rows.sort((a, b) => (!!b.isNew - !!a.isNew) || (b.ok - a.ok) || TIERS.indexOf(a.tier) - TIERS.indexOf(b.tier));
-    if (!rows.length) list.appendChild(h('div', 'dim small pad', '만들 수 있는 것이 없다. 설계도는 필드에서 줍는다.'));
-    for (const r of rows) {
-      const row = h('div', 'crow2' + (r.ok ? '' : ' no') + (r.lock ? ' lock' : '') + (r.isNew ? ' isnew' : ''), (r.isNew ? '<span class="newtag">NEW</span>' : '') + r.html + (r.lock ? ico('ic_lock', 'lk') : ''));
+    rows.sort((a, b) => (b.id === prof.pin) - (a.id === prof.pin) || (!!b.isNew - !!a.isNew) || (b.ok - a.ok) || TIERS.indexOf(a.tier) - TIERS.indexOf(b.tier));
+    const shown = benchOnlyOk ? rows.filter(r => r.ok) : rows;
+    if (!shown.length) list.appendChild(h('div', 'dim small pad', benchOnlyOk ? '지금 재료로 만들 수 있는 것이 없다. 「만들 수 있는 것만」을 끄면 전부 보인다.' : '만들 수 있는 것이 없다. 설계도는 필드에서 줍거나 작업대를 키우면 받는다.'));
+    for (const r of shown) {
+      const pinned = prof.pin === r.id;
+      const row = h('div', 'crow2' + (r.ok ? '' : ' no') + (r.lock ? ' lock' : '') + (r.isNew ? ' isnew' : '') + (pinned ? ' pinned' : ''), (r.isNew ? '<span class="newtag">NEW</span>' : '') + r.html + (r.lock ? ico('ic_lock', 'lk') : ''));
       tip(row, r.tip);
+      const pb = h('button', 'btn tiny pin' + (pinned ? ' on' : ''), pinned ? '고정 중' : '고정');
+      tip(pb, '제작 목표로 고정 — 필요한 재료가 창고·화물칸·필드에서 표시되고 목표 줄에 뜬다');
+      pb.onclick = (e) => { e.stopPropagation(); prof.pin = pinned ? null : r.id; SA.Audio.sfx('click'); save(); render(); hud(); };
+      row.appendChild(pb);
       const b = h('button', 'btn small' + (r.ok ? '' : ' dis'), '제작'); b.onclick = r.fn; row.appendChild(b);
       list.appendChild(row);
     }
     wrap.appendChild(list);
+  };
+  // [강화] 키울 수 있는 부품 목록 → 누르면 기존 강화 메뉴
+  const benchUp = (wrap) => {
+    const prof = P(), list = h('div', 'bn-list'), have = (k) => SA.Grid.count(prof.stash, k);
+    const equipped = new Set(); for (const s in prof.loadouts) SA.loUids(prof.loadouts[s]).forEach(u => equipped.add(u));
+    const L = SA.Bench.lv();
+    list.appendChild(h('div', 'small pad dim', `행성 강화: 작업대 2단계 ${L >= 2 ? '<span class="ok">✓</span>' : '(잠김)'} · 은하 강화: 작업대 3단계 ${L >= 3 ? '<span class="ok">✓</span>' : '(잠김)'} — 지금 ${L}단계`));
+    const ps = prof.parts.filter(p => SA.canUp(p.id) && (benchKind === 'all' || SA.PARTS[p.id].slot === benchKind) && ((p.lv || 0) < 2 || SA.modsFor(p.id).length > 1));
+    const row0 = (p) => { const to = (p.lv || 0) + 1; return to <= 2 && SA.Bench.canUp(to) ? 0 : 1; };
+    ps.sort((a, b) => row0(a) - row0(b) || (b.lv || 0) - (a.lv || 0) || equipped.has(b.uid) - equipped.has(a.uid));
+    if (!ps.length) list.appendChild(h('div', 'dim small pad', '키울 수 있는 부품이 없다.'));
+    for (const p of ps) {
+      const to = (p.lv || 0) + 1, max = to > 2, okLv = max || SA.Bench.canUp(to), c = max ? null : SA.UPGRADE.cost(p);
+      const nextT = to === 2 ? '은하' : '행성';
+      const row = h('div', 'crow2' + (okLv ? '' : ' lock'), `${partIcon(p)}<span class="nm">${SA.partHtml(p)}${equipped.has(p.uid) ? ' <span class="dim small">장착</span>' : ''}<br><span class="small"><span class="tier t-${SA.partTier(p)}">${SA.partTier(p)}</span>${max ? ' · 최대' : ` → <span style="color:${SA.TIER_COL[nextT]}">${nextT}</span>`}</span></span><span class="mats">${max ? '' : okLv ? costHtml(c, have) + (to === 2 ? ' <span class="dim small">+ 각성 재료</span>' : '') : `<span class="bad small">작업대 ${SA.Bench.needFor(to)}단계 필요</span>`}</span>`);
+      row.onmouseenter = (e) => SA.UI.showTipHtml(e, partTipHtml(p)); row.onmouseleave = SA.UI.hideTip;
+      if (p.lv && SA.modsFor(p.id).length > 1) { const b = h('button', 'btn small', '개조 교체'); b.onclick = (e) => upMenu(e, p, 'mod'); row.appendChild(b); }
+      if (!max) { const b = h('button', 'btn small up' + (okLv ? '' : ' dis'), '강화'); b.onclick = (e) => upMenu(e, p, 'up'); row.appendChild(b); }
+      list.appendChild(row);
+    }
+    wrap.appendChild(list);
+  };
+  // [작업대 N단계] 단계 카드 3장 · 다음 단계는 테오의 납품 의뢰
+  const benchLvTab = (wrap) => {
+    const prof = P(), L = SA.Bench.lv(), K = SA.Contracts, have = (k) => SA.Grid.count(prof.stash, k), box = h('div', 'bn-lv');
+    const pname = (id) => (SA.PARTS[id] || {}).name || id;
+    for (let n = 1; n <= 3; n++) {
+      const st = n <= L ? 'done' : n === L + 1 ? 'next' : 'lock';
+      const chip = n < L ? '완료' : n === L ? '지금' : n === L + 1 ? '다음' : '잠김';
+      const give = n === 2 ? `일반 부품 ${SA.BENCH.give[2].length}종` : (SA.BENCH.give[n] || []).map(pname).join(', ');
+      const card = h('div', 'lvcard ' + st, `<div class="hd"><b>${n}단계 · ${SA.BENCH.name[n]}</b><span class="chip">${chip}</span></div><div class="small">${SA.BENCH.opens[n]}</div><div class="small dim">설계도: ${give}</div>`);
+      if (n === L + 1) {
+        const c = SA.Bench.contract(n);
+        if (!c || !K.open(c)) card.appendChild(h('div', 'small warn', '정비사 테오를 구조하면 테오가 이 일을 맡아 준다. (출격 중 조난 신호)'));
+        else {
+          card.appendChild(h('div', 'small', `<span class="dim">${c.giver}:</span> "${c.brief}"`));
+          card.appendChild(h('div', 'small mats', '필요한 재료 ' + matIcons(c.mats, have)));
+          const can = K.canClaim(c), b = h('button', 'btn' + (can ? '' : ' dis'), '재료 넘기고 작업대 강화');
+          b.onclick = () => {
+            const rp = K.claim(c.id);
+            if (rp === null) { SA.Audio.sfx('deny'); toast('재료가 부족하다.', '#ffb3b3'); return; }
+            toast(`작업대 강화 완료${rp}`, '#5dffb0'); SA.Audio.sfx('extract'); SA.Quest.event('contract'); save(); render(); hud();
+          };
+          card.appendChild(b);
+        }
+      }
+      box.appendChild(card);
+    }
+    wrap.appendChild(box);
   };
   // 분해: 제작 재료의 절반(내림)을 돌려준다. 레시피가 없는 부품은 고철 1
   const salvageMats = (p) => { const r = SA.RECIPES[p.id], out = {}; if (!r) return { scrap: 1 }; for (const k in r.mats) { const n = Math.floor(r.mats[k] / 2); if (n) out[k] = n; } if (p.lv) out.qcircuit = p.lv; if (!Object.keys(out).length) out.scrap = 1; return out; };
@@ -526,13 +597,15 @@ SA.Hangar = (() => {
     const tmp = SA.Grid.make(prof.stash.w, prof.stash.h, prof.stash.items.slice()); SA.Grid.takeMats(tmp, r.mats);
     if (!SA.Grid.add(tmp, id)) { SA.Audio.sfx('deny'); toast('창고에 자리가 없다.', '#ffb3b3'); return; }
     SA.Grid.takeMats(prof.stash, r.mats); SA.Grid.add(prof.stash, id);
-    toast(`제작 완료: ${SA.ITEMS[id].name}`, '#5dffb0'); SA.Audio.sfx('buy'); SA.Quest.event('craft'); save(); render();
+    if (prof.pin === id) prof.pin = null;
+    toast(`제작 완료: ${SA.ITEMS[id].name}`, '#5dffb0'); SA.Audio.sfx('buy'); SA.Quest.event('craft'); save(); render(); hud();
   };
   const repairCost = (p) => Math.ceil((p.max - p.dur) * SA.partVal(p) / 250);
   // ── 행성·은하 강화 / 개조 교체 ──
   const upMenu = (e, p, mode) => {
     const prof = P(), have = (k) => SA.Grid.count(prof.stash, k);
-    if (!prof.rescued.teo) { SA.Audio.sfx('deny'); toast('정비사 테오를 구조해야 강화할 수 있다.', '#ffb3b3'); return; }
+    const toLv = mode === 'mod' ? 1 : (p.lv || 0) + 1;
+    if (!SA.Bench.canUp(toLv)) { SA.Audio.sfx('deny'); toast(`작업대 ${SA.Bench.needFor(toLv)}단계가 필요하다 — 작업대 단계 탭에서 테오의 의뢰를 보자.`, '#ffb3b3'); return; }
     const m = h('div', 'ctx wide');
     const closeM = () => document.querySelectorAll('.ctx').forEach(x => x.remove());
     const can = (c) => prof.credits >= c.cr && Object.keys(c.mats).every(k => have(k) >= c.mats[k]);
@@ -570,7 +643,7 @@ SA.Hangar = (() => {
   const repair = (p) => { p.max = Math.max(40, p.max - 3); p.dur = p.max; };
   const craft = (rid) => {
     const prof = P(), r = SA.RECIPES[rid];
-    if (SA.PARTS[rid].tier !== '일반' && !prof.rescued.teo) { SA.Audio.sfx('deny'); toast('정비사 테오를 구조해야 강화 등급 이상을 만들 수 있다.', '#ffb3b3'); return; }
+    if (!SA.Bench.canTier(SA.PARTS[rid].tier)) { SA.Audio.sfx('deny'); toast('강화 등급은 작업대 2단계부터 만들 수 있다.', '#ffb3b3'); return; }
     if (r.from) {
       const src = prof.parts.filter(p => p.id === r.from).sort((a, b) => b.dur - a.dur)[0];
       if (!src) { SA.Audio.sfx('deny'); return; }
@@ -584,7 +657,8 @@ SA.Hangar = (() => {
       SA.Grid.takeMats(prof.stash, r.mats);
       prof.parts.push(SA.Save.newPart(rid));
     }
-    toast(`제작 완료: ${SA.PARTS[rid].name}`, '#5dffb0'); SA.Audio.sfx('buy'); SA.Quest.event('craft'); save(); render();
+    if (prof.pin === rid) prof.pin = null;
+    toast(`제작 완료: ${SA.PARTS[rid].name}`, '#5dffb0'); SA.Audio.sfx('buy'); SA.Quest.event('craft'); save(); render(); hud();
   };
 
   // ── 상점 (오스의 단말): 소모품 · 해독 코드 충전 ──
@@ -660,31 +734,31 @@ SA.Hangar = (() => {
     const tug = h('div', 'tug', `<span class="rep-kingdom">왕국 ${kv > 0 ? '+' : ''}${kv}</span><div class="track"><i class="k" style="width:${Math.max(0, Math.min(50, kv / 2))}%"></i><i class="e" style="width:${Math.max(0, Math.min(50, ev / 2))}%"></i><b></b></div><span class="rep-empire">제국 ${ev > 0 ? '+' : ''}${ev}</span>`);
     tip(tug, `왕국·제국 의뢰를 끝내면 그 진영 +${SA.REP.gain}, 반대 -${SA.REP.loss}. 중립은 영향 없음.<br>1막이 끝날 때 높은 쪽의 2막 루트로 간다.<br>${prof.route ? `루트 확정: ${K.FAC[prof.route]}` : `지금 기울어진 쪽: ${ln ? K.FAC[ln] : '없음'}`}`);
     body.appendChild(tug);
-    body.appendChild(h('div', 'small dim', `수주 ${K.active().length}/${SA.REP.maxActive}`));
+    body.appendChild(h('div', 'small dim', `수주 ${K.counted().length}/${SA.REP.maxActive}`));
     const rank = (c) => { const s = K.st(c.id); return s.done ? 4 : K.canClaim(c) ? 0 : s.accepted ? 1 : 2; };
     const list = SA.STORY.contracts.filter(K.open).sort((a, b) => rank(a) - rank(b) || (b.key ? 1 : 0) - (a.key ? 1 : 0));
     const RV = { kingdom: 'empire', empire: 'kingdom' };
     const done = h('details', 'donebox'); let nDone = 0;
     for (const c of list) {
       const st = K.st(c.id), can = K.canClaim(c), [a, b, det] = progOf(c);
-      const rwIc = `<span class="rw">₵${c.reward.credits}${c.reward.item ? `<img src="${SA.Render.iconSrc(c.reward.item)}" title="${SA.ITEMS[c.reward.item].name}">` : ''}</span>`;
+      const rwIc = c.reward.bench ? `<span class="rw">작업대 ${c.reward.bench}단계</span>` : `<span class="rw">₵${c.reward.credits}${c.reward.item ? `<img src="${SA.Render.iconSrc(c.reward.item)}" title="${SA.ITEMS[c.reward.item].name}">` : ''}</span>`;
       const chipT = st.done ? '<span class="chip">완료</span>' : can ? `<span class="chip ok">${ico('ic_gift')}보상</span>` : st.accepted ? '<span class="chip">진행 중</span>' : '';
       const row = h('div', 'cr fac-' + (c.fac || 'neutral') + (st.accepted && !st.done ? ' taken' : '') + (openC === c.id ? ' open' : '') + (st.done ? ' off' : ''),
         `<div class="hd"><b>${c.key ? '<span class="key">중요</span> ' : ''}${c.title}</b><span class="cbar"><i style="width:${b ? a / b * 100 : 0}%"></i></span><span class="cnum">${a}/${b}</span>${rwIc}${chipT}</div>`);
       row.querySelector('.hd').onclick = () => { openC = openC === c.id ? null : c.id; render(); };
       if (openC === c.id) {
         const rep = RV[c.fac] ? ` · <span class="rep-${c.fac}">${K.FAC[c.fac]} +${SA.REP.gain}</span> <span class="rep-${RV[c.fac]}">${K.FAC[RV[c.fac]]} -${SA.REP.loss}</span>` : '';
-        const dd = h('div', 'dt', `<div class="small"><span class="dim">${c.giver}</span> "${c.brief}"</div>${det ? `<div class="small">${det}</div>` : ''}<div class="small dim">보상 ₵${c.reward.credits}${c.reward.item ? ' + ' + SA.ITEMS[c.reward.item].name : ''}${rep}</div>`);
+        const dd = h('div', 'dt', `<div class="small"><span class="dim">${c.giver}</span> "${c.brief}"</div>${det ? `<div class="small">${det}</div>` : ''}<div class="small dim">보상 ${c.reward.bench ? `작업대 ${c.reward.bench}단계 (${SA.BENCH.name[c.reward.bench]})` : '₵' + c.reward.credits}${c.reward.item ? ' + ' + SA.ITEMS[c.reward.item].name : ''}${rep}</div>`);
         const r2 = h('div', 'acts');
         if (!st.done && !st.accepted) {
-          const bb = h('button', 'btn small' + (K.active().length >= SA.REP.maxActive ? ' dis' : ''), '수주');
+          const bb = h('button', 'btn small' + (K.counted().length >= SA.REP.maxActive ? ' dis' : ''), '수주');
           bb.onclick = () => { const err = K.accept(c.id); if (err) { toast(err, '#ffb3b3'); SA.Audio.sfx('deny'); return; } SA.Audio.sfx('click'); render(); };
           r2.appendChild(bb);
         } else if (!st.done) {
           const bb = h('button', 'btn small' + (can ? '' : ' dis'), c.type === 'deliver' ? '납품' : '보상 받기');
           bb.onclick = () => { const rp = K.claim(c.id); if (rp === null) { SA.Audio.sfx('deny'); return; } autoRegister(); toast(`의뢰 완료: ${c.title}${rp}`, '#5dffb0'); SA.Audio.sfx('extract'); SA.Quest.event('contract'); save(); render(); };
           const x = h('button', 'btn tiny', '포기'); x.onclick = () => { K.abandon(c.id); SA.Audio.sfx('click'); render(); };
-          r2.append(bb, x);
+          if (c.auto) r2.append(bb); else r2.append(bb, x);
         }
         dd.appendChild(r2); row.appendChild(dd);
       }

@@ -261,8 +261,12 @@ SA.Raid = (() => {
   const resolve = (id) => {
     if (id.startsWith('part:')) { const pool = SA.BP_POOL[id.slice(5)] || SA.BP_POOL['일반']; return 'pt_' + U.pick(pool); }
     if (!id.startsWith('bp:')) return SA.Decode.dropId(SA.profile, id);   // 다 모은 출처의 스토리 블랙박스 → 신호 블랙박스
-    const pool = (SA.BP_POOL[id.slice(3)] || []).length ? SA.BP_POOL[id.slice(3)] : SA.BP_POOL['강화'], unk = pool.filter(r => !SA.profile.recipes.includes(r));
-    return 'bp_' + U.pick(unk.length && Math.random() < 0.7 ? unk : pool);
+    const tier = id.slice(3), known = (r) => SA.profile.recipes.includes(r);
+    const pool = (SA.BP_POOL[tier] || []).length ? SA.BP_POOL[tier] : SA.BP_POOL['강화'], unk = pool.filter(r => !known(r));
+    if (unk.length) return 'bp_' + U.pick(unk);                  // 아는 설계도는 안 나온다
+    const unk2 = SA.BP_POOL['강화'].filter(r => !known(r));       // 그 등급을 다 알면: 가끔 모르는 강화 설계도, 아니면 쓸 수 있는 재료
+    if (tier === '일반' && unk2.length && Math.random() < SA.BENCH.upRoll) return 'bp_' + U.pick(unk2);
+    return U.pick(SA.BENCH.fallback);
   };
   const dropLoot = (e) => {
     const R = SA.R, D = SA.ENEMIES[e.type] || {}, table = e.loot || D.drops || [], b = grazeBonus();

@@ -325,7 +325,7 @@ SA.RECOVER = { hold: 3 };
 SA.OBS = { levels: [2, 1.75, 1.5, 1.3], radar: [350, 600, 900, 1200], fogCell: 80, reveal: 330 };
 // 블랙박스 해독: 출격 1회가 지나면 완료, 크레딧을 내면 즉시
 SA.DECODE = { raids: 1, instant: 300, slots: 3 };   // 맡기기 최대 3개 (임시)   // 회수 잔해: 머물러서 회수하는 시간   // 피격 시 무작위 장착 부품 내구도 감소
-SA.START_RECIPES = ['pulse', 'mg', 'magnet', 'obs1'];   // 처음 아는 제작법은 이것뿐 (임시). 보안해독기(강화)는 오스의 의뢰 '보안해독기 도면' 보상이나 설계도 드랍으로 얻는다 (제작은 테오 구조 후)
+SA.START_RECIPES = ['pulse', 'mg', 'purge', 'magnet', 'obs1'];   // = 작업대 1단계 지급분   // 처음 아는 제작법은 이것뿐 (임시). 보안해독기(강화)는 오스의 의뢰 '보안해독기 도면' 보상이나 설계도 드랍으로 얻는다 (제작은 테오 구조 후)
 // 설계도 아이템은 부품마다 자동 생성. 등급별 풀에서 무작위로 떨어진다 (loot의 'bp:일반' 등)
 SA.BP_POOL = { 일반: [], 강화: [] };
 for (const id in SA.PARTS) {
@@ -334,6 +334,16 @@ for (const id in SA.PARTS) {
   if (!SA.ITEMS['bp_' + id]) SA.ITEMS['bp_' + id] = { name: '설계도: ' + d.name, w: 1, h: 1, val: { 일반: 100, 강화: 200 }[d.tier], kind: 'bp', recipe: id, color: '#e6edf3', desc: '격납고에서 영구 해금된다. 이미 알면 판매.' };
   if (id !== 'raven' && id !== 'sensor') SA.BP_POOL[d.tier].push(id);   // 레이븐 전용 설계도는 일반 드랍 풀에서 뺀다
 }
+// 작업대 단계 (임시): 1 기본 → 2 정비(테오 의뢰 · 일반 설계도 전부 + 행성 강화 + 강화 설계도 1) → 3 정밀(테오 의뢰 · 강화 설계도 일부 + 은하 강화)
+SA.BENCH = {
+  name: ['', '기본 작업대', '정비 작업대', '정밀 작업대'],
+  give: { 1: SA.START_RECIPES, 2: Object.keys(SA.RECIPES).filter(id => SA.PARTS[id] && SA.PARTS[id].tier === '일반'),
+          3: ['beam', 'swarm', 'drone', 'intercept', 'cannon', 'overdrive', 'barrier', 'grazeamp'] },
+  opens: { 1: '일반 부품 기본기', 2: '일반 부품 설계도 전부 · 강화 등급 제작 · 행성 강화 · 강화 설계도 1장', 3: '강화 설계도 8장 · 은하 강화' },
+  bonusBp: { 2: 1 },
+  upRoll: 0.25,                              // 일반 설계도를 다 알면: 이 확률로 모르는 강화 설계도, 아니면 아래 재료
+  fallback: ['alloy', 'fcore', 'qcircuit'],
+};
 SA.ITEMS.bp_sensor.img = 'assets/bp_sensor.png';   // 도트 설계도 카드
 SA.PARTS.scatter.img = 'assets/p_scatter.png';   // 산탄 포탑 도트
 SA.PARTS.missile.img = 'assets/p_missile.png';   // 미사일 포드 도트

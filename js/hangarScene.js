@@ -163,9 +163,11 @@ SA.HangarScene = (() => {
   const badges = () => {
     const prof = P(), out = {};
     const K = SA.Contracts;
-    if (SA.STORY.contracts.some(c => K.open(c) && K.st(c.id).accepted && !K.st(c.id).done && K.canClaim(c))) out.board = 'gift';
+    if (SA.STORY.contracts.some(c => !c.auto && K.open(c) && K.st(c.id).accepted && !K.st(c.id).done && K.canClaim(c))) out.board = 'gift';
     if ((prof.logsNew || []).length || (prof.signals || []).length) out.decoder = 'star';
     if ((prof.newRecipes || []).length) out.workbench = 'star';
+    const bc = SA.Bench.contract(SA.Bench.lv() + 1);
+    if (bc && K.open(bc) && K.st(bc.id).accepted && K.canClaim(bc)) out.workbench = 'gift';   // 작업대 강화 재료가 다 모였다
     if (guide) out[guide.target] = 'ex';
     return out;
   };

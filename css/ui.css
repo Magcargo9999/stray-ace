@@ -345,3 +345,26 @@ h3 { margin: 6px 0 8px; font-size: 15px; color: #cfe3ff; } h4 { margin: 10px 0 6
 @keyframes nbpop { 0% { transform: scale(.92); opacity: 0; } 100% { transform: none; opacity: 1; } }
 .crow2.isnew { border-color: #ffd166; position: relative; }
 .crow2 .newtag { position: absolute; left: -4px; top: -6px; background: #ffd166; color: #0b1120; font-size: 10px; padding: 0 5px; z-index: 2; }
+/* v0.66 작업대 단계 · 제작 탭 정리 · 필요 재료 표시 · 제작 고정 */
+.bn-top .grow { flex: 1; }
+.tabb.alert { box-shadow: 0 0 0 1px #ffd166 inset; color: #ffd166; }
+.kinds { flex-wrap: wrap; margin-bottom: 8px; flex: none; }
+.kb { width: auto; height: 30px; display: inline-flex; align-items: center; gap: 4px; padding: 3px 8px 3px 4px; color: #8f9bb8; font: inherit; font-size: 12px; }
+.kb img { width: 22px; height: 22px; flex: none; }
+.kb.on { color: #d8e6ff; }
+.btn.tog.on { border-color: #5dffb0; color: #5dffb0; }
+.crow2 .mats { display: flex; flex-wrap: wrap; row-gap: 2px; }
+.mat .short { font-style: normal; color: #ff6b81; margin-left: 4px; font-size: 11px; }
+.crow2 .pin { flex: none; } .crow2 .pin.on { border-color: #ffd166; color: #ffd166; }
+.crow2.pinned { background: rgba(255, 209, 102, .06); }
+.bn-lv { display: flex; flex-direction: column; gap: 10px; padding: 4px; }
+.lvcard { border: 1px solid #1d2840; background: #0b1120; padding: 10px 12px; display: flex; flex-direction: column; gap: 6px; }
+.lvcard .hd { display: flex; align-items: center; gap: 8px; } .lvcard .hd .chip { margin-left: auto; }
+.lvcard.done { border-color: #2a3550; } .lvcard.next { border-color: #ffd166; } .lvcard.lock { opacity: .55; }
+.lvcard .btn { align-self: flex-start; margin-top: 4px; }
+.item .need { position: absolute; left: 2px; top: 2px; width: 7px; height: 7px; transform: rotate(45deg); border: 1px solid #0b1120; pointer-events: none; }
+.item .need.pin { background: #ffd166; } .item .need.q { background: #5dffb0; }
+.needtip { margin-top: 4px; border-top: 1px solid #1d2840; padding-top: 3px; font-size: 11px; color: #8f9bb8; }
+.needtip .pin { color: #ffd166; } .needtip .q { color: #5dffb0; }
+.pinl { font-size: 12px; color: #ffd166; margin-top: 3px; } .pinl.ok { color: #5dffb0; } .pinl .k { margin-right: 6px; }
+.lvcard .chip { font-size: 11px; color: #8f9bb8; border: 1px solid #2a3550; padding: 1px 6px; } .lvcard.next .chip { color: #ffd166; border-color: #ffd166; }

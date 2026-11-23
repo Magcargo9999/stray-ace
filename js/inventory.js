@@ -14,6 +14,7 @@ SA.UI = (() => {
     el.classList.add('grid');
     el.dataset.grid = name;
     el.style.width = grid.w * CELL + 'px'; el.style.height = grid.h * CELL + 'px';
+    const NM = SA.Need && SA.profile ? SA.Need.map() : {};
     for (const it of grid.items) {
       const d = SA.ITEMS[it.id], [w, hh] = SA.Grid.dims(it);
       const tr = it.lv === 2 ? '은하' : it.lv === 1 ? '행성' : d.tier;
@@ -28,6 +29,7 @@ SA.UI = (() => {
       n.appendChild(img);
       if (d.kind === 'cell' && it.ch !== undefined) n.appendChild(h('span', 'val', Math.round(it.ch * 100) + '%'));   // 동력원 충전량
       else if (opts.showVal !== false) n.appendChild(h('span', 'val', '₵' + SA.itemVal(it)));
+      if (NM[it.id] && NM[it.id].mark) n.appendChild(h('span', 'need ' + NM[it.id].mark));   // 고정 목표(노랑)·납품 의뢰(초록) 재료
       n.addEventListener('mousedown', (e) => onItemDown(e, name, it));
       n.addEventListener('mouseenter', (e) => showTip(e, it.id, it.dur !== undefined ? `<br>내구도 ${it.dur}/${SA.LV_MAX[it.lv || 0]}` : it.ch !== undefined ? `<br>충전 ${Math.round(it.ch * 100)}%` : '', it));
       n.addEventListener('mouseleave', hideTip);
@@ -52,7 +54,7 @@ SA.UI = (() => {
     const cells = d.w * d.h;
     const tier = d.kind === 'bp' ? (SA.PARTS[d.recipe] || {}).tier : d.tier;
     tip.innerHTML = `<b style="color:${d.color}">${d.name}</b> <span class="dim">${d.w}×${d.h} · ${SA.KIND_NAME[d.kind] || ''}${tier ? ' · ' + tier : ''}</span><br>` +
-      `₵${d.val} <span class="dim">· 칸당 ₵${Math.round(d.val / cells)}</span><br><span class="desc">${d.desc}</span>${extra}` +
+      `₵${d.val} <span class="dim">· 칸당 ₵${Math.round(d.val / cells)}</span><br><span class="desc">${d.desc}</span>${extra}${SA.Need && SA.profile ? SA.Need.tipHtml(id) : ''}` +
       `<div class="keys">끌기: 이동 · R: 회전 · 우클릭: 메뉴${SA.R && SA.R.tabOpen ? ' · Shift+클릭: 보안칸↔화물칸 · Ctrl+클릭: 버리기' : ''}</div>`;
     tip.style.display = 'block'; moveTip(e);
   };

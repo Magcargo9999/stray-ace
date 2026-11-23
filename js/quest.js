@@ -58,7 +58,7 @@ SA.Quest = (() => {
     SA.Save.store(prof);
     return m;
   };
-  const rewardText = () => { const { q } = cur(); return q && q.bp ? ` · 보상 설계도: ${SA.PARTS[q.bp].name}` : q && q.rescue ? ' · 보상: 테오 합류(강화 제작·행성 강화 해금) + 강화 합금 2 · 양자 회로 1' : ''; };
+  const rewardText = () => { const { q } = cur(); return q && q.bp ? ` · 보상 설계도: ${SA.PARTS[q.bp].name}` : q && q.rescue ? ' · 보상: 테오 합류(작업대 강화 의뢰) + 강화 합금 2 · 양자 회로 1' : ''; };
   return { event, label, rewardText, cur, sync, ravenCaught };
 })();
 
@@ -97,7 +97,7 @@ SA.Rescue = (() => {
     if (id === 'teo') {
       p.rescued.teo = true;
       for (const id of ['alloy', 'alloy', 'qcircuit']) if (!SA.Grid.add(p.stash, id)) p.credits += SA.ITEMS[id].val;   // 테오의 선물: 펄스건 행성 강화(2연장 등)에 딱 맞는 재료
-      msg += ' — 테오가 합류했다. 작업대에서 강화 등급 제작과 행성·은하 강화가 열렸다. 선물: 강화 합금 2 · 양자 회로 1';
+      msg += ' — 테오가 합류했다. 작업대 강화 의뢰가 열렸다 (작업대 → 작업대 단계). 선물: 강화 합금 2 · 양자 회로 1'; SA.Contracts.sync();
       SA.Quest.event('rescue');
     } else if (id === 'deliv') { p.rescued.deliv = true; msg += ' — 상점 탭에서 재료 배달이 열렸다'; }
     else { p.pilots[id] = { injury: 0 }; msg += ' — 파일럿으로 고를 수 있다'; }
@@ -115,13 +115,14 @@ SA.Contracts = (() => {
   const st = (id) => (prof().contracts[id] = prof().contracts[id] || { accepted: false, progress: 0, done: false });
   const def = (id) => SA.STORY.contracts.find(c => c.id === id);
   const active = () => SA.STORY.contracts.filter(c => { const s = prof().contracts[c.id]; return s && s.accepted && !s.done; });
+  const counted = () => active().filter(c => !c.auto);   // 테오 의뢰(auto)는 수주 한도에 안 센다
   const canClaim = (c) => {
     const s = st(c.id); if (!s.accepted || s.done) return false;
     if (c.type === 'deliver') return Object.keys(c.mats).every(k => SA.Grid.count(prof().stash, k) >= c.mats[k]);
     return s.progress >= (c.need || 1);
   };
   const accept = (id) => {
-    if (active().length >= SA.REP.maxActive) return `동시에 ${SA.REP.maxActive}개까지 수주할 수 있다.`;
+    if (counted().length >= SA.REP.maxActive) return `동시에 ${SA.REP.maxActive}개까지 수주할 수 있다.`;
     const s = st(id); s.accepted = true; s.progress = 0; sync(); SA.Save.store(prof()); return '';
   };
   const abandon = (id) => { const s = st(id); s.accepted = false; s.progress = 0; SA.Save.store(prof()); };
@@ -134,6 +135,7 @@ SA.Contracts = (() => {
     p.credits += c.reward.credits;
     if (c.reward.item) SA.Grid.add(p.stash, c.reward.item);
     let rep = '';
+    if (c.reward.bench) { const got = SA.Bench.setLv(c.reward.bench); rep += ` · ${SA.BENCH.name[c.reward.bench]} — 새 설계도 ${got.length}장`; }
     if (RIVAL[c.fac]) {
       p.rep[c.fac] += SA.REP.gain; p.rep[RIVAL[c.fac]] -= SA.REP.loss; p.rep.last = c.fac;
       rep = ` · ${FAC[c.fac]} 호감도 +${SA.REP.gain}, ${FAC[RIVAL[c.fac]]} -${SA.REP.loss}`;
@@ -160,8 +162,68 @@ SA.Contracts = (() => {
   const open = (c) => !c.req || c.req(prof());   // 조건이 안 된 의뢰는 게시판에 안 보인다
   // 이번 출격에 함께 갈 윙맨 의뢰 (수주한 것 중 먼저 것 하나)
   const wingActive = () => active().find(c => c.type === 'wing') || null;
-  const sync = () => { for (const c of active()) if (c.type === 'raven' && prof().raven.done) st(c.id).progress = 1; };
+  const sync = () => {
+    for (const c of SA.STORY.contracts) if (c.auto && open(c)) { const s = st(c.id); if (!s.done && !s.accepted) s.accepted = true; }
+    for (const c of active()) if (c.type === 'raven' && prof().raven.done) st(c.id).progress = 1;
+  };
   // 지금 기울어진 진영 (동점이면 마지막으로 의뢰를 끝낸 진영, 아무것도 안 했으면 null)
   const lean = () => { const r = prof().rep; return r.kingdom > r.empire ? 'kingdom' : r.empire > r.kingdom ? 'empire' : (r.last || null); };
-  return { FAC, open, wingActive, st, def, active, canClaim, accept, abandon, claim, onRaid, sync, lean };
+  return { FAC, open, wingActive, st, def, active, counted, canClaim, accept, abandon, claim, onRaid, sync, lean };
+})();
+
+// 작업대 단계: 단계마다 설계도를 지급하고 강화 등급 제작 · 행성/은하 강화를 연다
+SA.Bench = (() => {
+  const lv = () => SA.profile.benchLv || 1;
+  const grant = (ids) => {
+    const p = SA.profile, got = [];
+    for (const r of ids) if (SA.RECIPES[r] && !p.recipes.includes(r)) { p.recipes.push(r); (p.newRecipes = p.newRecipes || []).push(r); got.push(r); }
+    return got;
+  };
+  const setLv = (n) => {
+    const p = SA.profile; p.benchLv = Math.max(lv(), n);
+    let got = [];
+    for (let i = 1; i <= p.benchLv; i++) got = got.concat(grant(SA.BENCH.give[i] || []));
+    for (let i = 0; i < (SA.BENCH.bonusBp[n] || 0); i++) {
+      const unk = SA.BP_POOL['강화'].filter(r => !p.recipes.includes(r));
+      if (unk.length) got = got.concat(grant([unk[Math.floor(Math.random() * unk.length)]]));
+    }
+    if (got.length) p.bpMiss = 0;
+    SA.Save.store(p);
+    return got;
+  };
+  const canTier = (t) => t === '일반' || lv() >= 2;      // 강화 등급 제작
+  const needFor = (toLv) => toLv + 1;                   // 행성(1)은 2단계, 은하(2)는 3단계
+  const canUp = (toLv) => lv() >= needFor(toLv);
+  const contract = (n) => SA.STORY.contracts.find(c => c.reward && c.reward.bench === n);
+  return { lv, setLv, grant, canTier, canUp, needFor, contract };
+})();
+
+// 필요 재료: 고정한 제작 목표 · 수주한 납품 의뢰 · 아는 제작법. 칸 표시와 툴팁에 쓴다
+SA.Need = (() => {
+  const nm = (id) => (SA.PARTS[id] || SA.ITEMS[id] || {}).name || id;
+  const matsOf = (id) => (SA.RECIPES[id] || SA.CRAFT[id] || {}).mats || null;
+  const map = () => {
+    const p = SA.profile, out = {};
+    const add = (id, use) => { const o = out[id] = out[id] || { mark: null, uses: [] }; o.uses.push(use); if (use.mark === 'pin' || (use.mark === 'q' && o.mark !== 'pin')) o.mark = use.mark; };
+    const pm = p.pin && matsOf(p.pin);
+    if (pm) for (const k in pm) add(k, { t: '제작 목표: ' + nm(p.pin), n: pm[k], mark: 'pin' });
+    for (const c of SA.Contracts.active()) if (c.type === 'deliver') for (const k in c.mats) add(k, { t: '의뢰: ' + c.title, n: c.mats[k], mark: 'q' });
+    const crafts = {};
+    for (const r of p.recipes) { const m = matsOf(r); if (m) for (const k in m) (crafts[k] = crafts[k] || []).push(nm(r)); }
+    for (const id in SA.CRAFT) for (const k in SA.CRAFT[id].mats) (crafts[k] = crafts[k] || []).push(nm(id));
+    for (const k in crafts) add(k, { t: '제작: ' + crafts[k].slice(0, 3).join(', ') + (crafts[k].length > 3 ? ` 외 ${crafts[k].length - 3}` : ''), n: 0 });
+    return out;
+  };
+  const have = (id) => { let n = SA.Grid.count(SA.profile.stash, id); const R = SA.R; if (R && !R.range) { if (R.cargo) n += SA.Grid.count(R.cargo, id); if (R.secure) n += SA.Grid.count(R.secure, id); } return n; };
+  const tipHtml = (id, M) => {
+    const o = (M || map())[id]; if (!o) return '';
+    return '<div class="needtip">' + o.uses.map(u => `<div class="${u.mark || ''}">${u.t}${u.n ? ` — ${u.n}개 필요 (보유 ${have(id)})` : ''}</div>`).join('') + '</div>';
+  };
+  // 고정 목표 한 줄: [이름, 재료 문구, 다 모았나]
+  const pinLine = () => {
+    const p = SA.profile, m = p.pin && matsOf(p.pin); if (!m) return null;
+    const ks = Object.keys(m), done = ks.every(k => have(k) >= m[k]);
+    return [nm(p.pin), ks.map(k => `${nm(k)} ${Math.min(have(k), m[k])}/${m[k]}`).join(' · '), done];
+  };
+  return { map, tipHtml, pinLine, have, matsOf };
 })();
