@@ -384,3 +384,12 @@ h3 { margin: 6px 0 8px; font-size: 15px; color: #cfe3ff; } h4 { margin: 10px 0 6
 #colwin .cpor { width: 56px; height: auto; image-rendering: auto; }
 #colwin h4 { margin: 12px 0 4px; }
 #colwin .closeb { margin-top: 12px; width: 100%; }
+/* 파일럿 숙련도 (v0.74) */
+.mrank { display: inline-flex; align-items: center; gap: 5px; color: var(--rc); font-size: 12px; }
+.mrank .mbar { display: inline-block; width: 60px; height: 4px; background: rgba(255,255,255,.1); }
+.mrank .mbar i { display: block; height: 100%; background: var(--rc); }
+.plog { display: flex; flex-direction: column; gap: 6px; margin-top: 8px; }
+.pcard { display: flex; gap: 10px; padding: 8px 10px; border: 1px solid #1d2840; background: #0b1120; cursor: pointer; }
+.pcard.on { border-color: #5dffb0; } .pcard:hover { border-color: #3a4a70; }
+.pcard .pc-b { flex: 1; display: flex; flex-direction: column; gap: 3px; }
+.pwrap { width: 100%; max-width: 620px; margin: 0 auto; }

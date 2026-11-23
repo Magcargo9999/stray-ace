@@ -394,7 +394,7 @@ SA.HangarScene = (() => {
     if (o.npc) return npcClick(o);
     if (!visible(o)) return;
     if (o.rack !== undefined) { const id = shipsInRacks()[o.rack]; if (id) SA.Hangar.openRack(id); return; }
-    if (o.lounge) { const ps = pilotObjs(); if (ps.length) npcClick(SA.U.pick(ps)); else say('os', '다들 나가 있어.'); return; }
+    if (o.lounge) { SA.Hangar.openPanel('pilots'); return; }   // 대기실: 파일럿 기록장 (v0.74)
     if (o.open) SA.Hangar.openPanel(o.open);
   };
 

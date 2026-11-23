@@ -23,7 +23,7 @@ SA.Hangar = (() => {
   const BAR_SCENE = ['stash', 'bench', 'sortie', 'deliv', 'contracts', 'shop', 'decoder'];
   const barList = () => SA.HGUI.barOrder ? BAR_SCENE.map(id => BAR.find(b => b[0] === id)) : BAR;
   const locked = (id) => id === 'deliv' && !P().rescued.deliv;
-  const TITLE = { sortie: '출격 준비', stash: '창고', bench: '작업대', contracts: '의뢰 게시판', decoder: '해독기', shop: '상점 · 오스의 단말', deliv: '배달 · 도리', rack: '기체' };
+  const TITLE = { sortie: '출격 준비', stash: '창고', bench: '작업대', contracts: '의뢰 게시판', decoder: '해독기', shop: '상점 · 오스의 단말', deliv: '배달 · 도리', rack: '기체', pilots: '대기실 · 파일럿 기록' };
   const WHO = { bench: () => P().rescued.teo ? 'teo' : 'mina', contracts: () => 'os', shop: () => 'os', deliv: () => 'dori' };
 
   const init = () => {
@@ -61,6 +61,7 @@ SA.Hangar = (() => {
     $('#hangar').style.display = 'block';
     SA.Audio.play('hangar');
     autoRegister();
+    { const ru = P().rankUp; if (ru) { P().rankUp = null; save(); setTimeout(() => toast(`${SA.PILOTS[ru.pid].name} 숙련도 등급 상승: ${ru.name}`, SA.RANK_COL[ru.i]), 600); } }
     SA.Quest.sync();
     hud();
     S().load(() => {
@@ -127,7 +128,7 @@ SA.Hangar = (() => {
     pt.querySelector('.pnm').textContent = N ? N.name : '';
     pt.querySelector('.pjob').textContent = N ? N.title : '';
     body.innerHTML = '';
-    ({ sortie, stash, bench, contracts, decoder, shop, deliv, rack })[panel](body);
+    ({ sortie, stash, bench, contracts, decoder, shop, deliv, rack, pilots })[panel](body);
   };
   const go = (t) => openPanel(t);   // 예전 호출 호환
 
@@ -180,8 +181,8 @@ SA.Hangar = (() => {
     L.appendChild(h('h4', '', '파일럿'));
     const chip = (id, inj) => {
       const pl = SA.PILOTS[id], c = h('div', 'pchip' + (prof.pilot === id ? ' on' : '') + (inj ? ' off' : ''),
-        `<span class="ini" style="--c:${pl.color}">${pl.name[0]}</span><span><b>${pl.name}</b> <span class="dim">${pl.title}</span>${inj ? `<br><span class="bad small">휴식 ${inj}</span>` : ''}</span>`);
-      tip(c, `“${pl.quote}”<br><span class="desc">${pl.desc}</span>${pl.skill ? `<br><span class="dim">쿨타임 ${pl.cd}초 · Space</span>` : ''}`);
+        `<span class="ini" style="--c:${pl.color}">${pl.name[0]}</span><span><b>${pl.name}</b> <span class="dim">${pl.title}</span><br>${rankHtml(id)}${inj ? ` <span class="bad small">휴식 ${inj}</span>` : ''}</span>`);
+      tip(c, `“${pl.quote}”<br><span class="desc">${pl.desc}</span>${pl.skill ? `<br><span class="dim">쿨타임 ${pl.cd}초 · Space</span>` : ''}<br>${recordHtml(id)}`);
       c.onclick = () => { if (inj) { SA.Audio.sfx('deny'); return; } prof.pilot = id; save(); render(); };
       return c;
     };
@@ -749,6 +750,26 @@ SA.Hangar = (() => {
     body.appendChild(c);
   };
   // ── 배달 (도리) ──
+  // ── 파일럿 숙련도 (v0.74) ──
+  const pst = (id) => Object.assign({ raids: 0, ext: 0, deaths: 0, cr: 0, graze: 0, kills: 0, boss: 0, t: 0, score: 0, best: 0 }, (P().pstats || {})[id] || {});
+  const rankHtml = (id) => { const s = pst(id), r = SA.masteryRank(s.score), f = r.to ? (s.score - r.from) / (r.to - r.from) : 1;
+    return `<span class="mrank" style="--rc:${SA.RANK_COL[r.i]}"><b>${r.name}</b> <span class="small">${s.score.toLocaleString('ko-KR')}점</span><i class="mbar"><i style="width:${Math.round(f * 100)}%"></i></i></span>`; };
+  const recordHtml = (id, noRank) => { const s = pst(id), r = SA.masteryRank(s.score);
+    return `<span class="small">${noRank ? (r.to ? `<span class="dim">${r.next}까지 ${(r.to - s.score).toLocaleString('ko-KR')}점</span><br>` : '') : `<b style="color:${SA.RANK_COL[r.i]}">${r.name}</b> ${s.score.toLocaleString('ko-KR')}점${r.to ? ` <span class="dim">· ${r.next}까지 ${(r.to - s.score).toLocaleString('ko-KR')}점</span>` : ''}<br>`}출격 ${s.raids} · 탈출 ${s.ext} · 격추당함 ${s.deaths}${s.raids ? ` · 생존율 ${Math.round(s.ext / s.raids * 100)}%` : ''}<br>가져온 화물 ₵${s.cr.toLocaleString('ko-KR')} · 최고 ₵${s.best.toLocaleString('ko-KR')}<br>스침 ${s.graze.toLocaleString('ko-KR')} · 격추 ${s.kills}기 · 보스·네임드 ${s.boss} · 비행 ${hm(s.t)}</span>`; };
+  const pilots = (body) => {
+    const prof = P(), ids = Object.keys(prof.pilots).concat((prof.pstats || {}).cmdr ? ['cmdr'] : []);
+    const M = SA.MASTERY;
+    const wrap = h('div', 'pwrap'); body.appendChild(wrap);
+    wrap.appendChild(h('div', 'small dim', `숙련도: 탈출 ${M.extract} · 화물 ₵20당 1 · 스침 1발 ${M.perGraze} · 격추 ${M.perKill} · 보스·네임드 ${M.boss}. 탈출한 판만 쌓이고, 격추돼도 줄지 않는다.`));
+    const list = h('div', 'plog');
+    for (const id of ids.sort((a, b) => pst(b).score - pst(a).score)) {
+      const pl = SA.PILOTS[id], inj = prof.pilots[id] && prof.pilots[id].injury;
+      const c = h('div', 'pcard' + (prof.pilot === id ? ' on' : ''), `<span class="ini" style="--c:${pl.color}">${pl.name[0]}</span><div class="pc-b"><div><b>${pl.name}</b> <span class="dim">${pl.title}</span>${prof.pilot === id ? ' <span class="chip">다음 출격</span>' : ''}${inj ? ` <span class="bad small">휴식 ${inj}</span>` : ''}</div>${rankHtml(id)}<div>${recordHtml(id, true)}</div></div>`);
+      if (!inj && id !== 'cmdr') { c.onclick = () => { prof.pilot = id; save(); render(); toast(`다음 출격: ${pl.name}`); }; tip(c, '누르면 다음 출격 파일럿으로'); }
+      list.appendChild(c);
+    }
+    wrap.appendChild(list);
+  };
   const hm = (sec) => { const m = Math.floor((sec || 0) / 60); return m >= 60 ? `${Math.floor(m / 60)}시간 ${m % 60}분` : `${m}분`; };
   const deliv = (body) => {
     const prof = P(), D = SA.SHOP.delivery, dv = deliveryStock(), c = h('div', 'shop');

@@ -632,3 +632,17 @@ SA.SIG_BP = {
   mimic:     ['reflect'],
 };
 SA.SIG_RATE = { frigate: 0.08, turret: 0.04, corrode: 0.03, hunter: 0.4, raven: 0.4 };   // 적 ai 기준
+
+// ── 파일럿 숙련도 (v0.74, 점수·등급 임시) ──
+// 탈출에 성공한 판만 점수를 얻는다 (격추돼도 쌓인 점수는 줄지 않는다). 플레이 시간은 기록만, 점수에는 넣지 않는다
+SA.MASTERY = {
+  extract: 100,          // 탈출 성공
+  perCr: 1 / 20,         // 가져온 화물 가치 ₵20당 1점
+  perGraze: 0.5,         // 스친 탄 1발당
+  perKill: 5,            // 격추 1기당
+  boss: 150,             // 보스·네임드 격추 (사냥꾼·레이븐·실험 무인기)
+  ranks: [[0, '신입'], [500, '숙련'], [2000, '베테랑'], [5000, '에이스'], [12000, '전설']],
+};
+SA.MASTERY_BOSS = ['hunter', 'raven', 'mimic'];
+SA.masteryRank = (score) => { const R = SA.MASTERY.ranks; let i = 0; while (i + 1 < R.length && score >= R[i + 1][0]) i++; return { i, name: R[i][1], from: R[i][0], to: R[i + 1] ? R[i + 1][0] : null, next: R[i + 1] ? R[i + 1][1] : null }; };
+SA.RANK_COL = ['#9fb3c8', '#5dffb0', '#7fd3ff', '#ffd166', '#ff8fb0'];

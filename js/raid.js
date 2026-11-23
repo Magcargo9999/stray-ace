@@ -935,6 +935,19 @@ SA.Raid = (() => {
     prof.stats.raids++; if (ok) prof.stats.extracts++; else prof.stats.deaths++;
     prof.stats.kills += R.kills;
     prof.stats.bestValue = Math.max(prof.stats.bestValue, ok ? value : 0);
+    // 파일럿 숙련도·기록 (v0.74)
+    let mastery = null;
+    { const pid = R.player.pilot, M = SA.MASTERY; prof.pstats = prof.pstats || {};
+      const ps = prof.pstats[pid] = Object.assign({ raids: 0, ext: 0, deaths: 0, cr: 0, graze: 0, kills: 0, boss: 0, t: 0, score: 0, best: 0 }, prof.pstats[pid] || {});
+      const kt = R.killTypes || {}, boss = SA.MASTERY_BOSS.reduce((a, k) => a + (kt[k] || 0), 0);
+      ps.raids++; ps.t += R.t; ps.graze += R.grazeN || 0; ps.kills += R.kills; ps.boss += boss;
+      if (ok) {
+        ps.ext++; ps.cr += value; ps.best = Math.max(ps.best, value);
+        const before = SA.masteryRank(ps.score).i;
+        const gain = Math.round(M.extract + value * M.perCr + (R.grazeN || 0) * M.perGraze + R.kills * M.perKill + boss * M.boss);
+        ps.score += gain; mastery = { pid, gain, up: SA.masteryRank(ps.score).i > before }; if (mastery.up) { const r = SA.masteryRank(ps.score); prof.rankUp = { pid, i: r.i, name: r.name }; }
+      } else ps.deaths++;
+    }
     prof.seenTips = true;
     SA.Save.store(prof);
     // 메인퀘스트 (지금 목표에만 센다)
