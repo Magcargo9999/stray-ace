@@ -40,13 +40,13 @@ SA.Main = (() => {
   const cSnap = () => { const K = SA.Contracts, o = {}; for (const c of SA.STORY.contracts) { const st = K.st(c.id); if (st.accepted && !st.done && K.open(c)) o[c.id] = SA.Hangar.progOf(c); } return o; };
   const startRaid = () => {
     preC = cSnap();
-    scene = 'raid';
     document.querySelectorAll('.ctx').forEach(x => x.remove()); SA.UI.hideTip();
-    SA.Raid.start(SA.profile);
-    // 출격 로딩: 레이드는 뒤에서 미리 만들어 두고 멈춰 둔다. 장면이 끝나면 시작
-    const R = SA.R; if (R) R.paused = true;
+    // 출격 로딩을 먼저 띄우고, 레이드(맵 생성)는 로딩 화면 뒤에서 만든다 → 생성 때 멈칫하는 게 화면 전환에 묻힌다
     const map = SA.MAPS[SA.profile.map] || SA.MAPS.mine;
-    SA.Loading.show({ label: '출격 · ' + SA.PILOTS[SA.profile.pilot].name, name: map.name, min: 1.5, done: () => { if (SA.R === R && R) R.paused = false; } });
+    let R = null;
+    SA.Loading.show({ label: '출격 · ' + SA.PILOTS[SA.profile.pilot].name, name: map.name, min: 1.5, ready: () => R ? 1 : 0,
+      done: () => { if (R && SA.R === R) R.paused = false; } });
+    setTimeout(() => { scene = 'raid'; SA.Raid.start(SA.profile); R = SA.R; if (R) R.paused = true; }, 120);
   };
 
   // 사망 처리 방식 고르기 (처음 한 번 + 설정에서 언제든)
@@ -205,7 +205,7 @@ SA.Main = (() => {
       R.mouseWorld.x = R.cam.x + (I.mouse.x - cv.width / 2) / zw;
       R.mouseWorld.y = R.cam.y + (I.mouse.y - cv.height / 2) / zw;
       SA.Raid.update(rdt);
-      if (SA.R) SA.Render.draw(ctx, SA.R);
+      if (SA.R && !SA.Loading.active()) SA.Render.draw(ctx, SA.R);   // 출격 로딩이 덮고 있으면 뒤는 그리지 않는다
     } else if (scene !== 'raid' && document.querySelector('#hangar').style.display === 'none') {   // 격납고가 떠 있으면 뒤 캔버스는 그리지 않는다
       // 메뉴 배경: 별만 흐른다
       ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.fillStyle = '#05070d'; ctx.fillRect(0, 0, cv.width, cv.height);
