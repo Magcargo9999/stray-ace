@@ -171,6 +171,8 @@ SA.Main = (() => {
   const loop = (t) => {
     if (SA.Cap.manual) return;   // 자동 촬영 중에는 SA.Cap.step이 한 프레임씩 진행한다
     const rdt = Math.min(0.05, (t - last) / 1000 || 0.016); last = t;
+    // 플레이 시간 측정 (v0.73): 창이 활성일 때만. 격납고·출격을 따로 센다
+    if (SA.profile && scene !== 'title' && document.hasFocus()) { const S = SA.profile.stats; S.tPlay = (S.tPlay || 0) + rdt; if (scene === 'raid' && SA.R && !SA.R.range) S.tRaid = (S.tRaid || 0) + rdt; }
     frame(rdt);
     requestAnimationFrame(loop);
   };

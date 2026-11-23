@@ -26,6 +26,7 @@ SA.Quest = (() => {
   const complete = (q) => {
     const prof = SA.profile, st = prof.mq;
     prof.credits += q.reward;
+    { const S = prof.stats; (prof.mqLog = prof.mqLog || []).push({ id: q.id, min: Math.round((S.tPlay || 0) / 60), raids: S.raids }); }   // 플레이 시간 측정 (v0.73)
     st.i++; st.p = 0;
     let bpMsg = '';
     if (q.bp) {   // 초반 퀘스트 보상: 일반 설계도. 이미 아는 제작법이면 설계도 판매가만큼 크레딧으로

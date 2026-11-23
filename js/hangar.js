@@ -749,6 +749,7 @@ SA.Hangar = (() => {
     body.appendChild(c);
   };
   // ── 배달 (도리) ──
+  const hm = (sec) => { const m = Math.floor((sec || 0) / 60); return m >= 60 ? `${Math.floor(m / 60)}시간 ${m % 60}분` : `${m}분`; };
   const deliv = (body) => {
     const prof = P(), D = SA.SHOP.delivery, dv = deliveryStock(), c = h('div', 'shop');
     c.appendChild(h('div', 'small dim', '다음 출격이 끝나면 새 물건이 들어온다'));
@@ -851,7 +852,7 @@ SA.Hangar = (() => {
     for (let i = 0; i < SA.DECODE.slots; i++) { const d = dec[i]; slots.appendChild(h('div', 'dslot' + (d ? ' busy' : ''), d ? `<img src="${SA.Render.iconSrc(d.id)}"><span class="small">다음 출격 뒤</span>` : '<span class="dim small">빈 칸</span>')); }
     top.appendChild(slots);
     const s = prof.stats;
-    top.appendChild(tip(h('div', 'stats small dim', `출격 ${s.raids} · 탈출 ${s.extracts}`), `출격 ${s.raids} · 탈출 ${s.extracts} · 격추당함 ${s.deaths}<br>격추 ${s.kills}기 · 최고 운반 가치 ₵${s.bestValue}`));
+    top.appendChild(tip(h('div', 'stats small dim', `출격 ${s.raids} · 탈출 ${s.extracts}`), `출격 ${s.raids} · 탈출 ${s.extracts} · 격추당함 ${s.deaths}<br>격추 ${s.kills}기 · 최고 운반 가치 ₵${s.bestValue}<br>플레이 ${hm(s.tPlay)} (출격 ${hm(s.tRaid)} · 격납고 ${hm((s.tPlay || 0) - (s.tRaid || 0))})${s.raids ? ` · 판당 출격 ${Math.round((s.tRaid || 0) / s.raids / 60 * 10) / 10}분` : ''}${(P().mqLog || []).length ? '<br><span class="dim">메인 목표 완료: ' + P().mqLog.map(m => `${m.id} ${m.min}분/${m.raids}판`).join(' · ') + '</span>' : ''}`));
     body.appendChild(top);
     const boxes = prof.stash.items.filter(it => it.id === 'bb_reward' || SA.Decode.srcOf(it.id));
     for (const it of boxes) {
