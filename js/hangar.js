@@ -377,7 +377,7 @@ SA.Hangar = (() => {
     if (!stashSel) right.appendChild(h('div', 'dim small pad', '아이템을 누르면 여기에 나온다.<br>끌어서 옮기고, 우클릭하면 바로 판다.'));
     else {
       const it = stashSel, d = SA.ITEMS[it.id], need = neededFor(it.id);
-      right.appendChild(h('div', 'iinfo', `<img src="${SA.Render.iconSrc(it.id)}"><div><b style="color:${d.color}">${d.name}</b><div class="small dim">${SA.KIND_NAME[d.kind] || ''} · ₵${SA.itemVal(it)}</div></div>`));
+      right.appendChild(h('div', 'iinfo', `<img src="${SA.Render.iconSrc(it.id)}"><div><b style="color:${SA.itemCol(it.id, it)}">${d.name}</b><div class="small dim">${SA.KIND_NAME[d.kind] || ''} · ₵${SA.itemVal(it)}</div></div>`));
       right.appendChild(h('div', 'small use', d.kind === 'use' ? '출격 준비에서 골라 가져간다' : need ? '' : SA.Decode.srcOf(it.id) || it.id === 'bb_reward' ? '해독기에 맡기면 기록이 열린다' : '<span class="dim">쓸 곳 없음</span>'));
       right.appendChild(h('div', 'small desc', d.desc));
       const nt = SA.Need.tipHtml(it.id); if (nt) right.appendChild(h('div', 'small', nt));
@@ -441,7 +441,7 @@ SA.Hangar = (() => {
   const CKINDS = [...KINDS, ['item', '동력원·소모품', 'pt_cell'], ['mat', '상위 재료', 'pt_pod']];
   const TIERS = ['일반', '강화', '행성', '은하'];
   const tierOf = (id) => (SA.PARTS[id] || SA.ITEMS[id] || {}).tier || '일반';
-  const matIcons = (mats, have) => Object.keys(mats).map(k => { const n = have(k), ok = n >= mats[k]; return `<span class="mat ${ok ? 'ok' : 'bad'}"><img src="${SA.Render.iconSrc(k)}">${SA.ITEMS[k].name} ${n}/${mats[k]}${ok || !n ? '' : `<i class="short">${mats[k] - n} 부족</i>`}</span>`; }).join('');
+  const matIcons = (mats, have) => Object.keys(mats).map(k => { const n = have(k), ok = n >= mats[k]; return `<span class="mat ${ok ? 'ok' : 'bad'}" style="border-left:3px solid ${SA.itemCol(k)}"><img src="${SA.Render.iconSrc(k)}">${SA.ITEMS[k].name} ${n}/${mats[k]}${ok || !n ? '' : `<i class="short">${mats[k] - n} 부족</i>`}</span>`; }).join('');
   const costHtml = (c, have) => matIcons(c.mats, have) + ` <span class="mat ${P().credits >= c.cr ? 'ok' : 'bad'}">₵${c.cr}</span>`;
   const benchClaimable = () => { const c = SA.Bench.contract(SA.Bench.lv() + 1); return !!c && SA.Contracts.open(c) && SA.Contracts.canClaim(c); };
   let benchOnlyOk = false;
@@ -518,7 +518,7 @@ SA.Hangar = (() => {
     if (['all', 'item', 'mat'].includes(benchKind)) for (const id in SA.CRAFT) {
       const k = SA.ITEMS[id].kind; if (benchKind === 'mat' && k !== 'umat') continue; if (benchKind === 'item' && k === 'umat') continue;
       const r = SA.CRAFT[id], d = SA.ITEMS[id], ok = Object.keys(r.mats).every(m => have(m) >= r.mats[m]);
-      rows.push({ ok, id, tier: tierOf(id), html: `<img class="pimg" src="${SA.Render.iconSrc(id)}"><span class="nm">${d.name} <span class="dim small">${have(id)}개</span></span><span class="mats">${matIcons(r.mats, have)}</span>`, tip: `<b>${d.name}</b><br><span class="desc">${d.desc}</span>`, fn: () => craftItem(id) });
+      rows.push({ ok, id, tier: tierOf(id), html: `<img class="pimg" src="${SA.Render.iconSrc(id)}"><span class="nm">${SA.itemNameHtml(id)} <span class="dim small">${have(id)}개</span></span><span class="mats">${matIcons(r.mats, have)}</span>`, tip: `<b style="color:${SA.itemCol(id)}">${d.name}</b> <span class="dim">${SA.itemTier(id)}</span><br><span class="desc">${d.desc}</span>`, fn: () => craftItem(id) });
     }
     rows.sort((a, b) => (b.id === prof.pin) - (a.id === prof.pin) || (!!b.isNew - !!a.isNew) || (b.ok - a.ok) || TIERS.indexOf(a.tier) - TIERS.indexOf(b.tier));
     const shown = benchOnlyOk ? rows.filter(r => r.ok) : rows;
@@ -714,8 +714,8 @@ SA.Hangar = (() => {
   const shop = (body) => {
     const prof = P(), c = h('div', 'shop');
     for (const [id, price] of SA.SHOP.consumables) {
-      const d = SA.ITEMS[id], r = h('div', 'srow', `<img src="${SA.Render.iconSrc(id)}"><span class="nm">${d.name}</span><span class="dim small">창고 ${SA.Grid.count(prof.stash, id)}</span>`);
-      tip(r, `<b>${d.name}</b><br><span class="desc">${d.desc}</span>`);
+      const d = SA.ITEMS[id], r = h('div', 'srow', `<img src="${SA.Render.iconSrc(id)}"><span class="nm">${SA.itemNameHtml(id)}</span><span class="dim small">창고 ${SA.Grid.count(prof.stash, id)}</span>`);
+      tip(r, `<b style="color:${SA.itemCol(id)}">${d.name}</b> <span class="dim">${SA.itemTier(id)}</span><br><span class="desc">${d.desc}</span>`);
       const b = h('button', 'btn small', `₵${price}`);
       b.onclick = () => {
         if (prof.credits < price) { SA.Audio.sfx('deny'); toast('크레딧이 부족하다.', '#ffb3b3'); return; }
@@ -727,8 +727,8 @@ SA.Hangar = (() => {
     c.appendChild(h('h4', '', `개조 칩 <span class="dim small">· 작업대 → 부품에서 끼운다</span>`));
     for (const k of SA.CHIPS) {
       const id = 'mc_' + k, d = SA.ITEMS[id], price = SA.SHOP.chips, M = SA.MODS[k];
-      const r = h('div', 'srow', `<img src="${SA.Render.iconSrc(id)}"><span class="nm">${M.name} <span class="dim small">${SA.SLOT_NAME[M.slot]}</span></span><span class="dim small">창고 ${SA.Grid.count(prof.stash, id)}</span>`);
-      tip(r, `<b>${d.name}</b><br><span class="desc">${d.desc}</span>`);
+      const r = h('div', 'srow', `<img src="${SA.Render.iconSrc(id)}"><span class="nm"><span style="color:${SA.itemCol(id)}">${M.name}</span> <span class="dim small">${SA.SLOT_NAME[M.slot]}</span> <span class="tier" style="color:${SA.itemCol(id)};border-color:${SA.itemCol(id)}66">${SA.itemTier(id)}</span></span><span class="dim small">창고 ${SA.Grid.count(prof.stash, id)}</span>`);
+      tip(r, `<b style="color:${SA.itemCol(id)}">${d.name}</b> <span class="dim">${SA.itemTier(id)}</span><br><span class="desc">${d.desc}</span>`);
       const b = h('button', 'btn small', `₵${price}`);
       b.onclick = () => {
         if (prof.credits < price) { SA.Audio.sfx('deny'); toast('크레딧이 부족하다.', '#ffb3b3'); return; }
@@ -750,31 +750,44 @@ SA.Hangar = (() => {
   };
   // ── 배달 (도리) ──
   const deliv = (body) => {
-    const prof = P(), D = SA.SHOP.delivery, dv = deliveryStock(), left = D.every - (Date.now() % D.every), c = h('div', 'shop');
-    c.appendChild(h('div', 'small dim', `재고 교체까지 ${Math.floor(left / 60000)}분`));
+    const prof = P(), D = SA.SHOP.delivery, dv = deliveryStock(), c = h('div', 'shop');
+    c.appendChild(h('div', 'small dim', '다음 출격이 끝나면 새 물건이 들어온다'));
+    const kindName = { mat: '재료', pbp: '행성 설계도', part: '부품', rare: '희귀' };
+    let lastKind = null;
     for (const st of dv.stock) {
-      const d = SA.ITEMS[st.id], price = Math.ceil(d.val * D.mul);
-      const r = h('div', 'srow', `<img src="${SA.Render.iconSrc(st.id)}"><span class="nm">${d.name}</span><span class="dim small">${st.n}개 남음</span>`);
-      tip(r, `<b>${d.name}</b><br><span class="desc">${d.desc}</span><br><span class="dim">판매가의 ${D.mul}배</span>`);
+      if (st.kind !== lastKind) { c.appendChild(h('h4', '', kindName[st.kind] || '')); lastKind = st.kind; }
+      const d = SA.ITEMS[st.id], price = st.price;
+      const r = h('div', 'srow', `<img src="${SA.Render.iconSrc(st.id)}"><span class="nm">${SA.itemNameHtml(st.id)}</span><span class="dim small">${st.n}개 남음</span>`);
+      tip(r, `<b style="color:${SA.itemCol(st.id)}">${d.name}</b> <span class="dim">${SA.itemTier(st.id)}</span><br><span class="desc">${d.desc}</span><br><span class="dim">판매가의 ${st.mul}배</span>`);
       const b = h('button', 'btn small' + (st.n ? '' : ' dis'), st.n ? `₵${price}` : '품절');
       b.onclick = () => {
         if (!st.n) return;
         if (prof.credits < price) { toast('크레딧이 부족하다.', '#ffb3b3'); SA.Audio.sfx('deny'); return; }
-        if (!SA.Grid.add(prof.stash, st.id)) { toast('창고가 가득 찼다.', '#ffb3b3'); return; }
+        if (st.kind === 'pbp') { if (!SA.Bench.grantPlanet(d.part)) { st.n = 0; save(); render(); return; } toast(`행성 설계도 등록: ${SA.PLANET[d.part][0]} — 작업대 → 행성`, SA.TIER_COL['행성']); }
+        else if (st.kind === 'part') { prof.parts.push(SA.Save.newPart(d.part)); toast(`부품함에 들어왔다: ${d.name}`, SA.itemCol(st.id)); }
+        else if (!SA.Grid.add(prof.stash, st.id)) { toast('창고가 가득 찼다.', '#ffb3b3'); return; }
         prof.credits -= price; st.n--; SA.Audio.sfx('buy'); save(); render();
       };
       r.appendChild(b); c.appendChild(r);
     }
     body.appendChild(c);
   };
-  // 20분 단위 시간 칸마다 재고를 새로 뽑는다 (게임을 꺼 둔 동안에도 흐른다)
+  // 출격이 끝날 때마다(stats.raids가 바뀔 때) 재고를 새로 뽑는다
   const deliveryStock = () => {
-    const prof = P(), D = SA.SHOP.delivery, slot = Math.floor(Date.now() / D.every);
-    if (!prof.deliv || prof.deliv.slot !== slot) {
-      const pool = D.pool.slice().sort(() => Math.random() - 0.5).slice(0, D.kinds);
-      const stock = pool.map(id => ({ id, n: 2 + Math.floor(Math.random() * 4) }));
-      for (const [id, p] of D.rare) if (Math.random() < p) stock.push({ id, n: 1 + Math.floor(Math.random() * 2) });
-      prof.deliv = { slot, stock }; save();
+    const prof = P(), D = SA.SHOP.delivery;
+    if (!prof.deliv || prof.deliv.sortie !== prof.stats.raids) {
+      const stock = [];
+      const price = (id, mul) => Math.ceil(SA.ITEMS[id].val * mul);
+      for (const id of D.pool.slice().sort(() => Math.random() - 0.5).slice(0, D.matKinds)) stock.push({ kind: 'mat', id, n: D.matN[0] + Math.floor(Math.random() * (D.matN[1] - D.matN[0] + 1)), mul: D.mul, price: price(id, D.mul) });
+      const unk = Object.keys(SA.PLANET).filter(id => !SA.Bench.knowsPlanet(id)).sort(() => Math.random() - 0.5);
+      for (const id of unk.slice(0, Math.random() < D.pbp2 ? 2 : 1)) stock.push({ kind: 'pbp', id: 'pbp_' + id, n: 1, mul: D.pbpMul, price: price('pbp_' + id, D.pbpMul) });
+      const pn = D.partKinds[0] + Math.floor(Math.random() * (D.partKinds[1] - D.partKinds[0] + 1));
+      const pool = (tier) => Object.keys(SA.PARTS).filter(k => SA.PARTS[k].tier === tier && !SA.PARTS[k].gal && SA.ITEMS['pt_' + k] && !D.noPart.includes(k)).sort(() => Math.random() - 0.5);
+      const pick = new Set();
+      for (let i = 0; i < pn; i++) { const k = pool(Math.random() < D.partEnh ? '강화' : '일반').find(x => !pick.has(x)); if (k) pick.add(k); }
+      for (const k of pick) stock.push({ kind: 'part', id: 'pt_' + k, n: 1, mul: D.mul, price: price('pt_' + k, D.mul) });
+      for (const [id, p] of D.rare) if (Math.random() < p) stock.push({ kind: 'rare', id, n: 1 + Math.floor(Math.random() * 2), mul: D.mul, price: price(id, D.mul) });
+      prof.deliv = { sortie: prof.stats.raids, stock }; save();
     }
     return prof.deliv;
   };
@@ -840,7 +853,7 @@ SA.Hangar = (() => {
     body.appendChild(top);
     const boxes = prof.stash.items.filter(it => it.id === 'bb_reward' || SA.Decode.srcOf(it.id));
     for (const it of boxes) {
-      const r = h('div', 'srow', `<img src="${SA.Render.iconSrc(it.id)}"><span class="nm">${SA.ITEMS[it.id].name}</span>`);
+      const r = h('div', 'srow', `<img src="${SA.Render.iconSrc(it.id)}"><span class="nm">${SA.itemNameHtml(it.id)}</span>`);
       if (dec.length < SA.DECODE.slots) { const b = h('button', 'btn small', '맡기기'); tip(b, '다음 출격이 끝나면 열린다'); b.onclick = () => decode(it, false); r.appendChild(b); }
       const b2 = h('button', 'btn small', `즉시 ₵${SA.DECODE.instant}`); b2.onclick = () => decode(it, true); r.appendChild(b2);
       body.appendChild(r);

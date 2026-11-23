@@ -555,7 +555,8 @@ SA.CORRODE_SPAWN = [null, { every: 18, n: 1, max: 3 }, { every: 10, n: 1, max: 5
 SA.SHOP = {
   consumables: [['canister', 150], ['repairkit', 120]],
   chips: 300,   // 기본 개조 칩 가격 (오스 단말, 임시)
-  delivery: { every: 20 * 60 * 1000, mul: 2.5, kinds: 4, pool: ['scrap', 'wire', 'core', 'engine', 'goldchip', 'prec'], rare: [['crystal', .2], ['ace', .05]] },
+  // 도리 배달 (v0.70, 전부 임시): 출격이 끝날 때마다 새 재고. 재료 4칸 + 행성 설계도 1~2 + 부품 1~2 + 희귀 확률
+  delivery: { mul: 2.5, pbpMul: 4, matKinds: 4, matN: [2, 5], pool: ['scrap', 'wire', 'core', 'engine', 'goldchip', 'prec'], pbp2: .4, partKinds: [1, 2], partEnh: .3, noPart: ['raven', 'sensor'], rare: [['crystal', .2], ['ace', .05]] },
 };
 
 SA.MAPS = {
@@ -590,3 +591,19 @@ for (const gid in SA.GALAXY) {
 }
 SA.baseOf = (id) => (SA.PARTS[id] && SA.PARTS[id].base) || id;
 SA.galCost = (gid) => { const g = SA.GALAXY[gid], b = SA.PARTS[g.base]; return { mats: Object.assign({ qcircuit: 2 }, g.mats), cr: b.val * 2 }; };
+
+// ── 등급 색 단일 기준 (v0.70) ──
+// 재료·소모품·칩·설계도·부품 전부 등급이 있고, 색은 SA.TIER_COL 하나에서만 정한다. (이야기 아이템인 블랙박스·고용권·구조 캡슐은 등급 없이 자기 색)
+for (const id of ['scrap', 'wire', 'core', 'engine', 'debris', 'canister', 'repairkit']) SA.ITEMS[id].tier = '일반';
+for (const k of SA.CHIPS) SA.ITEMS['mc_' + k].tier = '일반';
+SA.TIER_SHORT = { 일반: '일', 강화: '강', 행성: '행', 은하: '은' };
+SA.itemTier = (id, it) => {
+  const d = SA.ITEMS[id]; if (!d) return null;
+  if (it && it.lv) return it.lv === 2 ? '은하' : '행성';
+  if (d.kind === 'bp') return (SA.PARTS[d.recipe] || {}).tier || '일반';
+  if (d.kind === 'pbp') return '행성';
+  return d.tier || null;
+};
+SA.itemCol = (id, it) => { const t = SA.itemTier(id, it); return t ? SA.TIER_COL[t] : SA.ITEMS[id].color; };
+// 이름 + 등급 글자 (상점·목록용). 색만으로 구분하지 않도록 등급 글자를 같이 쓴다
+SA.itemNameHtml = (id, it) => { const t = SA.itemTier(id, it), d = SA.ITEMS[id]; return t ? `<span style="color:${SA.TIER_COL[t]}">${d.name}</span> <span class="tier" style="color:${SA.TIER_COL[t]};border-color:${SA.TIER_COL[t]}66">${t}</span>` : d.name; };

@@ -197,7 +197,7 @@ SA.Render = (() => {
       const d = SA.ITEMS[it.id], w = d.w * 8, h = d.h * 8, bob = Math.sin(it.t * 4) * 1;
       if (it.glow && !it.full) { ctx.globalAlpha = 0.25 + 0.2 * Math.sin(it.t * 6); ctx.fillStyle = SA.TIER_COL[it.glow] || '#5dffb0'; ctx.beginPath(); ctx.arc(it.x, it.y + bob, Math.max(w, h) * 0.8 + 4, 0, 6.29); ctx.fill(); }
       ctx.globalAlpha = 0.35 + 0.25 * Math.sin(it.t * 5);
-      ctx.fillStyle = it.full ? '#ff6b6b' : d.color;
+      ctx.fillStyle = it.full ? '#ff6b6b' : SA.itemCol(it.id, it);
       ctx.fillRect(it.x - w / 2 - 2, it.y - h / 2 - 2 + bob, w + 4, h + 4);
       ctx.globalAlpha = 1;
       ctx.imageSmoothingEnabled = false;

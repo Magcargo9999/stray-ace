@@ -121,7 +121,7 @@ SA.Main = (() => {
     SA.UI.tabClose(); SA.UI.hideTip();
     SA.Hangar.setResult(r);
     const w = $('#result'); w.style.display = 'flex';
-    const list = (items) => items.length ? items.map(it => `<img title="${SA.ITEMS[it.id].name}" src="${SA.Render.iconSrc(it.id)}" style="width:${SA.ITEMS[it.id].w * 24}px;height:${SA.ITEMS[it.id].h * 24}px">`).join('') : '<span class="dim">없음</span>';
+    const list = (items) => items.length ? items.map(it => `<img title="${SA.ITEMS[it.id].name}${SA.itemTier(it.id, it) ? ' · ' + SA.itemTier(it.id, it) : ''}" src="${SA.Render.iconSrc(it.id)}" style="width:${SA.ITEMS[it.id].w * 24}px;height:${SA.ITEMS[it.id].h * 24}px;border-bottom:3px solid ${SA.itemCol(it.id, it)}">`).join('') : '<span class="dim">없음</span>';
     const pl = SA.PILOTS[r.pilot];
     const sub = r.ok ? (r.emergency ? '비상탈출 — 보안 칸과 장착 부품만 남았다.' : '화물을 전부 창고로 옮겼다.') : '화물을 잃었다. 보안 칸만 남았다.';
     // 알림: 한 줄씩 짧게 (자세한 건 마우스를 올리면)

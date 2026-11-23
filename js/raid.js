@@ -402,7 +402,7 @@ SA.Raid = (() => {
       it.taken = true;
       if (C().pm(R.player, 'p_magnet')) R.graze += 1;   // 행성 자력 수집기
       SA.Audio.sfx('pickup', d.val >= 150 ? 3 : d.val >= 60 ? 2 : 1);
-      R.pickLog.push({ text: `+ ${d.kind === 'part' && it.lv ? SA.partName({ id: d.part, lv: it.lv, mod: it.mod }) : d.name}`, val: SA.itemVal(it), col: it.lv ? SA.TIER_COL[it.lv === 2 ? '은하' : '행성'] : d.color, life: 3 });
+      R.pickLog.push({ text: `+ ${d.kind === 'part' && it.lv ? SA.partName({ id: d.part, lv: it.lv, mod: it.mod }) : d.name}`, val: SA.itemVal(it), col: SA.itemCol(it.id, it), life: 3 });
       if (R.pickLog.length > 5) R.pickLog.shift();
     } else {
       if (!it.full) { SA.Audio.sfx('full'); C().text(R, it.x, it.y - 8, '칸 부족', '#ffb3b3'); }

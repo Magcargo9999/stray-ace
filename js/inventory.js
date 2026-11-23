@@ -17,11 +17,12 @@ SA.UI = (() => {
     const NM = SA.Need && SA.profile ? SA.Need.map() : {};
     for (const it of grid.items) {
       const d = SA.ITEMS[it.id], [w, hh] = SA.Grid.dims(it);
-      const tr = it.lv === 2 ? '은하' : it.lv === 1 ? '행성' : d.tier;
-      const n = h('div', 'item' + (tr && tr !== '일반' ? ' g-' + tr : '') + (opts.sel && opts.sel === it.uid ? ' sel' : ''));
+      const tr = SA.itemTier(it.id, it);
+      const n = h('div', 'item' + (tr ? ' g-' + tr : '') + (opts.sel && opts.sel === it.uid ? ' sel' : ''));
       n.style.left = it.x * CELL + 'px'; n.style.top = it.y * CELL + 'px';
       n.style.width = w * CELL + 'px'; n.style.height = hh * CELL + 'px';
-      n.style.setProperty('--c', d.color);
+      n.style.setProperty('--c', SA.itemCol(it.id, it));
+      if (tr) n.appendChild(h('span', 'tg', SA.TIER_SHORT[tr]));   // 색을 못 구분해도 읽히는 등급 글자
       const img = h('img'); img.src = SA.Render.iconSrc(it.id); img.draggable = false;
       img.style.width = d.w * CELL + 'px'; img.style.height = d.h * CELL + 'px';
       if (it.rot) img.style.transform = `translate(-50%,-50%) rotate(90deg)`;
@@ -52,8 +53,8 @@ SA.UI = (() => {
     }
     if (!tip) { tip = h('div', 'tip'); document.body.appendChild(tip); }
     const cells = d.w * d.h;
-    const tier = d.kind === 'bp' ? (SA.PARTS[d.recipe] || {}).tier : d.tier;
-    tip.innerHTML = `<b style="color:${d.color}">${d.name}</b> <span class="dim">${d.w}×${d.h} · ${SA.KIND_NAME[d.kind] || ''}${tier ? ' · ' + tier : ''}</span><br>` +
+    const tier = SA.itemTier(id, it);
+    tip.innerHTML = `<b style="color:${SA.itemCol(id, it)}">${d.name}</b> <span class="dim">${d.w}×${d.h} · ${SA.KIND_NAME[d.kind] || ''}${tier ? ' · ' + tier : ''}</span><br>` +
       `₵${d.val} <span class="dim">· 칸당 ₵${Math.round(d.val / cells)}</span><br><span class="desc">${d.desc}</span>${extra}${SA.Need && SA.profile ? SA.Need.tipHtml(id) : ''}` +
       `<div class="keys">끌기: 이동 · R: 회전 · 우클릭: 메뉴${SA.R && SA.R.tabOpen ? ' · Shift+클릭: 보안칸↔화물칸 · Ctrl+클릭: 버리기' : ''}</div>`;
     tip.style.display = 'block'; moveTip(e);

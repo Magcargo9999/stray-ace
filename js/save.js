@@ -58,7 +58,7 @@ SA.Save = (() => {
        // 작업대 단계 · 고정한 제작 목표
       newRecipes: [],         // 새로 등록돼 작업대에서 아직 안 본 설계도
       bpMiss: 0,              // 새 설계도 없이 출격한 횟수 (불운 보정)
-      deliv: { slot: -1, stock: [] },   // 배달 상점 재고 (20분마다 교체)
+      deliv: { sortie: -1, stock: [] },   // 배달 상점 재고 (출격이 끝날 때마다 교체)
       bring: {},              // 이번 출격에 가져갈 소모품 개수
       rescued: { teo: false, deliv: false },   // 조난 구조로 연 시설 (테오: 강화 제작, 도리: 배달 상점)
       resc: { escapes: 0, pity: 0, pending: null },   // 구조 신호 상태: 직전 구조 후 탈출 수, 불운 보정, 아직 못 구한 신호
