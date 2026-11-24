@@ -21,7 +21,7 @@ SA.Tutorial = (() => {
   // SA.Raid.start가 기체를 만든 뒤 부른다: 대본용 맵
   const setup = (r) => {
     R = r;
-    R.map = { w: 5200, h: 1500, name: '3년 전' };
+    R.map = { w: 5200, h: 1500, name: '???' };
     const P = R.player;
     P.x = 700; P.y = R.map.h / 2; P.aim = 0;
     P.cell = { id: 'cell3', e: SA.ITEMS.cell3.cap };
@@ -29,7 +29,7 @@ SA.Tutorial = (() => {
     R.zoom = R.zoomTarget = SA.OBS.levels[0]; R.zoomLv = 0; R.obsLv = 0;
     R.fogW = Math.ceil(R.map.w / SA.OBS.fogCell); R.fogH = Math.ceil(R.map.h / SA.OBS.fogCell); R.fog = new Uint8Array(R.fogW * R.fogH).fill(1); R.fogT = 0;
     R.cam.x = P.x; R.cam.y = P.y; R.allies = [];
-    R.tut = { st: 0, t: 0, rt: 0, goal: '', card: '3년 전.', cardA: 1, white: 0, f: {}, pq: [], prompt: null };
+    R.tut = { st: 0, t: 0, rt: 0, goal: '', card: ' ', cardA: 1, white: 0, f: {}, pq: [], prompt: null };
     SA.Audio.play('raid');
     return R;
   };
@@ -114,9 +114,9 @@ SA.Tutorial = (() => {
     P.x = U.clamp(P.x, 16, R.map.w - 16); P.y = U.clamp(P.y, 16, R.map.h - 16);
     if (T.st >= 1 && T.st <= 5) updPrompt(rdt);
     switch (T.st) {
-      case 0:   // 검은 화면 "3년 전."
+      case 0:   // 글자 없는 검은 화면 (3년 전이라고 알려주지 않는다)
         T.goal = '';
-        if (T.rt > 2.4) T.cardA = Math.max(0, T.cardA - rdt * 1.5);
+        if (T.rt > 1.4) T.cardA = Math.max(0, T.cardA - rdt * 1.5);
         if (T.cardA <= 0) { T.card = null; go(1); }
         break;
       case 1: {

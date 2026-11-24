@@ -807,7 +807,7 @@ SA.Render = (() => {
       T(ctx, `예비 ${spare} · R 교체`, bx + 280, y0 + 49, spare ? '#8f9bb8' : '#ff8f3d', 11, 'right', false);
     }
     ctx.fillStyle = 'rgba(8,10,18,0.7)'; ctx.fillRect(bx - 8, by - 92, 300, 128);
-    T(ctx, `${SA.SHIPS[P.ship].name} · ${R.tut ? '단장' : SA.PILOTS[P.pilot].name}`, bx, by - 72, '#8f9bb8', 12, 'left', false);
+    T(ctx, `${SA.SHIPS[P.ship].name} · ${R.tut ? '???' : SA.PILOTS[P.pilot].name}`, bx, by - 72, '#8f9bb8', 12, 'left', false);
     bar(ctx, bx, by - 6, 280, 12, P.hp / P.maxHp, P.hp / P.maxHp < 0.3 ? '#ff4d6d' : '#5dffb0');
     if (P.barrierMax) bar(ctx, bx, by - 10, 280, 3, P.barrier / P.barrierMax, '#6ee0ff', 'rgba(0,0,0,0)');
     T(ctx, `HP ${Math.ceil(P.hp)}/${P.maxHp}`, bx, by + 22, '#e6edf3', 13);

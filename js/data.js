@@ -67,11 +67,11 @@ SA.ITEMS = {
 // 부품: 일반·강화는 서로 다른 독립 부품. 행성·은하는 같은 부품을 키운 것 (lv 1·2, 아래 SA.UPGRADE)
 // 패시브 fx = 효과 수치 (행성 ×1.3, 은하 ×1.6, 은하 각성도 곱해짐). noUp = 수치가 없어 키울 수 없는 부품
 SA.PARTS = {
-  // 주무기 (초당 피해: 일반 기준 펄스건 54)
+  // 주무기 (초당 피해: 일반 기준 펄스건 54). 저격총은 기본 동력원으로 프리깃(110~130)을 한 발에 못 죽이게 한다 — 정조준 105 (v0.87 하향, 임시)
   pulse:   { name: '펄스건', slot: 'main', tier: '일반', val: 150, rate: 9, dmg: 6, spd: 520, spread: 0.03, shots: 1, desc: '기본 연사. 초당 약 54.' },
   scatter: { name: '산탄포', slot: 'main', tier: '일반', val: 220, rate: 2.4, dmg: 5, spd: 430, spread: 0.32, shots: 6, life: 0.45, desc: '가까울수록 강하다. 근접 초당 약 72.' },
   lance:   { name: '관통 레이저', slot: 'main', tier: '일반', val: 240, rate: 3.2, dmg: 15, spd: 760, spread: 0, shots: 1, pierce: 3, desc: '적을 3기까지 관통. 초당 약 48.' },
-  sniper:  { name: '저격총', slot: 'main', tier: '강화', val: 560, rate: 0.833, dmg: 150, spd: 1150, spread: 0.02, shots: 1, life: 1.2, sniper: true, desc: '한 발 150, 1.2초에 1발. 우클릭으로 끝까지 정조준하면 피해 ×1.5. 에너지를 많이 먹는다.' },
+  sniper:  { name: '저격총', slot: 'main', tier: '강화', val: 560, rate: 0.833, dmg: 70, spd: 1150, spread: 0.02, shots: 1, life: 1.2, sniper: true, desc: '한 발 70, 1.2초에 1발. 우클릭으로 끝까지 정조준하면 피해 ×1.5 (105). 초당 약 58, 정조준만 이어 가면 약 87. 에너지를 많이 먹는다.' },
   glass:   { name: '유리 대포', slot: 'main', tier: '강화', val: 480, rate: 6, dmg: 14, spd: 620, spread: 0.03, shots: 1, desc: '초당 약 84로 아주 세다. 대신 맞을 때마다 장착 부품 내구도가 크게 깎인다.' },
   beam:    { name: '지속 광선', slot: 'main', tier: '강화', val: 520, rate: 10, dmg: 7.5, spd: 0, spread: 0, shots: 1, beam: 270, desc: '누르고 있으면 이어지는 광선. 맨 앞의 적 하나를 계속 태운다 (초당 약 75, 사거리 270). 에너지를 많이 먹는다.' },
   swarm:   { name: '군집 미사일', slot: 'main', tier: '강화', val: 520, rate: 1.5, dmg: 8, spd: 240, spread: 0.5, shots: 4, life: 2.2, homing: 5, desc: '작은 유도 미사일 4발을 연달아 쏜다 (초당 약 48, 거의 다 맞는다).' },
@@ -471,7 +471,7 @@ SA.ITEMS.cap_raven = { name: '레이븐의 탈출 포드', w: 2, h: 2, val: 0, k
 SA.WRECK = { maxItems: 5, per: 0.9, last: 4, decay: 0.6, final: [['bp:강화', .15], ['goldchip', .3], ['bp:일반', .35], ['engine', .35], ['prec', 1]] };
 // 대사창 화자: 초상화는 assets/portrait_<id>.png (원화가 작업물이 오면 넣는다. 없으면 실루엣)
 SA.SPEAKERS = {
-  cmd:    { name: '단장', title: '3년 전', color: '#e6edf3' },
+  cmd:    { name: '???', title: '', color: '#e6edf3' },   // 튜토리얼 화자: 정체는 숨긴다 (튜토리얼이 끝난 뒤에야 단장이라고 불린다)
   raven:  { name: '레이븐', title: '네임드 용병', color: '#ff4d6d' },
   serena: { name: '세레나', title: '왕국 장군', color: '#8fb6ff' },
   volk:   { name: '볼크', title: '제국 돌격 에이스', color: '#ff7a6b' },
