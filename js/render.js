@@ -16,6 +16,7 @@ SA.Render = (() => {
     const x = c.getContext('2d'); x.imageSmoothingQuality = 'high'; x.drawImage(src, 0, 0, w, h);
     return c;
   };
+  const LUMINA_FRAMES = ['lumina_0', 'lumina_1', 'lumina_2', 'lumina_burn_0', 'lumina_burn_1', 'lumina_burn_2'];
   let total = 1, loaded = 0;
   const loadProgress = () => loaded / total;
   const load = (done) => {
@@ -24,6 +25,7 @@ SA.Render = (() => {
       if (d.anim) for (let k = 1; k < d.anim.n; k++) list.push(['en_' + id + '_' + k, d.img.replace(/_0\.png$/, '_' + k + '.png')]); }   // 애니메이션 프레임 xxx_0..n-1.png
     for (const id in SA.ITEMS) if (SA.ITEMS[id].img) list.push(['it_' + id, SA.ITEMS[id].img]);
     list.push(['collector', 'assets/collector.png']);   // 수집가 함선 (사용자 도트)
+    for (const k of LUMINA_FRAMES) list.push([k, 'assets/' + k + '.png']);   // 루미나 (사용자 도트): 평소 날개 3프레임 + 마지막 발악 불꽃 3프레임
     for (const id in SA.SPEAKERS) list.push(['pt_' + id, 'assets/portrait_' + id + '.png']);   // 초상화 (없으면 실루엣)
     let left = list.length; total = list.length; loaded = 0;
     for (const [k, src] of list) {
@@ -41,6 +43,7 @@ SA.Render = (() => {
       if (d.anim) for (let k = 1; k < d.anim.n; k++) if (IMG['en_' + id + '_' + k]) pre['en_' + id + '_' + k] = shrink(IMG['en_' + id + '_' + k], d.size[0] * Z, d.size[1] * Z); }
     // 필드 오브젝트 도트 (월드 크기 x ZOOM)
     const fit = (k, w, h) => { if (IMG[k]) pre[k] = shrink(IMG[k], w * Z, h * Z); };
+    for (const k of LUMINA_FRAMES) if (IMG[k]) pre[k] = shrink(IMG[k], SA.RIFT.spr.w * 3, SA.RIFT.spr.h * 3);   // 아레나 확대 배율이 2보다 커도 선명하도록 월드 크기의 3배로 줄여 둔다
     fit('box_crate', 25, 14); fit('box_locked', 18, 25); fit('sub_drone', 11, 11); fit('poi_wreck', 72, 28); fit('i_pod', 13, 17); fit('poi_distress', 16, 18); fit('beacon', 40, 39); fit('collector', SA.COLLECTOR.w, SA.COLLECTOR.h);
     // 엄폐물: 크기 단계별로 미리 축소 (작은 원본은 그대로 확대)
     for (const k of ['rock', 'shard']) if (IMG['ast_' + k]) {
@@ -923,5 +926,5 @@ SA.Render = (() => {
     }
   };
 
-  return { load, loadProgress, draw, icon, iconSrc, IMG, pre };
+  return { load, loadProgress, draw, icon, iconSrc, IMG, pre, flashOf };
 })();

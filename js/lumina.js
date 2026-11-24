@@ -145,8 +145,22 @@ SA.Lumina = (() => {
     return Math.max(0, limit - (e.pt || 0));
   };
 
-  // 임시 도트: 코드로 그린 나방 (사용자 도트가 오면 assets/lumina.png로 바꾼다)
+  // 사용자 도트: 평소에는 날개 3프레임을 0-1-2-1 순서로 퍼덕이고, 마지막 발악에는 불꽃이 붙은 프레임으로 바뀐다.
+  // 6장 모두 몸통 자리가 같아서 프레임이 바뀌어도 흔들리지 않는다. 몸통(얼굴)이 보스 중심(e.x, e.y)에 온다.
+  const SEQ = [0, 1, 2, 1];
   const draw = (ctx, R, e) => {
+    const burn = e.ph >= 0 && PH[e.ph] && PH[e.ph].last, fl = e.flash > 0;
+    const spr = SA.Render.pre[(burn ? 'lumina_burn_' : 'lumina_') + SEQ[Math.floor(R.t * (burn ? 7 : 4)) % 4]];   // 퍼덕임 속도: 평소 초당 4프레임 · 발악 7프레임 (임시)
+    if (!spr) { drawTemp(ctx, R, e); return; }   // 도트가 안 불러와졌으면 아래 임시 나방
+    const S = SA.RIFT.spr, bob = Math.sin(R.t * (burn ? 3.2 : 1.8)) * 2;   // 떠 있는 느낌의 위아래 흔들림
+    ctx.save(); ctx.translate(e.x, e.y + bob);
+    ctx.imageSmoothingEnabled = true;
+    ctx.drawImage(fl ? SA.Render.flashOf(spr) : spr, -S.w / 2, -S.h * S.py, S.w, S.h);
+    ctx.restore();
+  };
+
+  // 임시 나방: 코드로 그린 그림 (도트가 없을 때만 쓴다)
+  const drawTemp = (ctx, R, e) => {
     const t = R.t, burn = e.ph >= 0 && PH[e.ph] && PH[e.ph].last, fl = e.flash > 0;
     const flap = 0.78 + 0.22 * Math.sin(t * (burn ? 7 : 4));
     const wing = burn ? '#5a2410' : '#2d2150', edge = burn ? '#ffb347' : '#ffe9a8';
