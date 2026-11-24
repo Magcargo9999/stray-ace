@@ -665,7 +665,7 @@ SA.Combat = (() => {
           else if (e.lungeCd <= 0 && dist < 150 && alive) { e.lungeCd = 3.5; e.lungeT = 0.35; e.vx = Math.cos(aP) * 230; e.vy = Math.sin(aP) * 230; }
           else { e.vx += (Math.cos(aP) * D0.speed - e.vx) * Math.min(1, 2 * dt); e.vy += (Math.sin(aP) * D0.speed - e.vy) * Math.min(1, 2 * dt); }
           if (e.t > 2.4 && dist < 240 && alive) { e.t = 0; ring(R, e.x, e.y, 8, 62, Math.random(), { r: 4, col: '#c9a2ff' }); }
-          if (dist < e.r + 6) hurtPlayer(R, 14);
+          if (dist < e.r + SA.CFG.BODY_PAD) hurtPlayer(R, 14);
           break;
         }
         case 'hunter': {
@@ -683,7 +683,7 @@ SA.Combat = (() => {
           if (c < 3 * k9) { if (e.t2 > 0.55 * k9) { e.t2 = 0; fan(R, e.x, e.y, aP, e.rage ? 7 : 5, 0.8, 120, { r: 5, dmg: 14, col: '#a37bff' }); } }
           else if (c < 6 * k9) { if (e.t2 > 0.9 * k9) { e.t2 = 0; e.a += 0.3; ring(R, e.x, e.y, e.rage ? 32 : 24, 70, e.a, { r: 4, col: '#c9a2ff' }); } }
           else if (e.t2 > 0.09) { e.t2 = 0; e.a += 0.19; const n = e.rage ? 4 : 3; for (let k = 0; k < n; k++) eb(R, e.x, e.y, e.a + k * Math.PI * 2 / n, 95, { r: 3.5, col: '#c9a2ff' }); }
-          if (dist < e.r + 5) hurtPlayer(R, 20);
+          if (dist < e.r + SA.CFG.BODY_PAD) hurtPlayer(R, 20);
           break;
         }
         case 'raven': updateRaven(R, e, dt, dist, aP, alive); break;
@@ -861,7 +861,7 @@ SA.Combat = (() => {
       if (R.allies && R.allies.length) { let hit = false; for (const a of R.allies) if (!a.dead && U.d2(b.x, b.y, a.x, a.y) < (b.r + a.r) ** 2) { hurtAlly(R, a, b.dmg); hit = true; break; } if (hit) continue; }
       if (!P.dead && R.state === 'play') {
         const dx = b.x - P.x, dy = b.y - P.y, dd = dx * dx + dy * dy;
-        if (!slip && dd < (b.r + hitR) ** 2 && P.invuln <= 0) { hurtPlayer(R, b.dmg); continue; }
+        if (!slip && dd < (b.r * SA.CFG.BULLET_HIT + hitR) ** 2 && P.invuln <= 0) { hurtPlayer(R, b.dmg); continue; }
         if (!b.grazed && dd < (b.r + G) ** 2) {
           b.grazed = true; R.grazeN++; R.graze += slip ? 2 : 1;
           if (slip) P.skillCd = Math.max(0, P.skillCd - 0.2);
