@@ -840,6 +840,75 @@ SA.Combat = (() => {
     }
   };
 
+  // ── 수송선 길찾기: 40칸 격자 A*. 소행성(반지름 + 수송선 반지름 + 여유)에 걸리는 칸은 막힌 칸 ──
+  const PF = 40;
+  const pfGrid = (R, r, pad) => {
+    const gw = Math.ceil(R.map.w / PF), gh = Math.ceil(R.map.h / PF), blk = new Uint8Array(gw * gh);
+    for (const a of R.asteroids) {
+      const rr = a.r * 0.92 + r + pad, x0 = Math.max(0, Math.floor((a.x - rr) / PF)), x1 = Math.min(gw - 1, Math.floor((a.x + rr) / PF));
+      const y0 = Math.max(0, Math.floor((a.y - rr) / PF)), y1 = Math.min(gh - 1, Math.floor((a.y + rr) / PF));
+      for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) if (U.d2((x + 0.5) * PF, (y + 0.5) * PF, a.x, a.y) < rr * rr) blk[y * gw + x] = 1;
+    }
+    return { gw, gh, blk };
+  };
+  const pfFree = (g, x, y) => { const cx = U.clamp(Math.floor(x / PF), 0, g.gw - 1), cy = U.clamp(Math.floor(y / PF), 0, g.gh - 1); return !g.blk[cy * g.gw + cx]; };
+  const pfLos = (g, x0, y0, x1, y1) => {   // 두 점 사이가 전부 빈 칸인가
+    const n = Math.ceil(Math.hypot(x1 - x0, y1 - y0) / (PF / 3));
+    for (let i = 1; i < n; i++) if (!pfFree(g, x0 + (x1 - x0) * i / n, y0 + (y1 - y0) * i / n)) return false;
+    return true;
+  };
+  const pfPath = (g, sx, sy, tx, ty) => {
+    const { gw, gh, blk } = g;
+    const nearFree = (x, y) => {
+      const cx = U.clamp(Math.floor(x / PF), 0, gw - 1), cy = U.clamp(Math.floor(y / PF), 0, gh - 1);
+      if (!blk[cy * gw + cx]) return [cx, cy];
+      for (let d = 1; d <= 10; d++) for (let dy = -d; dy <= d; dy++) for (let dx = -d; dx <= d; dx++) {
+        if (Math.max(Math.abs(dx), Math.abs(dy)) !== d) continue;
+        const nx = cx + dx, ny = cy + dy;
+        if (nx >= 0 && ny >= 0 && nx < gw && ny < gh && !blk[ny * gw + nx]) return [nx, ny];
+      }
+      return null;
+    };
+    const s = nearFree(sx, sy), t = nearFree(tx, ty); if (!s || !t) return null;
+    const N = gw * gh, G = new Float32Array(N).fill(Infinity), came = new Int32Array(N).fill(-1), done = new Uint8Array(N);
+    const hk = [], hv = [];   // 이진 힙 (f값, 칸 번호)
+    const push = (f, v) => { let i = hk.length; hk.push(f); hv.push(v); while (i > 0) { const q = (i - 1) >> 1; if (hk[q] <= hk[i]) break; [hk[q], hk[i]] = [hk[i], hk[q]]; [hv[q], hv[i]] = [hv[i], hv[q]]; i = q; } };
+    const pop = () => {
+      const v = hv[0], lk = hk.pop(), lv = hv.pop();
+      if (hk.length) { hk[0] = lk; hv[0] = lv; let i = 0; for (;;) { let m = i; const l = 2 * i + 1, r = l + 1; if (l < hk.length && hk[l] < hk[m]) m = l; if (r < hk.length && hk[r] < hk[m]) m = r; if (m === i) break; [hk[m], hk[i]] = [hk[i], hk[m]]; [hv[m], hv[i]] = [hv[i], hv[m]]; i = m; } }
+      return v;
+    };
+    const hx = (i) => { const dx = Math.abs((i % gw) - t[0]), dy = Math.abs(((i / gw) | 0) - t[1]); return dx + dy - 0.586 * Math.min(dx, dy); };
+    const si = s[1] * gw + s[0], ti = t[1] * gw + t[0];
+    G[si] = 0; push(hx(si), si);
+    while (hk.length) {
+      const c = pop(); if (done[c]) continue; done[c] = 1; if (c === ti) break;
+      const cx = c % gw, cy = (c / gw) | 0;
+      for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) {
+        if (!dx && !dy) continue;
+        const nx = cx + dx, ny = cy + dy; if (nx < 0 || ny < 0 || nx >= gw || ny >= gh) continue;
+        const ni = ny * gw + nx; if (blk[ni] || done[ni]) continue;
+        if (dx && dy && (blk[cy * gw + nx] || blk[ny * gw + cx])) continue;   // 모서리를 베고 지나가지 않는다
+        const g2 = G[c] + (dx && dy ? 1.414 : 1);
+        if (g2 < G[ni]) { G[ni] = g2; came[ni] = c; push(g2 + hx(ni), ni); }
+      }
+    }
+    if (!done[ti]) return null;
+    const cells = []; for (let c = ti; c !== -1; c = came[c]) cells.push([(c % gw + 0.5) * PF, (((c / gw) | 0) + 0.5) * PF]);
+    cells.reverse(); cells.unshift([sx, sy]); cells[cells.length - 1] = [tx, ty];
+    // 직선으로 갈 수 있는 곳은 건너뛰어 꺾임을 줄인다
+    const out = []; let i = 0;
+    while (i < cells.length - 1) { let j = cells.length - 1; while (j > i + 1 && !pfLos(g, cells[i][0], cells[i][1], cells[j][0], cells[j][1])) j--; out.push(cells[j]); i = j; }
+    return out;
+  };
+  const planConvoy = (R, a) => {
+    for (const pad of [8, 0]) {   // 좁은 틈이 막히면 여유 없이 한 번 더
+      const g = pfGrid(R, a.r, pad), path = pfPath(g, a.x, a.y, a.to.x, a.to.y);
+      if (path) return path;
+    }
+    return [];
+  };
+
   // ── 탄 이동·충돌 ──
   const updateBullets = (R, dt) => {
     const P = R.player, slip = P.skillState === 'slip';
@@ -1058,7 +1127,18 @@ SA.Combat = (() => {
         // 플레이어가 너무 멀면 기다린다. 소행성은 밀어낸다
         if (a.arrived) continue;
         const far = U.d2(a.x, a.y, P.x, P.y) > 420 * 420;
-        const ang = U.ang(a.x, a.y, a.to.x, a.to.y), sp = far ? 0 : SA.CONVOY.speed;
+        if (!a.path || a.repath) { a.path = planConvoy(R, a); a.pi = 0; a.repath = false; a.mvT = 0; a.mx = a.x; a.my = a.y; }
+        while (a.pi < a.path.length && U.d2(a.x, a.y, a.path[a.pi][0], a.path[a.pi][1]) < 30 * 30) a.pi++;   // 지나간 중간 지점은 넘긴다
+        const wp = a.pi < a.path.length ? a.path[a.pi] : a.to;
+        if (!far) {   // 3초 동안 거의 못 움직였으면 길을 다시 찾고, 3번 반복되면 다음 지점으로 건너뛴다
+          a.mvT += dt;
+          if (a.mvT >= 3) {
+            if (U.d2(a.x, a.y, a.mx, a.my) < 12 * 12) { a.stuck = (a.stuck || 0) + 1; a.repath = true; if (a.stuck >= 3 && a.path.length) { const nx = a.path[Math.min(a.pi, a.path.length - 1)]; a.x = nx[0]; a.y = nx[1]; a.vx = a.vy = 0; a.stuck = 0; } }
+            else a.stuck = 0;
+            a.mvT = 0; a.mx = a.x; a.my = a.y;
+          }
+        }
+        const ang = U.ang(a.x, a.y, wp[0], wp[1]), sp = far ? 0 : SA.CONVOY.speed;
         a.vx += (Math.cos(ang) * sp - a.vx) * Math.min(1, 2 * dt); a.vy += (Math.sin(ang) * sp - a.vy) * Math.min(1, 2 * dt);
         a.x += a.vx * dt; a.y += a.vy * dt; a.face = ang; a.waiting = far;
         pushOutAsteroids(R, a, a.r);
