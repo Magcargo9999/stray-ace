@@ -1,6 +1,6 @@
 ![STRAY//ACE](assets/thumbnail.png)
 
-# STRAY//ACE 프로토타입 v0.80
+# STRAY//ACE 프로토타입 v0.81
 
 바로 플레이: https://magcargo9999.github.io/stray-ace/
 
@@ -17,7 +17,7 @@
 - `js/combat.js` 조작·무기·적 AI·탄막·그레이즈 / `js/raid.js` 맵 생성·POI·줍기·침식·탈출·정산
 - `js/render.js` 그리기·HUD / `js/inventory.js` 격자 UI·Tab 창 / `js/hangar.js` 격납고
 - `js/audio.js` 효과음·배경음악 (Web Audio 합성, 파일 없음)
-- `assets/` 기체 도트 (받은 그대로, 색 변경 없음)
+- `assets/` 기체 도트 (받은 그대로, 색 변경 없음) · `bgm_lumina.mp3` 루미나 보스곡
 
 ## 1단계에 들어간 것
 기체 4종 · 파일럿 5명 · 적 4종 + 네임드 레이븐 + 심연의 사냥꾼 · 폐광 소행성대 1맵 ·

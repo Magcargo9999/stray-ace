@@ -1,4 +1,4 @@
-// 사운드: 효과음과 배경음악을 모두 Web Audio로 합성한다 (파일 없음).
+// 사운드: 효과음과 배경음악을 Web Audio로 합성한다. 보스곡처럼 받은 곡은 mp3 파일로 재생한다 (FILES).
 SA.Audio = (() => {
   let ctx = null, master, musicBus, sfxBus, noiseBuf, corrGain;
   const last = {};
@@ -153,6 +153,35 @@ SA.Audio = (() => {
       if (i % 8 === 0 && i < 40) tone('sine', N(45 - (i / 8 % 2) * 4), t, sp * 8, 0.06, { attack: 0.3, bus: musicBus });
     } },
   };
+  // ── 받은 곡(mp3): 앞부분은 한 번만, loopA~loopB 구간을 계속 되풀이한다 ──
+  const FILES = {
+    lumina: { url: 'assets/bgm_lumina.mp3', loopA: 60.05, loopB: 120.05, gain: 0.5 },   // 136BPM, 34마디(드롭) 지점부터 후반부 반복. gain은 합성 곡과 음량 맞춤
+  };
+  const fbuf = {}, floading = {};
+  let fsrc = null, fg = null;
+  const loadFile = (name) => {
+    if (!FILES[name] || !ctx) return Promise.resolve(null);
+    if (fbuf[name]) return Promise.resolve(fbuf[name]);
+    if (floading[name]) return floading[name];
+    const c = ctx;
+    floading[name] = fetch(FILES[name].url).then(r => r.arrayBuffer()).then(b => c.decodeAudioData(b))
+      .then(buf => { fbuf[name] = buf; return buf; }).catch(() => { delete floading[name]; return null; });
+    return floading[name];
+  };
+  const stopFile = (fade) => {
+    if (!fsrc) return;
+    const s = fsrc, g = fg, t = ctx.currentTime; fsrc = fg = null;
+    try { g.gain.cancelScheduledValues(t); g.gain.setValueAtTime(g.gain.value, t); g.gain.setTargetAtTime(0, t, fade / 4); s.stop(t + fade + 0.1); } catch (e) {}
+  };
+  const startFile = (name) => {
+    const f = FILES[name], buf = fbuf[name]; if (!f || !buf || !ctx) return;
+    const t = ctx.currentTime, s = ctx.createBufferSource(), g = ctx.createGain();
+    s.buffer = buf; s.loop = true; s.loopStart = f.loopA; s.loopEnd = f.loopB;
+    g.gain.setValueAtTime(0.0001, t); g.gain.linearRampToValueAtTime(f.gain, t + 0.4);
+    s.connect(g); g.connect(musicBus); s.start(t + 0.05, 0);
+    fsrc = s; fg = g;
+  };
+  const preload = (name) => { loadFile(name); };   // 균열이 생기는 순간 미리 읽어 둔다
   const tick = () => {
     if (!ctx || !track || !TR[track]) return;
     const tr = TR[track], sp = 60 / tr.bpm / 4;
@@ -164,11 +193,18 @@ SA.Audio = (() => {
   };
   const play = (name, force) => {
     if (track === name && !force) return;
-    if (capLog) { track = name; capLog.push([SA.Cap.t, 'p', name]); return; }
+    if (capLog) { track = name; capLog.push([SA.Cap.t, 'p', name]); if (name) loadFile(name); return; }
     track = name; step = 0;
     if (!ctx) return;
+    stopFile(name && FILES[name] ? 0.3 : 0.8);
+    if (name && FILES[name]) { const n = name; loadFile(n).then(() => { if (track === n && ctx && !fsrc) startFile(n); }); }
     nextTime = ctx.currentTime + 0.08;
     if (!timer) timer = setInterval(tick, 25);
+  };
+  // 음악을 끈다 (보스 격추 직후 등). 받은 곡은 서서히 줄어든다
+  const stop = () => {
+    if (capLog) { track = null; capLog.push([SA.Cap.t, 'p', null]); return; }
+    track = null; if (ctx) stopFile(1.2);
   };
   const corrVol = (stage) => (stage >= 2 ? (stage === 3 ? 0.12 : 0.06) : 0);
   const setCorrosion = (stage) => {
@@ -186,6 +222,7 @@ SA.Audio = (() => {
     const sr = 48000, oc = new OfflineAudioContext(2, Math.max(1, Math.ceil(dur * sr)), sr);
     ctx = oc; build(oc); setVolumes(); track = null; step = 0; nextTime = 0;
     for (const k in last) delete last[k];
+    let osrc = null;
     const music = (to) => {
       while (track && TR[track] && nextTime < to) {
         const tr = TR[track], sp = 60 / tr.bpm / 4;
@@ -197,7 +234,15 @@ SA.Audio = (() => {
       const t = Math.max(0, ta - t0); if (t >= dur) break;
       music(t); tNow = t;
       if (k === 's') sfx(a, b);
-      else if (k === 'p') { track = a; step = 0; nextTime = t + 0.02; }
+      else if (k === 'p') {
+        track = a; step = 0; nextTime = t + 0.02;
+        if (osrc) { try { osrc.stop(t + 0.3); } catch (e) {} osrc = null; }
+        if (a && FILES[a] && fbuf[a]) {
+          const f = FILES[a], g = oc.createGain(); osrc = oc.createBufferSource();
+          osrc.buffer = fbuf[a]; osrc.loop = true; osrc.loopStart = f.loopA; osrc.loopEnd = f.loopB; g.gain.value = f.gain;
+          osrc.connect(g); g.connect(musicBus); osrc.start(t, 0);
+        }
+      }
       else if (k === 'c') corrGain.gain.setTargetAtTime(corrVol(a), t, 0.8);
     }
     music(dur); tNow = null;
@@ -215,5 +260,5 @@ SA.Audio = (() => {
     return btoa(bin);
   };
 
-  return { init, sfx, play, setVolumes, setCorrosion, stream, capStart, capStop, renderLog, get track() { return track; } };
+  return { init, sfx, play, stop, preload, setVolumes, setCorrosion, stream, capStart, capStop, renderLog, get track() { return track; } };
 })();

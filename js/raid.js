@@ -216,6 +216,7 @@ SA.Raid = (() => {
       const q = SA.STORY.main[(SA.profile.mq || {}).i || 0];
       if ((q && q.id === 'mL') || (lu.wins > 0 && Math.random() < SA.RIFT.again)) {
         R.rift = addPoi('rift', place(0.3, 0.75, 500), { label: '공간 균열', seen: true, clear: 120 });
+        SA.Audio.preload('lumina');
         msg('공간 균열이 감지됐다 — 미니맵 보라 표시', '#d9b8ff', 6);
       }
     }
@@ -884,7 +885,7 @@ SA.Raid = (() => {
     const e = C().spawnEnemy(R, 'lumina', RF.w / 2, -70, { awake: true });
     R.boss = e; SA.Lumina.init(R, e);
     C().fx(R, P.x, P.y, 40, '#d9b8ff', 160, 0.6, 2); R.shake = 10;
-    SA.Audio.sfx('warp'); SA.Audio.play('boss');
+    SA.Audio.sfx('warp'); SA.Audio.play('lumina');
     msg('…빛을 따라왔다.', '#ffe9a8', 4);
   };
   const arenaClamp = (R) => {
@@ -923,7 +924,7 @@ SA.Raid = (() => {
     const names = {}; for (const id of got) names[id] = (names[id] || 0) + 1;
     R.luminaRes = `성운 나방 루미나 격추${first ? ' — 1막 완료' : ''} · ` + Object.keys(names).map(id => `${SA.ITEMS[id].name}${names[id] > 1 ? ' ×' + names[id] : ''}`).join(', ') + ` · ₵${cr}${R.arena.bonus ? ` (보너스 ₵${R.arena.bonus} 포함)` : ''} — 창고로 보냈다`;
     R.arena.won = true; R.arena.winT = 2.8; R.boss = null; R.eb = [];
-    R.player.invuln = 99;
+    R.player.invuln = 99; SA.Audio.stop();
     msg('성운 나방 루미나 격추 — 균열이 닫힌다', '#ffe9a8', 4);
     C().fx(R, e.x, e.y, 120, '#ffe9a8', 260, 1.2, 2.5);
     SA.Save.store(prof);
