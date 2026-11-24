@@ -63,9 +63,16 @@ SA.Grid = (() => {
   const used = (g) => g.items.reduce((n, it) => n + SA.ITEMS[it.id].w * SA.ITEMS[it.id].h, 0);
   const value = (g) => g.items.reduce((n, it) => n + SA.itemVal(it), 0);
   const count = (g, id) => g.items.filter(it => it.id === id).length;
+  // 동력원: 충전이 남은 것만 센다 / 가장 많이 남은 것 고르기 / 재료로 쓸 때는 가장 빈 것부터
+  const live = (it) => SA.cellCh(it) > 0.01;
+  const countLive = (g, id) => g.items.filter(it => it.id === id && live(it)).length;
+  const bestCell = (g, id) => g.items.filter(it => it.id === id && live(it)).sort((a, b) => SA.cellCh(b) - SA.cellCh(a))[0] || null;
   const takeMats = (g, mats) => {
     for (const k in mats) if (count(g, k) < mats[k]) return false;
-    for (const k in mats) for (let i = 0; i < mats[k]; i++) remove(g, g.items.find(it => it.id === k).uid);
+    for (const k in mats) for (let i = 0; i < mats[k]; i++) {
+      const c = g.items.filter(it => it.id === k);
+      remove(g, (SA.ITEMS[k].kind === 'cell' ? c.sort((a, b) => SA.cellCh(a) - SA.cellCh(b)) : c)[0].uid);
+    }
     return true;
   };
 
@@ -82,5 +89,5 @@ SA.Grid = (() => {
   };
   selfTest();
 
-  return { make, dims, fits, findSpot, add, place, remove, autoSort, used, value, count, takeMats, newUid };
+  return { make, dims, fits, findSpot, add, place, remove, autoSort, used, value, count, live, countLive, bestCell, takeMats, newUid };
 })();

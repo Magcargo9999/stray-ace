@@ -49,10 +49,10 @@ SA.ITEMS = {
   key_box3: { name: '상자 해독키 (행성)', w: 1, h: 1, val: 600, kind: 'key', tier: '행성', code: 'box3', color: '#ffd166', desc: '행성 등급 잠긴 상자의 코드 칩. 등록하면 1번. 3막의 금고 규격이다.' },
   key_zone: { name: '왕국 산하 행성 해독키', w: 1, h: 1, val: 300, kind: 'key', tier: '강화', code: 'zone', color: '#8fb6ff', desc: '보안 구역 역장의 출입 코드. 어째서 이런 폐광 소행성대에 왕국 산하 행성의 해독키가…? 등록하면 3번.' },
   // 동력원: 주무기 에너지. 장착 1개 + 예비는 화물칸. 기지에 돌아오면 무료로 가득 찬다. cap = 펄스건 연사 기준 초, dmg = 주무기 피해 배율 (임시)
-  cell1:    { name: '동력원 (일반)', w: 1, h: 1, val: 60, kind: 'cell', img: 'assets/i_cell1.png', tier: '일반', cap: 90, dmg: 1.0, color: '#7fe3ff', desc: '주무기 에너지. 펄스건으로 약 90초. 피해 ×1.0. R로 교체.' },
-  cell2:    { name: '동력원 (강화)', w: 1, h: 1, val: 180, kind: 'cell', img: 'assets/i_cell2.png', tier: '강화', cap: 150, dmg: 1.2, color: '#5dffb0', desc: '주무기 에너지. 펄스건으로 약 150초. 피해 ×1.2. R로 교체.' },
-  cell3:    { name: '동력원 (행성)', w: 1, h: 1, val: 420, kind: 'cell', img: 'assets/i_cell3.png', tier: '행성', cap: 240, dmg: 1.4, color: '#ffd166', desc: '주무기 에너지. 펄스건으로 약 240초. 피해 ×1.4. R로 교체.' },
-  cell4:    { name: '동력원 (은하)', w: 1, h: 1, val: 900, kind: 'cell', img: 'assets/i_cell4.png', tier: '은하', cap: 330, dmg: 1.6, color: '#c08bff', desc: '주무기 에너지. 펄스건으로 약 330초. 피해 ×1.6. 심연 핵으로 만든다. R로 교체.' },
+  cell1:    { name: '동력원 (일반)', w: 1, h: 1, val: 60, kind: 'cell', img: 'assets/i_cell1.png', tier: '일반', cap: 90, dmg: 1.0, color: '#7fe3ff', desc: '주무기 에너지. 펄스건으로 약 90초. 피해 ×1.0. R로 교체. 쓴 만큼 줄어든 채 유지된다. 다 쓰면 분해하거나 판다.' },
+  cell2:    { name: '동력원 (강화)', w: 1, h: 1, val: 180, kind: 'cell', img: 'assets/i_cell2.png', tier: '강화', cap: 150, dmg: 1.2, color: '#5dffb0', desc: '주무기 에너지. 펄스건으로 약 150초. 피해 ×1.2. R로 교체. 쓴 만큼 줄어든 채 유지된다. 다 쓰면 분해하거나 판다.' },
+  cell3:    { name: '동력원 (행성)', w: 1, h: 1, val: 420, kind: 'cell', img: 'assets/i_cell3.png', tier: '행성', cap: 240, dmg: 1.4, color: '#ffd166', desc: '주무기 에너지. 펄스건으로 약 240초. 피해 ×1.4. R로 교체. 쓴 만큼 줄어든 채 유지된다. 다 쓰면 분해하거나 판다.' },
+  cell4:    { name: '동력원 (은하)', w: 1, h: 1, val: 900, kind: 'cell', img: 'assets/i_cell4.png', tier: '은하', cap: 330, dmg: 1.6, color: '#c08bff', desc: '주무기 에너지. 펄스건으로 약 330초. 피해 ×1.6. 심연 핵으로 만든다. R로 교체. 쓴 만큼 줄어든 채 유지된다. 다 쓰면 분해하거나 판다.' },
   // 보스 재료: 은하 각성에 들어간다 (보스마다 각성 규칙 1개)
   chip:     { name: '비행 기록 칩', w: 1, h: 1, val: 600, kind: 'umat', tier: '은하', color: '#ff8fb0', desc: '레이븐의 회피 기동이 통째로 기록된 칩. 은하 부품에 넣으면 스칠 때마다 위력이 오른다 (레이븐 각성).' },
   lumdust:  { name: '루미나의 인분', w: 1, h: 1, val: 800, kind: 'umat', tier: '은하', color: '#ffe9a8', desc: '성운 나방 루미나의 날개에서 떨어진 빛가루. 은하 제작 「인광 날개 포탑」에 들어간다 (탄막이 짙을수록 강해진다).' },
@@ -185,7 +185,10 @@ SA.LV_RANGE = [1, 1.15, 1.15];
 SA.LV_MAX = [100, 120, 120];    // 최대 내구도
 SA.LV_VAL = [1, 2, 2];        // 가치 배율
 SA.partTier = (p) => p.lv ? '행성' : SA.PARTS[p.id].tier;
-SA.itemVal = (it) => Math.round(SA.ITEMS[it.id].val * SA.LV_VAL[it.lv || 0]);   // 화물 아이템 가치 (행성급 부품 완성품 포함)
+// 동력원: 쓴 만큼 충전량(ch 0~1)이 줄어든 채로 유지된다. 가치는 빈 것 25% ~ 가득 100% (임시)
+SA.CELL = { emptyVal: 0.25, salvage: { cell1: { scrap: 1 }, cell2: { scrap: 1, wire: 1 }, cell3: { scrap: 2, prec: 1 }, cell4: { scrap: 2, crystal: 1 } } };
+SA.cellCh = (it) => it.ch === undefined ? 1 : Math.max(0, Math.min(1, it.ch));
+SA.itemVal = (it) => { const d = SA.ITEMS[it.id], v = Math.round(d.val * SA.LV_VAL[it.lv || 0]); return d.kind === 'cell' ? Math.round(v * (SA.CELL.emptyVal + (1 - SA.CELL.emptyVal) * SA.cellCh(it))) : v; };   // 화물 아이템 가치 (행성급 부품 완성품 포함)
 SA.partVal = (p) => Math.round(SA.PARTS[p.id].val * SA.LV_VAL[p.lv || 0]);
 SA.canUp = (id) => { const d = SA.PARTS[id]; return !!d && !d.noUp; };
 // 패시브 fx 값 (i번째) × 배율

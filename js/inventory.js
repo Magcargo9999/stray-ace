@@ -28,11 +28,11 @@ SA.UI = (() => {
       if (it.rot) img.style.transform = `translate(-50%,-50%) rotate(90deg)`;
       else img.style.transform = 'translate(-50%,-50%)';
       n.appendChild(img);
-      if (d.kind === 'cell' && it.ch !== undefined) n.appendChild(h('span', 'val', Math.round(it.ch * 100) + '%'));   // 동력원 충전량
+      if (d.kind === 'cell') n.appendChild(h('span', 'val', Math.round(SA.cellCh(it) * 100) + '%'));   // 동력원 충전량
       else if (opts.showVal !== false) n.appendChild(h('span', 'val', '₵' + SA.itemVal(it)));
       if (NM[it.id] && NM[it.id].mark) n.appendChild(h('span', 'need ' + NM[it.id].mark));   // 고정 목표(노랑)·납품 의뢰(초록) 재료
       n.addEventListener('mousedown', (e) => onItemDown(e, name, it));
-      n.addEventListener('mouseenter', (e) => showTip(e, it.id, it.dur !== undefined ? `<br>내구도 ${it.dur}/${SA.LV_MAX[it.lv || 0]}` : it.ch !== undefined ? `<br>충전 ${Math.round(it.ch * 100)}%` : '', it));
+      n.addEventListener('mouseenter', (e) => showTip(e, it.id, it.dur !== undefined ? `<br>내구도 ${it.dur}/${SA.LV_MAX[it.lv || 0]}` : SA.ITEMS[it.id].kind === 'cell' ? `<br>충전 ${Math.round(SA.cellCh(it) * 100)}%` : '', it));
       n.addEventListener('mouseleave', hideTip);
       n.addEventListener('contextmenu', (e) => { e.preventDefault(); openMenu(e, name, it); });
       el.appendChild(n);

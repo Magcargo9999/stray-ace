@@ -236,13 +236,13 @@ SA.Hangar = (() => {
     const usedCells = () => Object.keys(prof.bring).reduce((n, k) => n + prof.bring[k] * SA.ITEMS[k].w * SA.ITEMS[k].h, 0);
     let any = false;
     for (const id of [...SA.SHOP.consumables.map(x => x[0]), 'cell1', 'cell2', 'cell3', 'cell4']) {
-      const d = SA.ITEMS[id], have = SA.Grid.count(prof.stash, id) - (lo.cell === id ? 1 : 0);
+      const d = SA.ITEMS[id], have = (d.kind === 'cell' ? SA.Grid.countLive(prof.stash, id) : SA.Grid.count(prof.stash, id)) - (lo.cell === id ? 1 : 0);
       if (have <= 0) continue;
       any = true;
       if (prof.bring[id] === undefined && id === lo.cell) prof.bring[id] = 1;   // 예비 동력원은 기본 1개
       const n = Math.min(prof.bring[id] || 0, have); prof.bring[id] = n;
       const r = h('div', 'cons', `<img src="${SA.Render.iconSrc(id)}"><span>${d.name}</span><b>${n}</b><span class="dim">/${have}</span>`);
-      tip(r, `<b>${d.name}</b><br><span class="desc">${d.desc}</span><br><span class="dim">격추되면 잃는다</span>`);
+      tip(r, `<b>${d.name}</b><br><span class="desc">${d.desc}</span><br><span class="dim">${d.kind === 'cell' ? '충전이 많이 남은 것부터 싣는다 · ' : ''}격추되면 잃는다</span>`);
       const minus = h('button', 'btn tiny', '−'), plus = h('button', 'btn tiny', '+');
       minus.onclick = () => { if (prof.bring[id] > 0) { prof.bring[id]--; save(); render(); } };
       plus.onclick = () => {
@@ -257,7 +257,7 @@ SA.Hangar = (() => {
     // 경고 (짧게)
     const warn = [];
     if (!lo.main && !lo.main2) warn.push('<span class="bad">주무기 없음</span>');
-    if (!(lo.cell && SA.Grid.count(prof.stash, lo.cell))) warn.push('<span class="warn">동력원 없음</span>');
+    if (!(lo.cell && SA.Grid.countLive(prof.stash, lo.cell))) warn.push('<span class="warn">동력원 없음</span>');
     const dmg = SA.loUids(lo).map(part).filter(p => p && p.dur / p.max < 0.5).length;
     if (dmg) warn.push(`<span class="warn">닳은 부품 ${dmg}</span>`);
     if (warn.length) R.appendChild(h('div', 'small warns', warn.join(' · ')));
@@ -275,11 +275,12 @@ SA.Hangar = (() => {
   };
   // 동력원 칸: 누르면 창고에 있는 등급을 돌려 가며 고른다
   const cellSlot = (lo) => {
-    const prof = P(), cells = ['cell1', 'cell2', 'cell3', 'cell4'], cnt = (c) => SA.Grid.count(prof.stash, c);
+    const prof = P(), cells = ['cell1', 'cell2', 'cell3', 'cell4'], cnt = (c) => SA.Grid.countLive(prof.stash, c);
     if (lo.cell && !cnt(lo.cell)) lo.cell = cells.slice().reverse().find(cnt) || lo.cell;
     const d = lo.cell && SA.ITEMS[lo.cell], has = d && cnt(lo.cell);
     const s = h('div', 'ps' + (has ? ' t-' + (d.tier || '일반') : ' empty'), `${has ? `<img class="pimg" src="${SA.Render.iconSrc(lo.cell)}">` : '<span class="plus">!</span>'}<span class="kk">동력원</span>${has ? `<span class="cnt">${cnt(lo.cell)}</span>` : ''}`);
-    tip(s, has ? `<b>${d.name}</b> <span class="dim">창고 ${cnt(lo.cell)}개</span><br><span class="desc">주무기 에너지. 다 쓰면 R로 예비와 교체.</span><br><span class="dim">누르면 등급을 바꾼다</span>` : '<span class="bad">동력원 없음</span> — 비상 발전으로만 쏜다<br><span class="dim">작업대에서 만든다 (고철 1 + 전선 1)</span>');
+    const bc = has && SA.Grid.bestCell(prof.stash, lo.cell), dead = prof.stash.items.filter(it => SA.ITEMS[it.id].kind === 'cell' && !SA.Grid.live(it)).length;
+    tip(s, has ? `<b>${d.name}</b> <span class="dim">충전된 것 ${cnt(lo.cell)}개 · 꽂을 것 ${Math.round(SA.cellCh(bc) * 100)}%</span><br><span class="desc">주무기 에너지. 쓴 만큼 줄어든 채 유지된다. 다 쓰면 R로 예비와 교체.</span>${dead ? `<br><span class="dim">방전된 동력원 ${dead}개 — 창고에서 분해하거나 판다</span>` : ''}<br><span class="dim">누르면 등급을 바꾼다</span>` : `<span class="bad">동력원 없음</span> — 비상 발전으로만 쏜다${dead ? `<br><span class="dim">방전된 동력원 ${dead}개 — 창고에서 분해하거나 판다</span>` : ''}<br><span class="dim">작업대에서 만든다 (고철 1 + 전선 1)</span>`);
     s.onclick = () => { const own = cells.filter(cnt); if (!own.length) { SA.Audio.sfx('deny'); return; } lo.cell = own[(own.indexOf(lo.cell) + 1) % own.length]; save(); render(); };
     return s;
   };
@@ -327,7 +328,7 @@ SA.Hangar = (() => {
       .sort((a, b) => SA.PARTS[b.id].val - SA.PARTS[a.id].val || b.dur - a.dur)[0];
     if (!lo.main) { const p = best('main'); if (p) lo.main = p.uid; }
     if (!lo.main2) { const p = best('main'); if (p) lo.main2 = p.uid; }
-    if (!lo.cell) lo.cell = ['cell4', 'cell3', 'cell2', 'cell1'].find(c => SA.Grid.count(prof.stash, c)) || null;
+    if (!lo.cell) lo.cell = ['cell4', 'cell3', 'cell2', 'cell1'].find(c => SA.Grid.countLive(prof.stash, c)) || null;
     for (let i = 0; i < sh.sub; i++) if (!lo.sub[i]) { const p = best('sub'); if (p) lo.sub[i] = p.uid; }
     for (let i = 0; i < 2; i++) if (!lo.act[i]) { const p = best('act'); if (p) lo.act[i] = p.uid; }
     for (let i = 0; i < sh.pas; i++) if (!lo.pas[i]) { const p = best('pas'); if (p) lo.pas[i] = p.uid; }
@@ -403,9 +404,19 @@ SA.Hangar = (() => {
       a.unshift([`즉시 해독 ₵${SA.DECODE.instant}`, () => decode(it, true)]);
       if ((prof.decoding || []).length < SA.DECODE.slots) a.unshift(['해독기에 맡기기', () => decode(it, false)]);
     }
+    if (d.kind === 'cell') a.unshift([`분해 → ${cellSalvageText(it)}`, () => salvageCell(it)]);
     if (d.kind === 'key') a.unshift([`해독 코드 등록 (+${SA.CODES[d.code].uses}회)`, () => registerKey(it)]);
     if (d.kind === 'part') a.unshift(['부품함으로', () => { SA.Grid.remove(prof.stash, it.uid); prof.parts.push(SA.Save.fromItem(it)); stashSel = null; save(); render(); }]);
     return a;
+  };
+  // 동력원 분해: 등급별 고정 재료 (제작 재료의 일부만 돌려준다 — 임시)
+  const cellSalvageText = (it) => Object.entries(SA.CELL.salvage[it.id] || { scrap: 1 }).map(([k, n]) => `${SA.ITEMS[k].name} ${n}`).join(', ');
+  const salvageCell = (it) => {
+    const prof = P(), out = SA.CELL.salvage[it.id] || { scrap: 1 }, ids = []; for (const k in out) for (let i = 0; i < out[k]; i++) ids.push(k);
+    const tmp = SA.Grid.make(prof.stash.w, prof.stash.h, prof.stash.items.filter(x => x !== it));
+    if (!ids.every(id => SA.Grid.add(tmp, id))) { toast('창고에 재료를 넣을 자리가 없다.', '#ffb3b3'); SA.Audio.sfx('deny'); return; }
+    SA.Grid.remove(prof.stash, it.uid); ids.forEach(id => SA.Grid.add(prof.stash, id)); stashSel = null;
+    toast(`분해: ${SA.ITEMS[it.id].name} → ${cellSalvageText(it)}`, '#cfe3ff'); SA.Audio.sfx('salvage', 1); save(); render(); hud();
   };
   const registerKey = (it) => {
     const prof = P(), d = SA.ITEMS[it.id], c = SA.CODES[d.code];

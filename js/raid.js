@@ -55,13 +55,13 @@ SA.Raid = (() => {
     if (R.range) return startRange(R, prof, lo);
     if (opt.tut) return SA.Tutorial.setup(R);   // 튜토리얼 프롤로그
     // 장착 동력원: 창고에서 고른 등급 하나를 꺼내 기체에 꽂는다 (기지에서는 항상 가득 차 있다)
-    if (lo.cell) { const it = prof.stash.items.find(x => x.id === lo.cell); if (it) { SA.Grid.remove(prof.stash, it.uid); R.player.cell = { id: lo.cell, e: SA.ITEMS[lo.cell].cap }; } }
+    if (lo.cell) { const it = SA.Grid.bestCell(prof.stash, lo.cell); if (it) { SA.Grid.remove(prof.stash, it.uid); R.player.cell = { id: lo.cell, e: SA.ITEMS[lo.cell].cap * SA.cellCh(it) }; } }
     R.cellStart = R.player.cell && R.player.cell.id;
     // 출격 준비에서 고른 소모품만 화물칸에 싣는다
     const bring = prof.bring || {};
     for (const id in bring) for (let i = 0; i < bring[id]; i++) {
-      const it = prof.stash.items.find(x => x.id === id);
-      if (!it || !SA.Grid.add(R.cargo, id)) break;
+      const it = SA.ITEMS[id].kind === 'cell' ? SA.Grid.bestCell(prof.stash, id) : prof.stash.items.find(x => x.id === id);
+      if (!it || !SA.Grid.add(R.cargo, id, it.ch !== undefined ? { ch: it.ch } : undefined)) break;
       SA.Grid.remove(prof.stash, it.uid);
     }
     prof.bring = {};
@@ -978,26 +978,26 @@ SA.Raid = (() => {
       } else if (mode === 'hard' || mode === 'recover') {   // 장착한 것 전부 (동력원 포함)
         prof.parts = prof.parts.filter(p => !eqParts.includes(p)); unequip(eqParts);
         lostAll = eqParts.map(p => SA.partName(p)); cellBack = false;
-        if (mode === 'recover') prof.lostCache = { parts: eqParts, items: lost.map(it => ({ id: it.id, ch: it.ch })), cell: P.cell && P.cell.id, at: Date.now() };
+        if (mode === 'recover') prof.lostCache = { parts: eqParts, items: lost.map(it => ({ id: it.id, ch: it.ch })), cell: P.cell && P.cell.id, cellCh: P.cell && P.cell.e / SA.ITEMS[P.cell.id].cap, at: Date.now() };
       }
       // 주무기가 하나도 안 남으면 용병단 비상 지급 펄스건 (내구도 60)
       if (!prof.parts.some(p => SA.PARTS[p.id].slot === 'main')) { const np = SA.Save.newPart('pulse'); np.dur = 60; prof.parts.push(np); const l = prof.loadouts[prof.ship]; if (l && !l.main) l.main = np.uid; R.giftPulse = true; }
     }
-    if (cellBack && !SA.Grid.add(prof.stash, P.cell.id)) prof.credits += SA.ITEMS[P.cell.id].val;   // 장착 동력원은 창고로 (기지에서 충전)
+    if (cellBack) { const cx = { ch: U.clamp(P.cell.e / SA.ITEMS[P.cell.id].cap, 0, 1) }; if (!SA.Grid.add(prof.stash, P.cell.id, cx)) prof.credits += SA.itemVal({ id: P.cell.id, ch: cx.ch }); }   // 장착 동력원은 쓴 만큼 줄어든 채 창고로
     // 회수 잔해를 들고 탈출했으면 되찾는다
     let recovered = null;
     if (ok && R.recovered) {
       const c = R.recovered; prof.parts.push(...c.parts);
-      for (const it of c.items) if (!SA.Grid.add(prof.stash, it.id)) prof.credits += SA.ITEMS[it.id].val;
-      if (c.cell && !SA.Grid.add(prof.stash, c.cell)) prof.credits += SA.ITEMS[c.cell].val;
+      for (const it of c.items) if (!SA.Grid.add(prof.stash, it.id, it.ch !== undefined ? { ch: it.ch } : undefined)) prof.credits += SA.itemVal(it);
+      if (c.cell) { const cx = c.cellCh !== undefined ? { ch: c.cellCh } : undefined; if (!SA.Grid.add(prof.stash, c.cell, cx)) prof.credits += SA.itemVal({ id: c.cell, ch: c.cellCh }); }
       recovered = `잔해 회수 완료 — 부품 ${c.parts.length}개, 화물 ${c.items.length}개를 되찾았다`;
     }
     let overflow = 0, partsIn = [];
     for (const it of brought) {
       const d = SA.ITEMS[it.id];
       if (d.kind === 'part') { const np = SA.Save.fromItem(it); prof.parts.push(np); partsIn.push(SA.partName(np)); continue; }   // 부품 완성품 → 부품함
-      if (!SA.Grid.add(prof.stash, it.id)) overflow += SA.itemVal(it);
-    }   // 창고에 들어가면 동력원은 다시 가득 찬다
+      if (!SA.Grid.add(prof.stash, it.id, it.ch !== undefined ? { ch: it.ch } : undefined)) overflow += SA.itemVal(it);
+    }   // 동력원은 쓴 만큼 줄어든 채로 창고에 들어간다
     prof.credits += overflow;
     const value = brought.reduce((n, it) => n + SA.itemVal(it), 0);
     // 파일럿 부상 카운트
