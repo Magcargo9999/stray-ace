@@ -524,7 +524,7 @@ SA.Hangar = (() => {
       const r = SA.RECIPES[rid], d = SA.PARTS[rid]; if (!r || !d || (benchKind !== 'all' && d.slot !== benchKind)) continue;
       const fromOk = !r.from || prof.parts.some(p => p.id === r.from), lock = !SA.Bench.canTier(d.tier);
       const ok = !lock && fromOk && Object.keys(r.mats).every(k => have(k) >= r.mats[k]);
-      rows.push({ ok, lock, id: rid, tier: d.tier, isNew: (prof.newRecipes || []).includes(rid), html: `${d.img ? `<img class="pimg" src="${d.img}">` : ico(KIND_IC[d.slot], 'pimg')}<span class="nm" style="color:${SA.TIER_COL[d.tier]}">${d.name}</span><span class="mats">${r.from ? `<span class="mat ${fromOk ? 'ok' : 'bad'}">${SA.PARTS[r.from].name}</span>` : ''}${matIcons(r.mats, have)}</span>`, tip: `<b>${d.name}</b> <span class="dim">${d.tier}</span><br><span class="desc">${d.desc}</span>${lock ? '<br><span class="bad">작업대 2단계(테오의 의뢰)부터 만들 수 있다</span>' : ''}`, fn: () => craft(rid) });
+      rows.push({ ok, lock, id: rid, tier: d.tier, isNew: (prof.newRecipes || []).includes(rid), html: `${d.img ? `<img class="pimg" src="${d.img}">` : ico(KIND_IC[d.slot], 'pimg')}<span class="nm" style="color:${SA.TIER_COL[d.tier]}">${d.name}</span><span class="mats">${r.from ? `<span class="mat ${fromOk ? 'ok' : 'bad'}">${SA.PARTS[r.from].name}</span>` : ''}${matIcons(r.mats, have)}</span>`, tip: `<b>${d.name}</b> <span class="dim">${d.tier}</span><br><span class="desc">${SA.partDesc(rid, 0)}</span>${lock ? '<br><span class="bad">작업대 2단계(테오의 의뢰)부터 만들 수 있다</span>' : ''}`, fn: () => craft(rid) });
     }
     // 동력원·소모품·상위 재료
     if (['all', 'item', 'mat'].includes(benchKind)) for (const id in SA.CRAFT) {
