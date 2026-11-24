@@ -236,13 +236,19 @@ SA.HangarScene = (() => {
   // 기체 그림: 위에서 본 도트를 '세워 둔' 모습으로. 장착한 서브무기도 얹는다
   const SHIPSIL = {};
   const shipImg = (id) => id === 'hex' ? SA.Render.IMG.hex : SA.Render.IMG[id];
+  const FILTC = {};
   const drawShipAt = (id, cx, cy, maxW, maxH, opt = {}) => {
-    const s = SA.SHIPS[id], im = shipImg(id); if (!s) return;
+    const s = SA.SHIPS[id]; let im = shipImg(id); if (!s) return;
     const sc = Math.min(maxW / s.size[0], maxH / s.size[1]), w = s.size[0] * sc, h = s.size[1] * sc;
     const ox = cx - w / 2, oy = cy - h / 2;
     ctx.save();
     if (opt.alpha) ctx.globalAlpha = opt.alpha;
-    if (opt.filter) ctx.filter = opt.filter;
+    // 필터(흑백 홀로그램 등)는 매 프레임 쓰면 무겁다 → 표시 크기로 한 번 걸러 둔 그림을 쓴다
+    if (opt.filter && im) {
+      const key = id + '|' + opt.filter + '|' + Math.ceil(w) + 'x' + Math.ceil(h); let fc = FILTC[key];
+      if (!fc) { fc = document.createElement('canvas'); fc.width = Math.ceil(w); fc.height = Math.ceil(h); const fx = fc.getContext('2d'); fx.imageSmoothingEnabled = id !== 'hex'; fx.filter = opt.filter; fx.drawImage(im, 0, 0, fc.width, fc.height); FILTC[key] = fc; }
+      im = fc;
+    }
     if (opt.flame && SA.Render.IMG.flame && s.flames) {
       const fr = Math.floor(T * 12) % 3; ctx.imageSmoothingEnabled = false;
       for (const [fx, fy] of s.flames) ctx.drawImage(SA.Render.IMG.flame, fr * 8, 0, 8, 8, ox + (fx - 4) * sc, oy + fy * sc, 8 * sc, 8 * sc * opt.flame);

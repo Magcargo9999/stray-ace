@@ -416,15 +416,27 @@ SA.Render = (() => {
   };
   const shipPoly = (ctx, pts) => { ctx.beginPath(); pts.forEach(([a, b], i) => i ? ctx.lineTo(a, b) : ctx.moveTo(a, b)); ctx.closePath(); };
 
+  // 피격 번쩍임: ctx.filter(밝기 필터)는 매우 무겁다 (번쩍이는 적이 많으면 프레임이 크게 떨어진다).
+  // 대신 그림마다 '하얗게 번쩍인 그림'을 한 번 만들어 두고 그걸 찍는다
+  const flashCache = new WeakMap();
+  const flashOf = (img) => {
+    let c = flashCache.get(img); if (c) return c;
+    const w = img.width || img.naturalWidth, h = img.height || img.naturalHeight;
+    c = document.createElement('canvas'); c.width = w; c.height = h;
+    const x = c.getContext('2d');
+    x.drawImage(img, 0, 0);
+    x.globalCompositeOperation = 'lighter'; x.drawImage(img, 0, 0);   // 밝기 약 2배
+    x.globalCompositeOperation = 'source-atop'; x.fillStyle = 'rgba(255,255,255,0.45)'; x.fillRect(0, 0, w, h);   // 하얗게
+    flashCache.set(img, c); return c;
+  };
   // 아군: 네임드 윙맨(진영 전투기 도트 + 이름) · 호위 수송선(왕국 프리깃 도트를 크게)
   const drawAlly = (ctx, R, a) => {
     const isW = a.kind === 'wing', N = isW ? SA.NAMED[a.named] : null;
     const id = isW ? N.sprite : 'convoy_ship', D = SA.ENEMIES[id], spr = pre['en_' + id], k = 1;
     const w = D.size[0] * k, h = D.size[1] * k;
     ctx.save(); ctx.translate(a.x, a.y); ctx.rotate((a.face || 0) + Math.PI / 2);
-    if (a.flash > 0) ctx.filter = 'brightness(2.6)';
     ctx.imageSmoothingEnabled = true;
-    if (spr) ctx.drawImage(spr, -w / 2, -h / 2, w, h);
+    if (spr) ctx.drawImage(a.flash > 0 ? flashOf(spr) : spr, -w / 2, -h / 2, w, h);
     ctx.restore();
     const col = isW ? N.color : '#8fb6ff';
     ctx.strokeStyle = col; ctx.globalAlpha = 0.5; ctx.lineWidth = 1; ctx.beginPath(); ctx.arc(a.x, a.y, a.r + 6, 0, 6.29); ctx.stroke(); ctx.globalAlpha = 1;
@@ -441,11 +453,10 @@ SA.Render = (() => {
     if (spr) {   // 도트 적기: 기수가 위를 향한 그림을 진행 방향으로 돌린다
       const w = D.size[0], h = D.size[1], pv = D.pivot || [0.5, 0.5];
       ctx.save(); ctx.translate(e.x, e.y); ctx.rotate((D.ai === 'turret' ? e.a : e.face) + Math.PI / 2);
-      if (fl) ctx.filter = 'brightness(2.6)';
       if (e.inv > 0) ctx.globalAlpha = 0.5;
       if (e.type === 'corrode') { const pu = 1 + 0.05 * Math.sin(R.t * 5 + e.homeX); ctx.scale(pu, pu); }   // 침식체는 숨 쉬듯 맥동
       ctx.imageSmoothingEnabled = true;
-      ctx.drawImage(spr, -w * pv[0], -h * pv[1], w, h);
+      ctx.drawImage(fl ? flashOf(spr) : spr, -w * pv[0], -h * pv[1], w, h);
       ctx.restore();
       if (e.stun > 0) label(ctx, '기절', e.x, e.y - e.r - 12, '#8fd3ff', 6);
       if (e.type === 'raven') { label(ctx, 'RAVEN', e.x, e.y - 20, '#ff4d6d', 6); return; }
@@ -480,7 +491,7 @@ SA.Render = (() => {
       default:
         if (e.beaconOf) {   // 귀환 비콘: 도트(assets/beacon.png) + 주황 신호 고리. 도트가 없으면 예전 임시 그림
           const pu = 0.5 + 0.5 * Math.sin(R.t * 6), dot = !!pre.beacon;
-          if (dot) { ctx.imageSmoothingEnabled = true; if (fl) ctx.filter = 'brightness(2.4)'; ctx.drawImage(pre.beacon, -20, -20, 40, 39); ctx.filter = 'none'; }
+          if (dot) { ctx.imageSmoothingEnabled = true; ctx.drawImage(fl ? flashOf(pre.beacon) : pre.beacon, -20, -20, 40, 39); }
           else {
             ctx.fillStyle = C('#2a3040'); shipPoly(ctx, [[0, -15], [12, -7], [12, 8], [0, 15], [-12, 8], [-12, -7]]); ctx.fill(); ctx.stroke();
             ctx.fillStyle = C('#4a5468'); ctx.fillRect(-6, -9, 12, 18); ctx.fillStyle = `rgba(255,179,71,${0.5 + pu * 0.5})`; ctx.fillRect(-3, -6, 6, 6);
@@ -493,7 +504,7 @@ SA.Render = (() => {
           return;
         }
         // crate (부수는 상자 도트)
-        if (pre.box_crate) { if (fl) ctx.filter = 'brightness(2.2)'; ctx.drawImage(pre.box_crate, -12.5, -7, 25, 14); ctx.filter = 'none'; break; }
+        if (pre.box_crate) { ctx.drawImage(fl ? flashOf(pre.box_crate) : pre.box_crate, -12.5, -7, 25, 14); break; }
         ctx.fillStyle = C('#5c4a1e'); ctx.fillRect(-9, -8, 18, 16); ctx.strokeRect(-9, -8, 18, 16);
         ctx.fillStyle = '#ffd166'; ctx.fillRect(-9, -2, 18, 3); ctx.fillStyle = '#2b220c'; for (let i = -8; i < 9; i += 4) ctx.fillRect(i, -2, 2, 3);
     }
@@ -564,18 +575,24 @@ SA.Render = (() => {
   const bar = (ctx, x, y, w, h, v, col, bg = 'rgba(255,255,255,0.08)') => { ctx.fillStyle = bg; ctx.fillRect(x, y, w, h); ctx.fillStyle = col; ctx.fillRect(x, y, w * U.clamp(v, 0, 1), h); };
   const fmtT = (s) => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, '0')}`;
 
+  // 화면 가장자리 효과(침식 보라 · 피격 빨강)는 화면 크기별로 한 번만 그려 두고 투명도만 바꿔 찍는다
+  const vigC = {};
+  const vig = (kind, W, H) => {
+    const k = kind + W + 'x' + H; if (vigC[k]) return vigC[k];
+    const c = document.createElement('canvas'); c.width = W; c.height = H; const x = c.getContext('2d');
+    const [r0, r1, col] = kind === 'st' ? [0.35, 0.85, '120,60,220'] : [0.3, 0.8, '255,30,50'];
+    const g = x.createRadialGradient(W / 2, H / 2, H * r0, W / 2, H / 2, H * r1);
+    g.addColorStop(0, `rgba(${col},0)`); g.addColorStop(1, `rgba(${col},1)`); x.fillStyle = g; x.fillRect(0, 0, W, H);
+    for (const kk in vigC) if (kk.startsWith(kind) && kk !== k) delete vigC[kk];   // 창 크기가 바뀌면 예전 것은 버린다
+    return (vigC[k] = c);
+  };
   const drawHUD = (ctx, R, camX, camY) => {
     const P = R.player, W = ctx.canvas.width, H = ctx.canvas.height, Zw = R.zoom || Z;
     // 비네트: 침식·피격·저체력
-    if (R.stage >= 1) {
-      const g = ctx.createRadialGradient(W / 2, H / 2, H * 0.35, W / 2, H / 2, H * 0.85);
-      g.addColorStop(0, 'rgba(0,0,0,0)'); g.addColorStop(1, `rgba(120,60,220,${[0, 0.18, 0.32, 0.5][R.stage]})`);
-      ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
-    }
+    if (R.stage >= 1) { ctx.globalAlpha = [0, 0.18, 0.32, 0.5][R.stage]; ctx.drawImage(vig('st', W, H), 0, 0); ctx.globalAlpha = 1; }
     if (R.hurtFlash > 0 || P.hp / P.maxHp < 0.3) {
       const a = Math.max(R.hurtFlash, P.hp / P.maxHp < 0.3 ? 0.15 + 0.1 * Math.sin(R.t * 6) : 0);
-      const g = ctx.createRadialGradient(W / 2, H / 2, H * 0.3, W / 2, H / 2, H * 0.8);
-      g.addColorStop(0, 'rgba(0,0,0,0)'); g.addColorStop(1, `rgba(255,30,50,${a})`); ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
+      ctx.globalAlpha = U.clamp(a, 0, 1); ctx.drawImage(vig('hurt', W, H), 0, 0); ctx.globalAlpha = 1;
     }
     if (P.outside) T(ctx, '경계 밖 — 침식 4배', W / 2, H / 2 - 120, '#ff6b7a', 18, 'center');
 
