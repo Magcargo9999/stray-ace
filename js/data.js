@@ -55,6 +55,7 @@ SA.ITEMS = {
   cell4:    { name: '동력원 (은하)', w: 1, h: 1, val: 900, kind: 'cell', img: 'assets/i_cell4.png', tier: '은하', cap: 330, dmg: 1.6, color: '#c08bff', desc: '주무기 에너지. 펄스건으로 약 330초. 피해 ×1.6. 심연 핵으로 만든다. R로 교체.' },
   // 보스 재료: 은하 각성에 들어간다 (보스마다 각성 규칙 1개)
   chip:     { name: '비행 기록 칩', w: 1, h: 1, val: 600, kind: 'umat', tier: '은하', color: '#ff8fb0', desc: '레이븐의 회피 기동이 통째로 기록된 칩. 은하 부품에 넣으면 스칠 때마다 위력이 오른다 (레이븐 각성).' },
+  lumdust:  { name: '루미나의 인분', w: 1, h: 1, val: 800, kind: 'umat', tier: '은하', color: '#ffe9a8', desc: '성운 나방 루미나의 날개에서 떨어진 빛가루. 은하 제작 「인광 날개 포탑」에 들어간다 (탄막이 짙을수록 강해진다).' },
   abyss:    { name: '심연 핵', w: 1, h: 1, val: 700, kind: 'umat', tier: '은하', color: '#a06bff', desc: '사냥꾼의 몸속에서 뛰던 것. 은하 부품에 넣으면 침식이 깊을수록 위력이 오른다 (심연 각성).' },
   flamecore: { name: '화염 코어', w: 1, h: 1, val: 450, kind: 'umat', tier: '은하', color: '#ff7a3d', desc: '제국 순양함 기관부의 과열 코어. 아직 뜨겁다. 은하 부품 재료.' },
   klens:    { name: '왕국 렌즈', w: 1, h: 1, val: 450, kind: 'umat', tier: '은하', color: '#8fd3ff', desc: '왕국 함선의 조준 렌즈. 빛을 한 줄로 모은다. 은하 부품 재료.' },
@@ -531,6 +532,7 @@ SA.ENEMIES = {
   convoy_ship: { name: '호위 화물선', ai: 'none', img: 'assets/convoy.png', size: [27, 75], hp: 1, r: 18 },
   hunter:  { name: '심연의 사냥꾼', ai: 'hunter', img: 'assets/hunter_0.png', anim: { n: 6, fps: 8 }, size: [64, 81], hp: 1400, r: 28, speed: 90, color: '#8a5cff', boss: true, drops: [['crystal', 1], ['crystal', 1], ['crystal', .5], ['ace', 1], ['ace', .4], ['abyss', 1], ['bb_hunter', 1], ['qcircuit', .6], ['part:행성', .35], ['goldchip', 1], ['goldchip', .5]] },
   raven:   { name: '네임드 용병 레이븐', ai: 'raven', img: 'assets/raven_hull.png', size: [30, 27], pivot: [0.5, 0.5], hp: 1500, r: 12, speed: 150, color: '#ff4d6d', boss: true, drops: [['chip', 1], ['bp_raven', .5], ['bp_sensor', .3], ['ace', 1], ['ace', .4], ['bp:강화', .8], ['goldchip', 1], ['goldchip', .6], ['bb_raven', 1], ['engine', .5], ['key_box2', .3]] },
+  lumina:  { name: '성운 나방 루미나', ai: 'lumina', size: [120, 84], hp: 1, r: 26, speed: 0, color: '#ffe9a8', boss: true, drops: [] },   // 1막 최종 보스 (균열 아레나). 체력은 페이즈마다 SA.RIFT.hp
   mimic:   { name: '제국 실험 무인기', ai: 'raven', img: 'assets/raven_hull.png', size: [30, 27], pivot: [0.5, 0.5], hp: 900, r: 12, speed: 150, color: '#c08bff', boss: true, drops: [['chip', 1], ['bb_mimic', 1], ['goldchip', 1], ['prec', 1], ['bp:강화', .5], ['bp_sensor', .3], ['qcircuit', .3], ['ace', .3]] },
 };
 
@@ -582,6 +584,7 @@ SA.GALAXY = {
   g_orbital:  { base: 'orbital',  name: '태양 낙하',       mats: { flamecore: 1, klens: 1 },   fx: '거대한 포격 한 발 + 넓은 화염 장판 4초.' },
   g_gravity:  { base: 'gravity',  name: '사건의 지평선',   mats: { abyss: 1 },                 fx: '끝날 때 빨아들인 적 탄을 사방으로 되쏜다.' },
   g_shield:   { base: 'shield',   name: '잔상 방패',       mats: { chip: 1 },                  fx: '방패 동안 잔상이 남아, 지나간 자리로 오는 적 탄을 1초간 지운다.' },
+  g_mg:       { base: 'mg',       name: '인광 날개 포탑', mats: { lumdust: 1 },              fx: '화면의 적 탄 50발마다 위력 +5% (최대 +30%). 탄막이 짙을수록 강해진다 (루미나 각성).' },
   g_timestop: { base: 'timestop', name: '시간 결정',       mats: { crystal: 3 },               fx: '멈춘 적 탄이 풀릴 때 내 탄으로 바뀌어 적을 노린다.' },
 };
 SA.GAL_MUL = 1.5; SA.GAL_RANGE = 1.25; SA.GAL_MAX = 150;   // 은하: 주 스탯 ×1.5 · 액티브 범위 ×1.25 · 최대 내구도 150 (임시)
@@ -645,6 +648,21 @@ SA.MASTERY = {
   boss: 150,             // 보스·네임드 격추 (사냥꾼·레이븐·실험 무인기)
   ranks: [[0, '신입'], [500, '숙련'], [2000, '베테랑'], [5000, '에이스'], [12000, '전설']],
 };
-SA.MASTERY_BOSS = ['hunter', 'raven', 'mimic'];
+SA.MASTERY_BOSS = ['hunter', 'raven', 'mimic', 'lumina'];
 SA.masteryRank = (score) => { const R = SA.MASTERY.ranks; let i = 0; while (i + 1 < R.length && score >= R[i + 1][0]) i++; return { i, name: R[i][1], from: R[i][0], to: R[i + 1] ? R[i + 1][0] : null, next: R[i + 1] ? R[i + 1][1] : null }; };
 SA.RANK_COL = ['#9fb3c8', '#5dffb0', '#7fd3ff', '#ffd166', '#ff8fb0'];
+
+// ── 균열 · 1막 최종 보스 「성운 나방 루미나」 (v0.80, 수치 전부 임시) ──
+// 균열에 들어가면 바깥 맵을 얼려 두고 화면 한 장 크기의 아레나로 넘어간다. 이기면 바로 귀환, 지면 내구도를 잃고 튕겨 나온다.
+SA.RIFT = {
+  w: 300, h: 340, zoom: 2,          // 아레나 크기 (월드 단위) · 화면 배율 (세로 340이 화면 높이 720에 꽉 찬다)
+  near: 60,                         // 균열에 들어갈 수 있는 거리
+  again: 0.15,                      // 한 번 이긴 뒤 출격마다 다시 나올 확률
+  hp: [2400, 2700, 3000],           // 페이즈 1~3 체력 (펄스건 기본 기준 약 45~55초)
+  phaseT: 60, lastT: 30,            // 페이즈 제한 시간 · 마지막 발악 버티는 시간
+  gap: 1.6,                         // 페이즈 사이 쉬는 시간 (패턴 이름이 뜬다)
+  phaseBonus: 200,                  // 체력으로 깨고 그 페이즈 동안 안 맞으면 ₵200
+  durLoss: 35, outHp: 0.5,          // 아레나에서 격추: 장착 부품 내구도 -35, 체력 50%로 튕겨 나온다
+  first: { items: [['lumdust', 1], ['qcircuit', 2], ['crystal', 3]], cr: 1500 },
+  again2: { items: [['lumdust', 1]], cr: 600 },
+};

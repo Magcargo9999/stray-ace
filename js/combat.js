@@ -22,6 +22,7 @@ SA.Combat = (() => {
   const hasPas = (P, id) => P.pas.some(p => p && p.id === id && eff(p) > 0);
   // ── 부품 위력: 등급 배율(행성 1.3 · 은하 1.6) × 은하 각성 ──
   const awkMul = (P, p) => {
+    if (p && p.id === 'g_mg') return 1 + Math.min(0.3, 0.05 * Math.floor(((SA.R && SA.R.eb.length) || 0) / 50));   // 루미나 각성: 적 탄 50발마다 +5% (최대 +30%)
     if (!p || !p.awk) return 1;
     if (p.awk === 'raven') return 1 + 0.03 * Math.min(10, P.rvStk || 0);          // 스칠 때마다 +3% (최대 +30%, 맞으면 초기화)
     if (p.awk === 'hunter') return 1 + 0.1 * ((SA.R && SA.R.stage) || 0);          // 침식 단계마다 +10%
@@ -65,7 +66,7 @@ SA.Combat = (() => {
   const eb = (R, x, y, a, spd, o = {}) => {
     if (R.eb.length >= SA.CFG.MAX_ENEMY_BULLETS) return;
     R.eb.push({ x, y, vx: Math.cos(a) * spd, vy: Math.sin(a) * spd, r: o.r || 3, dmg: o.dmg || 10,
-      col: o.col || '#ff5d8f', life: o.life || 7, grazed: false, acc: o.acc || 0, big: (o.r || 3) >= 6 });
+      col: o.col || '#ff5d8f', life: o.life || 7, grazed: false, acc: o.acc || 0, turn: o.turn || 0, big: (o.r || 3) >= 6 });   // turn: 초당 꺾이는 각도 (휘는 탄)
   };
   const ring = (R, x, y, n, spd, off = 0, o) => { for (let i = 0; i < n; i++) eb(R, x, y, off + i / n * Math.PI * 2, spd, o); };
   const fan = (R, x, y, a, n, spread, spd, o) => {
@@ -532,6 +533,7 @@ SA.Combat = (() => {
     if (P.barrier > 0) { const b = Math.min(P.barrier, dmg); P.barrier -= b; dmg -= b; }
     P.barrierT = 0;
     P.hp -= dmg; P.invuln = SA.CFG.HIT_INVULN;
+    if (R.arena) R.arena.hits++;   // 균열 보스전: 페이즈 보너스 판정
     R.shake = 6; R.hurtFlash = 0.35;
     if (pm(P, 'p_gzkeep') && P.gzKeepCd <= 0) P.gzKeepCd = 5;   // 행성 스침 증폭기: 5초에 한 번 스택 보존
     else R.graze = Math.floor(R.graze * SA.GRAZE.hitKeep);
@@ -687,6 +689,7 @@ SA.Combat = (() => {
           break;
         }
         case 'raven': updateRaven(R, e, dt, dist, aP, alive); break;
+        case 'lumina': SA.Lumina.update(R, e, dt, aP); break;   // 1막 최종 보스 (균열 아레나)
       }
       e.x += e.vx * dt; e.y += e.vy * dt;
       if (!e.crate) e.face += U.clamp(U.angDiff(e.face, aP), -3 * dt, 3 * dt);
@@ -802,12 +805,12 @@ SA.Combat = (() => {
   };
 
   const damageEnemy = (R, e, dmg) => {
-    if (e.dead || e.inv > 0) return;
+    if (e.dead || e.inv > 0 || e.noHit) return;   // noHit: 루미나 등장·페이즈 사이·마지막 발악
     e.hp -= dmg; e.flash = 0.08;
     if (R.range && R.dmgLog) R.dmgLog.push([R.t, Math.min(dmg, dmg + e.hp)]);   // 연습장 DPS
     if (!e.awake && !e.crate) e.awake = true;
     if ((e.type === 'raven' || e.type === 'mimic') && !R.bossEngaged) SA.Raid.bossEngaged(e);
-    if (e.hp <= 0) killEnemy(R, e);
+    if (e.hp <= 0) { if (e.onZero && e.onZero(R, e)) return; killEnemy(R, e); }   // onZero: 페이즈 보스는 다음 페이즈로
   };
   const killEnemy = (R, e) => {
     e.dead = true;
@@ -851,6 +854,7 @@ SA.Combat = (() => {
       if (slowF && U.d2(b.x, b.y, P.x, P.y) < 60 * 60) k *= 1 - Math.min(0.6, slowF);
       for (const w of R.wells) { const dx = w.x - b.x, dy = w.y - b.y, q = dx * dx + dy * dy; if (q < w.r * w.r && q > 4) { const s = 160 * dt / Math.sqrt(q); b.vx = b.vx * (1 - 1.5 * dt) + dx * s; b.vy = b.vy * (1 - 1.5 * dt) + dy * s; } }
       if (defl) { const dx = b.x - P.x, dy = b.y - P.y, q = dx * dx + dy * dy; if (q < 42 * 42 && b.vx * dx + b.vy * dy < 0) { const r = (dx * b.vy - dy * b.vx > 0 ? -1 : 1) * 1.6 * defl * dt, c = Math.cos(r), s2 = Math.sin(r); const vx = b.vx * c - b.vy * s2; b.vy = b.vx * s2 + b.vy * c; b.vx = vx; } }
+      if (b.turn && k) { const q = b.turn * dt * k, c = Math.cos(q), s2 = Math.sin(q), vx = b.vx; b.vx = vx * c - b.vy * s2; b.vy = vx * s2 + b.vy * c; }   // 휘는 탄
       b.x += b.vx * dt * k; b.y += b.vy * dt * k; b.life -= dt;
       if (b.life <= 0) continue;
       if (refl && U.d2(b.x, b.y, P.x, P.y) < 34 * 34) {

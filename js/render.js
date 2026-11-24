@@ -139,7 +139,8 @@ SA.Render = (() => {
     const aimCam = !!(SA.profile && SA.profile.settings && SA.profile.settings.camAim), lead = aimCam ? 0.18 : 0;
     const tx = P.x + (R.tabOpen ? 150 : (R.mouseWorld.x - P.x) * lead), ty = P.y + (R.mouseWorld.y - P.y) * lead;
     if (R.tabOpen) R.camEase = true;   // 화물칸을 여닫을 때만 부드럽게 옮긴다
-    if (aimCam || R.camEase) {
+    if (R.arena) { R.cam.x = R.map.w / 2; R.cam.y = R.map.h / 2; R.camEase = false; }   // 균열 아레나: 화면 한 장, 카메라 고정
+    else if (aimCam || R.camEase) {
       const f = aimCam ? 0.12 : 0.3;
       R.cam.x += (tx - R.cam.x) * f; R.cam.y += (ty - R.cam.y) * f;
       if (!aimCam && !R.tabOpen && Math.abs(tx - R.cam.x) + Math.abs(ty - R.cam.y) < 14) R.camEase = false;
@@ -168,14 +169,24 @@ SA.Render = (() => {
       }
       ctx.fillStyle = 'rgba(255,209,102,0.25)'; for (let x = 0; x < R.map.w; x += 32) { ctx.fillRect(x, 300, 16, 4); }   // 사격선
       ctx.strokeStyle = '#3a4558'; ctx.lineWidth = 8; ctx.strokeRect(-4, -4, R.map.w + 8, R.map.h + 8);
+    } else if (R.arena) {   // 균열 아레나: 보랏빛 바닥 + 빛나는 테두리, 바깥은 어둡게
+      ctx.fillStyle = 'rgba(40,18,70,0.35)'; ctx.fillRect(0, 0, R.map.w, R.map.h);
+      ctx.fillStyle = 'rgba(3,3,8,0.88)';
+      ctx.fillRect(-800, -400, R.map.w + 1600, 400); ctx.fillRect(-800, R.map.h, R.map.w + 1600, 400);
+      ctx.fillRect(-800, 0, 800, R.map.h); ctx.fillRect(R.map.w, 0, 800, R.map.h);
+      const pu = 0.55 + 0.25 * Math.sin(R.t * 2);
+      ctx.strokeStyle = `rgba(185,140,255,${pu})`; ctx.lineWidth = 2; ctx.strokeRect(-1, -1, R.map.w + 2, R.map.h + 2);
+      ctx.strokeStyle = 'rgba(255,233,168,0.25)'; ctx.lineWidth = 1; ctx.strokeRect(-5, -5, R.map.w + 10, R.map.h + 10);
     } else {
     // 맵 경계 (붉은 선)
     ctx.strokeStyle = 'rgba(255,60,80,0.55)'; ctx.lineWidth = 1.5; ctx.setLineDash([8, 6]);
     ctx.strokeRect(0, 0, R.map.w, R.map.h); ctx.setLineDash([]);
     }
+    if (!R.arena) {
     ctx.fillStyle = 'rgba(255,40,60,0.06)';
     ctx.fillRect(-400, -400, R.map.w + 800, 400); ctx.fillRect(-400, R.map.h, R.map.w + 800, 400);
     ctx.fillRect(-400, 0, 400, R.map.h); ctx.fillRect(R.map.w, 0, 400, R.map.h);
+    }
 
     // 탈출점
     for (const x of R.extracts) if (x.active && vis(x.x, x.y, SA.CFG.EXTRACT_R + 10)) {
@@ -295,6 +306,22 @@ SA.Render = (() => {
 
   const drawPoi = (ctx, R, p) => {
     const t = R.t;
+    if (p.type === 'rift') {   // 공간 균열: 세로로 찢어진 보랏빛 틈 (닫히면 희미한 흔적)
+      if (p.closed) { ctx.strokeStyle = 'rgba(185,140,255,0.25)'; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(p.x, p.y - 22); ctx.lineTo(p.x + 3, p.y); ctx.lineTo(p.x - 2, p.y + 22); ctx.stroke(); return; }
+      const pu = 0.5 + 0.5 * Math.sin(t * 3);
+      ctx.globalAlpha = 0.18; ctx.fillStyle = '#b98cff';
+      for (const r of [46, 34, 24]) { ctx.beginPath(); ctx.ellipse(p.x, p.y, r * 0.45, r, 0, 0, 6.29); ctx.fill(); }
+      ctx.globalAlpha = 1;
+      ctx.fillStyle = '#120820'; ctx.strokeStyle = '#e6d4ff'; ctx.lineWidth = 1.4;
+      ctx.beginPath(); ctx.moveTo(p.x, p.y - 30);
+      for (let i = 1; i <= 6; i++) ctx.lineTo(p.x + (i % 2 ? 7 : 3) + Math.sin(t * 4 + i) * 1.5, p.y - 30 + i * 10);
+      for (let i = 5; i >= 0; i--) ctx.lineTo(p.x - (i % 2 ? 7 : 3) + Math.sin(t * 4 + i + 2) * 1.5, p.y - 30 + i * 10);
+      ctx.closePath(); ctx.fill(); ctx.stroke();
+      for (let i = 0; i < 3; i++) { const a = t * 1.5 + i * 2.1; ctx.fillStyle = '#ffe9a8'; ctx.fillRect(p.x + Math.cos(a) * 18 - 1, p.y + Math.sin(a * 1.3) * 26 - 1, 2, 2); }
+      if (R.nearRift === p) { ctx.strokeStyle = `rgba(217,184,255,${0.3 + 0.3 * pu})`; ctx.setLineDash([4, 4]); ctx.lineWidth = 1; ctx.beginPath(); ctx.arc(p.x, p.y, SA.RIFT.near, 0, 6.29); ctx.stroke(); ctx.setLineDash([]); }
+      label(ctx, '공간 균열', p.x, p.y - 40, '#d9b8ff', 9);
+      return;
+    }
     if (p.type === 'collector') {   // 수집가 함선: 천천히 떠 있다. 가까이 오면 거래 범위 원
       const CO = SA.COLLECTOR, bob = Math.sin(t * 1.5) * 2;
       if (R.nearCol) { ctx.strokeStyle = 'rgba(255,159,216,0.45)'; ctx.setLineDash([4, 4]); ctx.lineWidth = 1; ctx.beginPath(); ctx.arc(p.x, p.y, CO.r, 0, 6.29); ctx.stroke(); ctx.setLineDash([]); }
@@ -446,6 +473,7 @@ SA.Render = (() => {
     ctx.fillStyle = '#10202e'; ctx.fillRect(a.x - 14, a.y - a.r - 9, 28, 3); ctx.fillStyle = col; ctx.fillRect(a.x - 14, a.y - a.r - 9, 28 * a.hp / a.maxHp, 3);
   };
   const drawEnemy = (ctx, R, e) => {
+    if (e.type === 'lumina') { SA.Lumina.draw(ctx, R, e); return; }
     const P = R.player, a = U.ang(e.x, e.y, P.x, P.y), fl = e.flash > 0;
     const D = SA.ENEMIES[e.type];
     let spr = D && pre['en_' + e.type];
@@ -586,6 +614,28 @@ SA.Render = (() => {
     for (const kk in vigC) if (kk.startsWith(kind) && kk !== k) delete vigC[kk];   // 창 크기가 바뀌면 예전 것은 버린다
     return (vigC[k] = c);
   };
+  // 루미나 보스 HUD: 이름 · 페이즈 칸(남은 페이즈) · 체력 · 남은 시간 · 패턴 이름 카드
+  const drawLuminaHUD = (ctx, R, W, H) => {
+    const b = R.boss, L = SA.Lumina, A = R.arena, bw = 520, bx = W / 2 - bw / 2, by = 28;
+    T(ctx, SA.ENEMIES.lumina.name, bx, by - 6, '#ffe9a8', 13, 'left');
+    for (let i = 0; i < L.PH.length; i++) { ctx.fillStyle = i < b.ph ? '#3a3350' : i === b.ph ? '#ffe9a8' : '#b98cff'; ctx.fillRect(bx + 150 + i * 14, by - 15, 10, 10); }   // 페이즈 칸
+    const lt = L.left(b);
+    if (lt !== null) T(ctx, lt.toFixed(1), bx + bw, by - 6, lt < 10 ? '#ff8fa3' : '#cfe3ff', 13, 'right');
+    const last = b.ph >= 0 && L.PH[b.ph].last;
+    bar(ctx, bx, by, bw, 6, last ? (L.left(b) / SA.RIFT.lastT) : b.ph < 0 ? 0 : b.hp / b.maxHp, last ? '#ff7a3d' : '#ffe9a8');
+    if (A.card) {   // 패턴 이름: 가운데 크게 떴다가 오른쪽 위로 작게 남는다
+      const c = A.card, k = Math.min(1, c.t / 0.3), fade = c.t < 2.2 ? 1 : Math.max(0, 1 - (c.t - 2.2) / 0.5);
+      if (fade > 0) {
+        ctx.globalAlpha = k * fade;
+        ctx.fillStyle = 'rgba(8,6,18,0.7)'; ctx.fillRect(W / 2 - 230, H * 0.36 - 26, 460, 44);
+        T(ctx, c.name, W / 2, H * 0.36 + 4, c.last ? '#ffb347' : '#ffe9a8', 22, 'center');
+        if (c.last) T(ctx, '버텨라', W / 2, H * 0.36 + 34, '#ff8f3d', 13, 'center');
+        ctx.globalAlpha = 1;
+      }
+      T(ctx, c.name, bx + bw, by + 22, c.last ? '#ffb347' : '#d9b8ff', 12, 'right');
+    }
+    if (A.won) T(ctx, '성운 나방 루미나 격추', W / 2, H * 0.36, '#ffe9a8', 24, 'center');
+  };
   const drawHUD = (ctx, R, camX, camY) => {
     const P = R.player, W = ctx.canvas.width, H = ctx.canvas.height, Zw = R.zoom || Z;
     // 비네트: 침식·피격·저체력
@@ -663,7 +713,7 @@ SA.Render = (() => {
       T(ctx, 'SOS', e.x - Math.cos(e.a) * 22, e.y - Math.sin(e.a) * 16 + 4, '#ffd166', 11, 'center');
     }
 
-    if (!R.range && !R.tut) {   // 연습장·튜토리얼에서는 침식·목표 표시를 숨긴다
+    if (!R.range && !R.tut && !R.arena) {   // 연습장·튜토리얼·균열 아레나에서는 침식 게이지를 숨긴다
     // 침식 게이지 (상단 중앙)
     const gw = 340, gx = W / 2 - gw / 2, gy = 18;
     ctx.fillStyle = 'rgba(8,10,18,0.7)'; ctx.fillRect(gx - 8, gy - 6, gw + 16, 40);
@@ -676,13 +726,14 @@ SA.Render = (() => {
     T(ctx, fmtT(R.t), W / 2, gy + 50, '#8f9bb8', 12, 'center', false);
 
     // 메인 목표 한 줄 (좌상단)
-    const ql = SA.Quest.label();
+    const ql = R.arena ? '' : SA.Quest.label();   // 아레나에선 목표 줄을 숨긴다 (보스 체력바 자리)
     if (ql) { ctx.fillStyle = 'rgba(8,10,18,0.6)'; ctx.font = 'bold 13px "Galmuri11", "Malgun Gothic", sans-serif'; const qw = ctx.measureText('목표  ' + ql).width; ctx.fillRect(14, 14, qw + 20, 26); T(ctx, '목표', 24, 32, '#8f9bb8', 13); T(ctx, ql, 60, 32, '#ffd166', 13); }
-    const pl = R.range || R.tut ? null : SA.Need.pinLine();   // 고정한 제작 목표 (보유 = 창고 + 화물칸 + 보안 칸)
+    const pl = R.range || R.tut || R.arena ? null : SA.Need.pinLine();   // 고정한 제작 목표 (보유 = 창고 + 화물칸 + 보안 칸)
     if (pl) { const t = `${pl[0]} — ${pl[2] ? '재료 다 모았다' : pl[1]}`; ctx.font = '12px "Galmuri11", "Malgun Gothic", sans-serif'; const pw = ctx.measureText('제작  ' + t).width; ctx.fillStyle = 'rgba(8,10,18,0.6)'; ctx.fillRect(14, 42, pw + 20, 20); T(ctx, '제작', 24, 56, '#8f9bb8', 12); T(ctx, t, 56, 56, pl[2] ? '#5dffb0' : '#ffd166', 12); }
     }
     // 보스 체력
-    if (R.boss && !R.boss.dead) {
+    if (R.arena && R.boss && R.boss.type === 'lumina' && !R.boss.dead) drawLuminaHUD(ctx, R, W, H);
+    else if (R.boss && !R.boss.dead) {
       const b = R.boss, bw = 420, bx = W / 2 - bw / 2, by = 92;
       T(ctx, SA.ENEMIES[b.type].name, W / 2, by - 6, '#ff8fa3', 14, 'center');
       bar(ctx, bx, by, bw, 8, b.hp / b.maxHp, b.type === 'raven' ? '#ff4d6d' : '#8a5cff');
@@ -786,6 +837,7 @@ SA.Render = (() => {
     R.pickLog.forEach((l, i) => { ctx.globalAlpha = Math.min(1, l.life); T(ctx, `${l.text}  ₵${l.val}`, W - 24, cy - 44 - (R.pickLog.length - 1 - i) * 20, l.col, 13, 'right'); });
     ctx.globalAlpha = 1;
     if (R.nearCol && !R.tabOpen) T(ctx, '[F] 수집가와 거래', W / 2, H - 140, '#ff9fd8', 16, 'center');
+    else if (R.nearRift && !R.tabOpen && !R.arena) T(ctx, '[F] 공간 균열로 들어가기', W / 2, H - 140, '#d9b8ff', 16, 'center');
     if (R.hint === 'full') {
       const sw = SA.Raid.swapPlan();
       T(ctx, sw ? `[F] ${sw.dropNames} 버리고 ${sw.name} 줍기 (+₵${sw.gain})` : '화물칸이 가득 찼다 — Tab에서 정리하거나 버리기', W / 2, H - 110, sw ? '#ffd166' : '#ffb3b3', 15, 'center');
@@ -794,14 +846,14 @@ SA.Render = (() => {
     // 비상탈출: 길게 누르는 중 / 버티는 중
     if (R.emT > 0) { T(ctx, `비상탈출 ${R.emT.toFixed(1)}초 — 버텨라`, W / 2, H / 2 + 90, '#ff8f3d', 20, 'center'); bar(ctx, W / 2 - 100, H / 2 + 100, 200, 6, 1 - R.emT / SA.EXIT.emTime, '#ff8f3d'); }
     else if (R.emHold > 0) { T(ctx, '비상탈출 준비 — 화물칸을 버린다', W / 2, H / 2 + 90, '#ff8f3d', 16, 'center'); bar(ctx, W / 2 - 100, H / 2 + 100, 200, 6, R.emHold / SA.EXIT.emHold, '#ff8f3d'); }
-    else if (!R.emUsed && R.t < 20 && !R.range && !R.tut) T(ctx, 'X 길게: 비상탈출 (화물칸 포기)', W / 2, H - 80, '#8f9bb8', 11, 'center', false);
+    else if (!R.emUsed && R.t < 20 && !R.range && !R.tut && !R.arena) T(ctx, 'X 길게: 비상탈출 (화물칸 포기)', W / 2, H - 80, '#8f9bb8', 11, 'center', false);
     // 탈출 진행
     for (const x of R.extracts) if (x.active && x.prog > 0) {
       T(ctx, `탈출 중 ${(SA.CFG.EXTRACT_TIME - x.prog).toFixed(1)}초`, W / 2, H / 2 + 90, '#5dffb0', 20, 'center');
       bar(ctx, W / 2 - 100, H / 2 + 100, 200, 6, x.prog / SA.CFG.EXTRACT_TIME, '#5dffb0');
     }
 
-    drawMinimap(ctx, R, W, H);
+    if (!R.arena) drawMinimap(ctx, R, W, H);
 
     // 조준선
     if (!R.tabOpen && !R.paused) {
@@ -838,7 +890,7 @@ SA.Render = (() => {
       if (!p.seen) continue;
       const px = mx + p.x * k, py = my + p.y * k;
       if (p.type === 'zone') { ctx.strokeStyle = p.open ? 'rgba(143,182,255,0.4)' : '#8fb6ff'; ctx.lineWidth = 1; ctx.beginPath(); ctx.arc(px, py, p.r * k, 0, 6.29); ctx.stroke(); continue; }
-      ctx.fillStyle = p.type === 'collector' ? '#ff9fd8' : p.done ? '#555' : { wreck: '#ffd166', container: '#ffd166', turrets: '#ff6b7a', patrol: '#ff6b7a', nest: '#ff4d6d', distress: Math.sin(R.t * 6) > 0 ? '#ffd166' : '#7a5a12', rescue: Math.sin(R.t * 6) > 0 ? '#6ee7ff' : '#1d5a66', duel: '#ff4d6d', lost: Math.sin(R.t * 5) > 0 ? '#5dffb0' : '#1d6a4a', locked: ['#9fb3c8', '#5dffb0', '#ffd166'][(p.grade || 1) - 1], secure: '#8fb6ff', signal: Math.sin(R.t * 5) > 0 ? '#ffb347' : '#7a4a12' }[p.type] || '#cfe3ff';
+      ctx.fillStyle = p.type === 'collector' ? '#ff9fd8' : p.type === 'rift' ? (p.closed ? '#4a3a66' : Math.sin(R.t * 4) > 0 ? '#d9b8ff' : '#7a4ab8') : p.done ? '#555' : { wreck: '#ffd166', container: '#ffd166', turrets: '#ff6b7a', patrol: '#ff6b7a', nest: '#ff4d6d', distress: Math.sin(R.t * 6) > 0 ? '#ffd166' : '#7a5a12', rescue: Math.sin(R.t * 6) > 0 ? '#6ee7ff' : '#1d5a66', duel: '#ff4d6d', lost: Math.sin(R.t * 5) > 0 ? '#5dffb0' : '#1d6a4a', locked: ['#9fb3c8', '#5dffb0', '#ffd166'][(p.grade || 1) - 1], secure: '#8fb6ff', signal: Math.sin(R.t * 5) > 0 ? '#ffb347' : '#7a4a12' }[p.type] || '#cfe3ff';
       ctx.fillRect(px - ps, py - ps, ps * 2, ps * 2);
       if (big && !p.done && p.label) { ctx.font = '11px "Galmuri11", sans-serif'; ctx.textAlign = 'left'; ctx.fillStyle = '#9aa7bd'; ctx.fillText(p.label, px + 7, py + 4); }
     }

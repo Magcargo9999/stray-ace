@@ -36,7 +36,7 @@ SA.Quest = (() => {
     }
     SA.Save.store(prof);
     const T = (m, c, d) => setTimeout(() => SA.Hangar.toast(m, c), d);
-    T(`메인 목표 완료: ${q.text} — ₵${q.reward}`, '#5dffb0', 0);
+    T(`메인 목표 완료: ${q.text}${q.reward ? ' — ₵' + q.reward : ''}`, '#5dffb0', 0);
     if (q.line) T(q.line, '#cfe3ff', 600);
     if (bpMsg) T(bpMsg, '#ffd166', 1200);
   };

@@ -65,6 +65,7 @@ SA.Save = (() => {
       rescMig: true,
       cellMig: true,
       raven: { stage: 0, done: false },   // 0: 둥지 첫 대결 · 1: 도주 후 재대결 · done: 포드 들고 탈출
+      lumina: { wins: 0, tries: 0 },      // 1막 최종 보스: 균열에서 이긴 횟수 · 들어간 횟수
       rep: { kingdom: 0, empire: 0, last: null },   // 진영 호감도
       route: null,            // 1막 끝에서 정해지는 2막 진영 루트
     };

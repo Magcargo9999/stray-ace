@@ -210,6 +210,15 @@ SA.Raid = (() => {
       R.collector = cp;
       msg('수집가 함선이 이 구역에 정박했다 — 미니맵 분홍 표시', '#ff9fd8', 6); SA.Audio.sfx('beep');
     }
+    // 균열 (1막 최종 보스): 메인 목표가 '균열' 단계면 꼭, 한 번 이긴 뒤에는 가끔
+    {
+      const lu = SA.profile.lumina = SA.profile.lumina || { wins: 0, tries: 0 };
+      const q = SA.STORY.main[(SA.profile.mq || {}).i || 0];
+      if ((q && q.id === 'mL') || (lu.wins > 0 && Math.random() < SA.RIFT.again)) {
+        R.rift = addPoi('rift', place(0.3, 0.75, 500), { label: '공간 균열', seen: true, clear: 120 });
+        msg('공간 균열이 감지됐다 — 미니맵 보라 표시', '#d9b8ff', 6);
+      }
+    }
     // 회수 모드: 지난 출격에서 떨어뜨린 잔해 (이번 한 번뿐)
     if (SA.profile.lostCache) {
       R.lostCache = SA.profile.lostCache; SA.profile.lostCache = null;
@@ -290,6 +299,7 @@ SA.Raid = (() => {
     return U.pick(SA.BENCH.fallback);
   };
   const dropLoot = (e) => {
+    if (e.type === 'lumina') return;   // 루미나 보상은 균열에서 따로 (riftWin)
     const R = SA.R, D = SA.ENEMIES[e.type] || {}, table = e.loot || D.drops || [], b = grazeBonus();
     // 강화·행성 설계도 배율: 네임드·보스·대형은 높게, 그 외는 낮게
     const bm = e.boss ? SA.BP_MUL.boss : D.ai === 'frigate' ? SA.BP_MUL.frigate : SA.BP_MUL.normal;
@@ -343,17 +353,18 @@ SA.Raid = (() => {
       if (R.deathT <= 0) finish(false);
     }
 
-    if (SA.Input.hit('KeyF') && R.state === 'play') { if (document.getElementById('colwin')) SA.UI.tabClose(); else if (!R.tabOpen) { if (R.nearCol) SA.UI.collectorOpen(); else doSwap(); } }
+    if (SA.Input.hit('KeyF') && R.state === 'play') { if (document.getElementById('colwin')) SA.UI.tabClose(); else if (!R.tabOpen) { if (R.nearCol) SA.UI.collectorOpen(); else if (R.nearRift && !R.arena) enterRift(R.nearRift); else doSwap(); } }
     updateView(R, rdt);
     S.updatePlayer(R, dt, rdt);
-    zoneBlock(R);
+    if (R.arena) arenaClamp(R); else zoneBlock(R);
     S.updateEnemies(R, dt);
     S.updateAllies(R, dt);
     S.updateBullets(R, dt);
     S.updateExtra(R, dt);
     updateItems(R, dt);
     if (R.range) { P.x = U.clamp(P.x, 16, R.map.w - 16); P.y = U.clamp(P.y, 16, R.map.h - 16); if (R.rangeGod) { P.hp = P.maxHp; } R.dmgLog = R.dmgLog.filter(d => R.t - d[0] < 5); }
-    else if (R.tut) { updatePois(R, dt); SA.Tutorial.update(R, dt, rdt); }   // 튜토리얼: 침식·비콘·리스폰 없음, 대본대로
+    else if (R.tut) { updatePois(R, dt); SA.Tutorial.update(R, dt, rdt); }
+    else if (R.arena) updateArena(R, dt, rdt);   // 균열 아레나: 출격 시간·침식·비콘·탈출이 멈춘다   // 튜토리얼: 침식·비콘·리스폰 없음, 대본대로
     else {
       updatePois(R, dt);
       updateCorrosion(R, dt);
@@ -449,6 +460,7 @@ SA.Raid = (() => {
       const d = Math.sqrt(U.d2(p.x, p.y, P.x, P.y));
       if (!p.seen && d < 380) { p.seen = true; if (p.type !== 'distress') C().text(R, p.x, p.y - 40, p.label, '#cfe3ff'); }
       if (p.type === 'collector') { R.nearCol = !P.dead && d < SA.COLLECTOR.r; continue; }
+      if (p.type === 'rift') { R.nearRift = !P.dead && !p.closed && d < SA.RIFT.near ? p : null; continue; }
       if (p.done || P.dead) continue;
       if (p.type === 'rescue') { updateRescue(R, p, d, dt); continue; }
       if (p.type === 'wreck') { updateWreck(R, p, d, dt); continue; }
@@ -846,14 +858,81 @@ SA.Raid = (() => {
       spawnItem(R, 'cap_raven', e.x, e.y, 20);
     }
     else if (e.type === 'mimic') msg('제국 실험 무인기 격추 — 비행 기록 칩', '#c08bff', 5);
+    else if (e.type === 'lumina') { riftWin(e); return; }
     else { R.hunterKilled = true; msg('심연의 사냥꾼 격추', '#ffd166', 5); }
     R.boss = null;
     SA.Audio.play('raid');
   };
 
+  // ── 균열 · 아레나 ──
+  // 들어가면 바깥 맵(소행성·적·탄·아이템·POI…)을 통째로 얼려 두고, 화면 한 장 크기의 아레나로 바꾼다
+  const WORLD = ['map', 'asteroids', 'astGrid', 'nebulas', 'pois', 'extracts', 'enemies', 'eb', 'pb', 'items', 'allies', 'bolts', 'beams', 'strikes', 'wells', 'zones'];
+  const enterRift = (p) => {
+    const R = SA.R, P = R.player, RF = SA.RIFT;
+    if (!p.armT || R.t - p.armT > 3) { p.armT = R.t; msg('공간 균열 — F를 한 번 더 누르면 들어간다. 들어가면 쉽게 나올 수 없다', '#d9b8ff', 3); SA.Audio.sfx('beep'); return; }
+    const out = { px: P.x, py: P.y, zoom: R.zoom, zoomTarget: R.zoomTarget, boss: R.boss, rift: p };
+    for (const k of WORLD) out[k] = R[k];
+    R.outside = out;
+    R.map = { w: RF.w, h: RF.h, name: '균열' };
+    R.asteroids = []; R.astGrid = new Map(); R.pois = []; R.extracts = []; R.enemies = []; R.eb = []; R.pb = []; R.items = [];
+    R.allies = []; R.bolts = []; R.beams = []; R.strikes = []; R.wells = []; R.zones = [];
+    R.nebulas = [{ x: RF.w / 2, y: RF.h * 0.25, r: 260, hue: 280 }, { x: RF.w * 0.2, y: RF.h * 0.8, r: 200, hue: 320 }];
+    P.x = RF.w / 2; P.y = RF.h - 40; P.vx = P.vy = 0; P.invuln = 2;
+    R.zoom = R.zoomTarget = RF.zoom; R.nearRift = null; R.nearCol = false; R.bigMap = false;
+    R.arena = { t: 0, hits: 0, bonus: 0 }; R.msgs = [];
+    const lu = SA.profile.lumina = SA.profile.lumina || { wins: 0, tries: 0 }; lu.tries++;
+    const e = C().spawnEnemy(R, 'lumina', RF.w / 2, -70, { awake: true });
+    R.boss = e; SA.Lumina.init(R, e);
+    C().fx(R, P.x, P.y, 40, '#d9b8ff', 160, 0.6, 2); R.shake = 10;
+    SA.Audio.sfx('warp'); SA.Audio.play('boss');
+    msg('…빛을 따라왔다.', '#ffe9a8', 4);
+  };
+  const arenaClamp = (R) => {
+    const P = R.player, m = 8;
+    P.x = U.clamp(P.x, m, R.map.w - m); P.y = U.clamp(P.y, m, R.map.h - m); P.outside = false;
+  };
+  const updateArena = (R, dt, rdt) => {
+    const A = R.arena; A.t += dt;
+    const W = R.map.w, H = R.map.h;
+    R.eb = R.eb.filter(b => b.x > -6 && b.y > -10 && b.x < W + 6 && b.y < H + 6);   // 아레나 밖으로 나간 탄은 바로 지운다
+    if (A.won) { A.winT -= rdt; if (A.winT <= 0) finish(true); }
+  };
+  // 격추 → 바깥 맵을 되살리고 들어간 자리로 튕겨 나온다. 장착 부품 내구도 -35, 체력 50%. 이 판 균열은 닫힌다
+  const riftFail = () => {
+    const R = SA.R, P = R.player, o = R.outside, RF = SA.RIFT;
+    for (const k of WORLD) R[k] = o[k];
+    R.zoom = o.zoom; R.zoomTarget = o.zoomTarget; R.boss = o.boss;
+    o.rift.closed = true; o.rift.done = true;
+    P.x = o.px; P.y = o.py; P.vx = P.vy = 0; P.dead = false;
+    P.hp = Math.max(1, Math.round(P.maxHp * RF.outHp)); P.invuln = 2;
+    const eq = [...new Set([...P.mains, ...P.subs.map(s => s.part), ...P.acts.map(a => a && a.part), ...P.pas, P.obs])].filter(Boolean);
+    eq.forEach(p => { p.dur = Math.max(0, (p.dur || 0) - RF.durLoss); });
+    R.arena = null; R.outside = null;
+    C().fx(R, P.x, P.y, 50, '#d9b8ff', 200, 0.7, 2); R.shake = 14; R.hurtFlash = 0.5;
+    SA.Audio.sfx('bigboom'); SA.Audio.play('raid');
+    msg(`균열에서 튕겨 나왔다 — 장착 부품 내구도 -${RF.durLoss}. 균열이 닫혔다`, '#ffb3b3', 6);
+    SA.Save.store(SA.profile);
+  };
+  // 루미나를 쓰러뜨렸다 → 보상은 창고로 바로. 잠깐 뒤 출격 성공으로 귀환
+  const riftWin = (e) => {
+    const R = SA.R, prof = SA.profile, RF = SA.RIFT, lu = prof.lumina = prof.lumina || { wins: 0, tries: 0 };
+    const first = !lu.wins; lu.wins++;
+    const rw = first ? RF.first : RF.again2, got = [];
+    for (const [id, n] of rw.items) for (let i = 0; i < n; i++) { if (!SA.Grid.add(prof.stash, id)) prof.credits += SA.ITEMS[id].val; got.push(id); }
+    const cr = rw.cr + (R.arena.bonus || 0); prof.credits += cr;
+    const names = {}; for (const id of got) names[id] = (names[id] || 0) + 1;
+    R.luminaRes = `성운 나방 루미나 격추${first ? ' — 1막 완료' : ''} · ` + Object.keys(names).map(id => `${SA.ITEMS[id].name}${names[id] > 1 ? ' ×' + names[id] : ''}`).join(', ') + ` · ₵${cr}${R.arena.bonus ? ` (보너스 ₵${R.arena.bonus} 포함)` : ''} — 창고로 보냈다`;
+    R.arena.won = true; R.arena.winT = 2.8; R.boss = null; R.eb = [];
+    R.player.invuln = 99;
+    msg('성운 나방 루미나 격추 — 균열이 닫힌다', '#ffe9a8', 4);
+    C().fx(R, e.x, e.y, 120, '#ffe9a8', 260, 1.2, 2.5);
+    SA.Save.store(prof);
+  };
+
   const playerDied = () => {
     const R = SA.R;
     if (R.state !== 'play') return;
+    if (R.arena && !R.arena.won) { riftFail(); return; }   // 균열 안에서 격추: 내구도를 잃고 튕겨 나온다
     R.state = 'dying'; R.deathT = 1.3; R.player.dead = true;
     SA.Audio.sfx('bigboom');
     C().fx(R, R.player.x, R.player.y, 80, '#ffb347', 220, 0.9, 2);
@@ -955,7 +1034,7 @@ SA.Raid = (() => {
     if (ok) { SA.Quest.event('extract'); SA.Quest.event('blackbox', cnt('blackbox')); }
     SA.Quest.event('crystal', cnt('crystal'));
     SA.Quest.sync();
-    SA.Main.showResult({ ok, brought, lost, value, overflow, time: R.t, kills: R.kills, graze: R.graze, corr: R.corr, ravenKilled: R.ravenKilled, pilot: R.player.pilot, rescued: rescuedMsgs, lostCaps, lostPart, ravenFled: R.ravenFled, repMsgs, mode, lostAll, recovered, giftPulse: R.giftPulse, emergency: R.emergency, partsIn, decoded: dec && dec.text });
+    SA.Main.showResult({ ok, brought, lost, value, overflow, time: R.t, kills: R.kills, graze: R.graze, corr: R.corr, ravenKilled: R.ravenKilled, pilot: R.player.pilot, rescued: rescuedMsgs, lostCaps, lostPart, ravenFled: R.ravenFled, repMsgs, mode, lostAll, recovered, giftPulse: R.giftPulse, emergency: R.emergency, partsIn, decoded: dec && dec.text, lumina: R.luminaRes });
   };
 
   // ── 지도 안개 ──
@@ -968,6 +1047,7 @@ SA.Raid = (() => {
   };
   const fogged = (R, x, y) => { const c = SA.OBS.fogCell, i = Math.floor(x / c), j = Math.floor(y / c); return i < 0 || j < 0 || i >= R.fogW || j >= R.fogH ? false : !R.fog[j * R.fogW + i]; };
   const updateView = (R, dt) => {
+    if (R.arena) return;   // 균열 아레나: 시야 배율·지도·안개 고정
     if (SA.Input.hit('KeyZ') && !R.tabOpen) {
       if (!R.obsLv) { msg('관측 장비가 없다 — 관측 칸에 장착하면 Z로 더 넓게 본다', '#ffb3b3', 3); SA.Audio.sfx('deny'); }
       else { R.zoomLv = (R.zoomLv + 1) % (R.obsLv + 1); R.zoomTarget = SA.OBS.levels[R.zoomLv]; SA.Audio.sfx('click'); }

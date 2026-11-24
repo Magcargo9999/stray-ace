@@ -153,6 +153,7 @@ SA.Main = (() => {
     (r.repMsgs || []).forEach(m => n('warn', m));
     if (r.ravenFled) n('ok', '레이븐 도주 — 다음 출격 미니맵의 붉은 신호');
     if (r.recovered) n('ok', r.recovered);
+    if (r.lumina) n('ok', r.lumina);
     if (r.decoded) n('ok', r.decoded);
     if (r.partsIn && r.partsIn.length) n('ok', `부품함: ${r.partsIn.join(', ')}`);
     if (r.giftPulse) n('warn', '용병단이 펄스건을 지급했다', '주무기가 남지 않아 내구도 60짜리를 받았다');
