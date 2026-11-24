@@ -35,13 +35,13 @@ SA.ITEMS = {
   bb_mimic:  { name: '블랙박스 (실험 무인기)', w: 1, h: 1, val: 200, kind: 'lore', img: 'assets/i_blackbox.png', color: '#c08bff', desc: '제국 실험 무인기의 학습 기록 장치.' },
   bb_empire: { name: '블랙박스 (제국 순양함)', w: 1, h: 1, val: 150, kind: 'lore', img: 'assets/i_blackbox.png', color: '#ff8f3d', desc: '제국 순양함의 기록 장치. 함장의 보고서가 남아 있을지도.' },
   bb_hunter: { name: '블랙박스 (심연)', w: 1, h: 1, val: 250, kind: 'lore', img: 'assets/i_blackbox.png', color: '#8a5cff', desc: '사냥꾼의 몸속에 박혀 있던 기록 장치. 차갑다.' },
-  canister: { name: '정화 캐니스터', w: 1, h: 2, val: 70, kind: 'use', img: 'assets/i_canister.png', color: '#7ff0e0', desc: '사용: 침식률 -25%.' },
-  repairkit:{ name: '수리킷', w: 1, h: 1, val: 60, kind: 'use', img: 'assets/i_repairkit.png', color: '#9df07f', desc: '사용: 체력 40 회복. Tab 화물칸에서 장착 부품에 끌어다 놓으면 그 부품 내구도 +40.' },
+  canister: { name: '정화 캐니스터', w: 1, h: 2, val: 70, kind: 'use', img: 'assets/i_canister.png', color: '#7ff0e0', desc: '사용: 침식률 -25%. 단축키 2.' },
+  repairkit:{ name: '수리킷', w: 1, h: 1, val: 60, kind: 'use', img: 'assets/i_repairkit.png', color: '#9df07f', desc: '사용: 체력 40 회복 (단축키 1). Tab 화물칸에서 장착 부품에 끌어다 놓으면 그 부품 내구도 +40.' },
   // 상위 재료: 하위 재료 2~3개를 합성 (설계도 없이). 강화·행성 부품 제작에 들어간다 (임시)
   alloy:    { name: '강화 합금', w: 1, h: 1, val: 160, kind: 'umat', tier: '강화', color: '#9fd8c8', desc: '고철을 코어 열로 다시 녹여 만든 판재. 강화 부품의 뼈대.' },
   fcore:    { name: '융합 코어', w: 1, h: 2, val: 260, kind: 'umat', tier: '강화', color: '#6fb7ff', desc: '코어 둘을 엔진 냉각관으로 묶었다. 강화 액티브·서브웨폰에 들어간다.' },
   qcircuit: { name: '양자 회로', w: 1, h: 1, val: 520, kind: 'umat', tier: '행성', color: '#ffd166', desc: '금빛 회로 위에 침식 결정을 얹은 기판. 행성 부품의 심장.' },
-  stardata: { name: '성구 데이터', w: 1, h: 1, val: 120, kind: 'data', tier: '일반', color: '#a8c8ff', desc: '사용: 이 구역의 지도를 한 번에 밝힌다 (소행성·장소 전부).' },
+  stardata: { name: '성구 데이터', w: 1, h: 1, val: 120, kind: 'data', tier: '일반', color: '#a8c8ff', desc: '사용: 이 구역의 지도를 한 번에 밝힌다 (소행성·장소 전부). 단축키 3.' },
   bb_reward: { name: '신호 블랙박스', w: 1, h: 1, val: 150, kind: 'lore', tier: '강화', color: '#ffb347', desc: '좌표가 남아 있는 블랙박스. 기지에서 해독하면 다음 출격 맵에 신호 지점이 뜬다.' },
   // 해독키: 필드에서 줍고 기지에서 보안해독기에 '등록'한다. 등록하면 사용 횟수가 생기고, 다 쓰면 상점에서 충전한다
   key_box1: { name: '상자 해독키 (일반)', w: 1, h: 1, val: 80, kind: 'key', tier: '일반', code: 'box1', color: '#9fb3c8', desc: '일반 등급 잠긴 상자의 코드 칩. 기지에서 등록하면 보안해독기로 5번 연다.' },
@@ -67,11 +67,11 @@ SA.ITEMS = {
 // 부품: 일반·강화는 서로 다른 독립 부품. 행성·은하는 같은 부품을 키운 것 (lv 1·2, 아래 SA.UPGRADE)
 // 패시브 fx = 효과 수치 (행성 ×1.3, 은하 ×1.6, 은하 각성도 곱해짐). noUp = 수치가 없어 키울 수 없는 부품
 SA.PARTS = {
-  // 주무기 (초당 피해: 일반 기준 펄스건 54). 저격총은 기본 동력원으로 프리깃(110~130)을 한 발에 못 죽이게 한다 — 정조준 105 (v0.87 하향, 임시)
+  // 주무기 (초당 피해: 일반 기준 펄스건 54). 저격총은 일반 사격은 기본 동력원으로 프리깃(110~130)을 한 발에 못 죽인다 — 정조준 150 (v0.88 100으로 조정, 임시)
   pulse:   { name: '펄스건', slot: 'main', tier: '일반', val: 150, rate: 9, dmg: 6, spd: 520, spread: 0.03, shots: 1, desc: '기본 연사. 초당 약 54.' },
   scatter: { name: '산탄포', slot: 'main', tier: '일반', val: 220, rate: 2.4, dmg: 5, spd: 430, spread: 0.32, shots: 6, life: 0.45, desc: '가까울수록 강하다. 근접 초당 약 72.' },
   lance:   { name: '관통 레이저', slot: 'main', tier: '일반', val: 240, rate: 3.2, dmg: 15, spd: 760, spread: 0, shots: 1, pierce: 3, desc: '적을 3기까지 관통. 초당 약 48.' },
-  sniper:  { name: '저격총', slot: 'main', tier: '강화', val: 560, rate: 0.833, dmg: 70, spd: 1150, spread: 0.02, shots: 1, life: 1.2, sniper: true, desc: '한 발 70, 1.2초에 1발. 우클릭으로 끝까지 정조준하면 피해 ×1.5 (105). 초당 약 58, 정조준만 이어 가면 약 87. 에너지를 많이 먹는다.' },
+  sniper:  { name: '저격총', slot: 'main', tier: '강화', val: 560, rate: 0.833, dmg: 100, spd: 1150, spread: 0.02, shots: 1, life: 1.2, sniper: true, desc: '한 발 100, 1.2초에 1발. 우클릭으로 끝까지 정조준하면 피해 ×1.5 (150). 초당 약 83, 정조준만 이어 가면 약 125. 에너지를 많이 먹는다.' },
   glass:   { name: '유리 대포', slot: 'main', tier: '강화', val: 480, rate: 6, dmg: 14, spd: 620, spread: 0.03, shots: 1, desc: '초당 약 84로 아주 세다. 대신 맞을 때마다 장착 부품 내구도가 크게 깎인다.' },
   beam:    { name: '지속 광선', slot: 'main', tier: '강화', val: 520, rate: 10, dmg: 7.5, spd: 0, spread: 0, shots: 1, beam: 270, desc: '누르고 있으면 이어지는 광선. 맨 앞의 적 하나를 계속 태운다 (초당 약 75, 사거리 270). 에너지를 많이 먹는다.' },
   swarm:   { name: '군집 미사일', slot: 'main', tier: '강화', val: 520, rate: 1.5, dmg: 8, spd: 240, spread: 0.5, shots: 4, life: 2.2, homing: 5, desc: '작은 유도 미사일 4발을 연달아 쏜다 (초당 약 48, 거의 다 맞는다).' },
@@ -406,6 +406,8 @@ for (const id in SA.PARTS) {
   SA.ITEMS['pt_' + id] = { name: d.name, w: sz[0], h: sz[1], val: Math.round(d.val * 0.6), kind: 'part', tier: d.tier, part: id, img: d.img, color: SA.TIER_COL[d.tier], desc: `[부품] ${SA.partDesc(id, 0)} 탈출하면 부품함으로 들어간다.` };
 }
 // 아이템 분류 이름
+// 레이드 소모품 단축키: 상단 숫자 1·2·3 = 숫자패드 1·2·3 (화물칸에서 알아서 찾아 쓴다)
+SA.QUICK = [{ n: 1, id: 'repairkit' }, { n: 2, id: 'canister' }, { n: 3, id: 'stardata' }];
 SA.KIND_NAME = { mchip: '개조 칩', pbp: '행성 설계도', mat: '재료', umat: '상위 재료', cell: '동력원', use: '소모품', key: '해독키', lore: '정보', data: '정보', bp: '설계도', capsule: '구조', part: '부품', ticket: '고용권' };
 // 강화·행성 레시피에 상위 재료 추가 (한 번만)
 for (const id in SA.RECIPES) Object.assign(SA.RECIPES[id].mats, SA.UMAT_ADD(id));

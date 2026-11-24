@@ -838,6 +838,17 @@ SA.Render = (() => {
     mini(cg, cx, cy); mini(R.secure, cx + cg.w * cs + 30, cy);
     T(ctx, `[Tab] 화물 ${SA.Grid.used(cg)}/${cg.w * cg.h} · ₵${SA.Grid.value(cg) + SA.Grid.value(R.secure)}`, W - 24, cy - 16, '#e6edf3', 13, 'right');
     T(ctx, '보안', cx + cg.w * cs + 30, cy - 2, '#8f9bb8', 10, 'left', false);
+    // 소모품 단축키: 화물 격자 왼쪽에 동그란 칸 (키 번호 · 남은 개수, 없으면 흐리게)
+    if (!R.tut && !R.range) SA.QUICK.forEach((q, i) => {
+      const qx = cx - 34 - (SA.QUICK.length - 1 - i) * 46, qy = H - 56, have = cg.items.filter(x => x.id === q.id).length, f = (R.qf && R.qf[q.id]) || 0;
+      ctx.beginPath(); ctx.arc(qx, qy, 19, 0, 6.2832);
+      ctx.fillStyle = f > 0 ? 'rgba(157,240,127,0.45)' : 'rgba(8,10,18,0.78)'; ctx.fill();
+      ctx.lineWidth = 2; ctx.strokeStyle = f < 0 ? '#ff6b6b' : have ? SA.ITEMS[q.id].color : 'rgba(143,155,184,0.45)'; ctx.stroke();
+      const ic = icon(q.id), sc = Math.min(22 / ic.width, 26 / ic.height);
+      ctx.globalAlpha = have ? 1 : 0.28; ctx.drawImage(ic, qx - ic.width * sc / 2, qy - ic.height * sc / 2, ic.width * sc, ic.height * sc); ctx.globalAlpha = 1;
+      T(ctx, String(q.n), qx, qy + 22, have ? '#e6edf3' : '#6b7690', 12, 'center');
+      if (have) T(ctx, String(have), qx + 16, qy + 8, '#ffd166', 12, 'center');
+    });
     R.pickLog.forEach((l, i) => { ctx.globalAlpha = Math.min(1, l.life); T(ctx, `${l.text}  ₵${l.val}`, W - 24, cy - 44 - (R.pickLog.length - 1 - i) * 20, l.col, 13, 'right'); });
     ctx.globalAlpha = 1;
     if (R.nearCol && !R.tabOpen) T(ctx, '[F] 수집가와 거래', W / 2, H - 140, '#ff9fd8', 16, 'center');

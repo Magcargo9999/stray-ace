@@ -355,6 +355,10 @@ SA.Raid = (() => {
     }
 
     if (SA.Input.hit('KeyF') && R.state === 'play') { if (document.getElementById('colwin')) SA.UI.tabClose(); else if (!R.tabOpen) { if (R.nearCol) SA.UI.collectorOpen(); else if (R.nearRift && !R.arena) enterRift(R.nearRift); else doSwap(); } }
+    if (R.qf) for (const k in R.qf) R.qf[k] = R.qf[k] > 0 ? Math.max(0, R.qf[k] - rdt) : Math.min(0, R.qf[k] + rdt);
+    if (R.state === 'play' && !R.tabOpen && !R.tut && !R.range && !document.getElementById('colwin')) {
+      for (const q of SA.QUICK) if (SA.Input.hit('Digit' + q.n) || SA.Input.hit('Numpad' + q.n)) quickUse(q);
+    }
     updateView(R, rdt);
     S.updatePlayer(R, dt, rdt);
     if (R.arena) arenaClamp(R); else zoneBlock(R);
@@ -1067,6 +1071,15 @@ SA.Raid = (() => {
     SA.Grid.remove(from, it.uid);
     SA.Audio.sfx('repair');
     return true;
+  };
+  // 단축키 1·2·3: 화물칸에서 해당 소모품을 찾아 바로 쓴다 (헛쓰기는 막는다)
+  const quickUse = (q) => {
+    const R = SA.R, P = R.player, it = R.cargo.items.find(x => x.id === q.id), nm = SA.ITEMS[q.id].name;
+    R.qf = R.qf || {};
+    if (!it) { msg(`${nm}이(가) 없다`, '#ffb3b3', 1.5); SA.Audio.sfx('deny'); R.qf[q.id] = -0.35; return; }
+    if (q.id === 'repairkit' && P.hp >= P.maxHp) { msg('체력이 가득 차 있다', '#ffb3b3', 1.5); SA.Audio.sfx('deny'); return; }
+    if (q.id === 'canister' && R.corr <= 0) { msg('침식이 없다', '#ffb3b3', 1.5); SA.Audio.sfx('deny'); return; }
+    if (useItem(it, R.cargo)) R.qf[q.id] = 0.4;
   };
   const dropToSpace = (id, src) => {
     const R = SA.R, P = R.player;
