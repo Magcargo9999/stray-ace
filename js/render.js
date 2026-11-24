@@ -716,6 +716,7 @@ SA.Render = (() => {
       T(ctx, 'SOS', e.x - Math.cos(e.a) * 22, e.y - Math.sin(e.a) * 16 + 4, '#ffd166', 11, 'center');
     }
 
+    const pinL = R.range || R.tut || R.arena ? null : SA.Need.pinLine();   // 고정한 제작 목표 (보유 = 창고 + 화물칸 + 보안 칸) — 윙맨 줄 위치에도 쓴다
     if (!R.range && !R.tut && !R.arena) {   // 연습장·튜토리얼·균열 아레나에서는 침식 게이지를 숨긴다
     // 침식 게이지 (상단 중앙)
     const gw = 340, gx = W / 2 - gw / 2, gy = 18;
@@ -731,7 +732,7 @@ SA.Render = (() => {
     // 메인 목표 한 줄 (좌상단)
     const ql = R.arena ? '' : SA.Quest.label();   // 아레나에선 목표 줄을 숨긴다 (보스 체력바 자리)
     if (ql) { ctx.fillStyle = 'rgba(8,10,18,0.6)'; ctx.font = 'bold 13px "Galmuri11", "Malgun Gothic", sans-serif'; const qw = ctx.measureText('목표  ' + ql).width; ctx.fillRect(14, 14, qw + 20, 26); T(ctx, '목표', 24, 32, '#8f9bb8', 13); T(ctx, ql, 60, 32, '#ffd166', 13); }
-    const pl = R.range || R.tut || R.arena ? null : SA.Need.pinLine();   // 고정한 제작 목표 (보유 = 창고 + 화물칸 + 보안 칸)
+    const pl = pinL;
     if (pl) { const t = `${pl[0]} — ${pl[2] ? '재료 다 모았다' : pl[1]}`; ctx.font = '12px "Galmuri11", "Malgun Gothic", sans-serif'; const pw = ctx.measureText('제작  ' + t).width; ctx.fillStyle = 'rgba(8,10,18,0.6)'; ctx.fillRect(14, 42, pw + 20, 20); T(ctx, '제작', 24, 56, '#8f9bb8', 12); T(ctx, t, 56, 56, pl[2] ? '#5dffb0' : '#ffd166', 12); }
     }
     // 보스 체력
@@ -743,7 +744,7 @@ SA.Render = (() => {
     }
     // 윙맨·수송선 상태 (왼쪽, 목표 줄 아래)
     if (R.allies && R.allies.length) {
-      let y = pl ? 76 : 56;
+      let y = pinL ? 76 : 56;
       for (const a of R.allies) {
         const isW = a.kind === 'wing', N = isW && SA.NAMED[a.named], col = isW ? N.color : '#8fb6ff';
         T(ctx, a.dead ? `${isW ? N.name : '수송선'} — 격추` : isW ? `${N.name}${a.cover ? ' · 엄호 중' : a.retreat ? ' · 후퇴 중' : ''}` : `수송선${a.arrived ? ' · 도착' : a.waiting ? ' · 대기 (가까이 와라)' : ''}`, 24, y, a.dead ? '#777' : col, 12);
