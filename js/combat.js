@@ -1067,7 +1067,8 @@ SA.Combat = (() => {
       if (!alive(a.tgtE) || !inZone(a.tgtE)) {
         a.tgtE = null; let bd = 320 * 320;
         for (const e of R.enemies) { if (!alive(e) || !inZone(e)) continue; const q = U.d2(e.x, e.y, a.x, a.y); if (q < bd) { bd = q; a.tgtE = e; } }
-        if (a.tgtE && (a.tgtE.boss || (SA.ENEMIES[a.tgtE.type] || {}).hp >= 100)) wingBark(R, a, N, 'charge');
+        if (a.tgtE && a.tgtE.type === 'hunter' && N.barks && N.barks.hunter && !a.saidHunter) { a.saidHunter = true; a.barkT = 0; wingBark(R, a, N, 'hunter'); }   // 사냥꾼(옛 배) 앞에서만 한 번 조용해진다
+        else if (a.tgtE && (a.tgtE.boss || (SA.ENEMIES[a.tgtE.type] || {}).hp >= 100)) wingBark(R, a, N, 'charge');
       }
       t = a.tgtE;
       if (t) {

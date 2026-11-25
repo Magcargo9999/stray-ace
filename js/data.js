@@ -35,6 +35,7 @@ SA.ITEMS = {
   bb_mimic:  { name: '블랙박스 (실험 무인기)', w: 1, h: 1, val: 200, kind: 'lore', img: 'assets/i_blackbox.png', color: '#c08bff', desc: '제국 실험 무인기의 학습 기록 장치.' },
   bb_empire: { name: '블랙박스 (제국 순양함)', w: 1, h: 1, val: 150, kind: 'lore', img: 'assets/i_blackbox.png', color: '#ff8f3d', desc: '제국 순양함의 기록 장치. 함장의 보고서가 남아 있을지도.' },
   bb_hunter: { name: '블랙박스 (심연)', w: 1, h: 1, val: 250, kind: 'lore', img: 'assets/i_blackbox.png', color: '#8a5cff', desc: '사냥꾼의 몸속에 박혀 있던 기록 장치. 차갑다.' },
+  bb_lumina: { name: '블랙박스 (기록 포드)', w: 1, h: 1, val: 250, kind: 'lore', img: 'assets/i_blackbox.png', color: '#ffe9a8', desc: '3년 전 왕국 함대에서 쏘아 보낸 기록 포드의 기록 장치. 결정 가루가 앉아 있다.' },
   canister: { name: '정화 캐니스터', w: 1, h: 2, val: 70, kind: 'use', img: 'assets/i_canister.png', color: '#7ff0e0', desc: '사용: 침식률 -25%. 단축키 2.' },
   repairkit:{ name: '수리킷', w: 1, h: 1, val: 60, kind: 'use', img: 'assets/i_repairkit.png', color: '#9df07f', desc: '사용: 체력 40 회복 (단축키 1). Tab 화물칸에서 장착 부품에 끌어다 놓으면 그 부품 내구도 +40.' },
   // 상위 재료: 하위 재료 2~3개를 합성 (설계도 없이). 강화·행성 부품 제작에 들어간다 (임시)
@@ -59,7 +60,7 @@ SA.ITEMS = {
   abyss:    { name: '심연 핵', w: 1, h: 1, val: 700, kind: 'umat', tier: '은하', color: '#a06bff', desc: '사냥꾼의 몸속에서 뛰던 것. 은하 부품에 넣으면 침식이 깊을수록 위력이 오른다 (심연 각성).' },
   flamecore: { name: '화염 코어', w: 1, h: 1, val: 450, kind: 'umat', tier: '은하', color: '#ff7a3d', desc: '제국 순양함 기관부의 과열 코어. 아직 뜨겁다. 은하 부품 재료.' },
   klens:    { name: '왕국 렌즈', w: 1, h: 1, val: 450, kind: 'umat', tier: '은하', color: '#8fd3ff', desc: '왕국 함선의 조준 렌즈. 빛을 한 줄로 모은다. 은하 부품 재료.' },
-  bp_raven:   { name: '설계도: 레이븐 추진기', w: 1, h: 1, val: 300, kind: 'bp', recipe: 'raven', color: '#ffd166', desc: '네임드 용병 레이븐의 추진기. 그는 이걸로 탄 사이를 미끄러졌다.' },
+  bp_raven:   { name: '설계도: 레이븐 추진기', w: 1, h: 1, val: 300, kind: 'bp', recipe: 'raven', color: '#ffd166', desc: '네임드 용병 레이븐의 추진기. 그녀는 이걸로 탄 사이를 미끄러졌다.' },
 };
 
 // 장비 부품. slot: main/sub/act/pas
@@ -467,7 +468,7 @@ SA.RAVEN = { leash: 900, hp: 1500, fleeAt: 0.3, phase3At: 0.25, dodgeCd: [1.8, 1
   fleeDrops: [['chip', 1], ['goldchip', 1], ['prec', .6], ['bp:강화', .3]] };
 // 제국 실험 무인기: 레이븐 데이터를 학습한 기계. 레이븐 합류 뒤 출격의 mimicChance로 등장, 격추하면 비행 기록 칩 (임시)
 SA.MIMIC = { chance: 0.3, hp: 900 };
-SA.ITEMS.cap_raven = { name: '레이븐의 탈출 포드', w: 2, h: 2, val: 0, kind: 'capsule', img: 'assets/i_pod.png', color: '#ff4d6d', desc: '격추된 레이븐이 갇힌 탈출 포드. 들고 탈출해야 그를 붙잡는다. 들고 있으면 이속 -10%.' };
+SA.ITEMS.cap_raven = { name: '레이븐의 탈출 포드', w: 2, h: 2, val: 0, kind: 'capsule', img: 'assets/i_pod.png', color: '#ff4d6d', desc: '격추된 레이븐이 갇힌 탈출 포드. 들고 탈출해야 그녀를 붙잡는다. 들고 있으면 이속 -10%.' };
 // 난파선 (임시): 아이템 하나당 0.9초, 마지막 한 개는 4초. 벗어나면 진행 중 게이지가 초당 0.6씩 줄어든다.
 // 마지막 보상은 위에서부터 굴려 처음 당첨된 것 하나 (좋은 것 확률 높게)
 SA.WRECK = { maxItems: 5, per: 0.9, last: 4, decay: 0.6, final: [['bp:강화', .15], ['goldchip', .3], ['bp:일반', .35], ['engine', .35], ['prec', 1]] };
@@ -477,6 +478,8 @@ SA.SPEAKERS = {
   raven:  { name: '레이븐', title: '네임드 용병', color: '#ff4d6d' },
   serena: { name: '세레나', title: '왕국 장군', color: '#8fb6ff' },
   volk:   { name: '볼크', title: '제국 돌격 에이스', color: '#ff7a6b' },
+  mina:   { name: '미나', title: '정비병', color: '#ffd166' },
+  dan:    { name: '단장', title: '', color: '#8f9bb8' },   // 튜토리얼 뒤의 단장 (통신)
 };
 SA.DIALOG = { min: 4, max: 9, perChar: 0.07, queue: 3 };
 // 적이 쓰는 플레이어 스킬 (2막 보스·네임드용 구조. 적 정의에 skills: ['purge', ...] 를 넣으면 쓴다) (임시)
@@ -500,7 +503,7 @@ SA.NAMED = {
              rate: 8, shots: 2, spread: 0.12, dmg: 3.5, spd: 560,
              hello: '제국 돌격대 볼크다. 사냥꾼 머리는 내 거다. 넌 뒤만 받쳐.', coverOn: '좋아, 방패는 네가 해라!', coverOff: '흩어져! 각자 사냥이다.',
              down: '젠장, 엔진이… 먼저 빠진다!',
-             barks: { charge: '큰 놈이다! 내가 먼저 간다!', low: '아직 날 수 있어! 물러나는 건 제국 돌격대가 아니야!' } },
+             barks: { charge: '큰 놈이다! 내가 먼저 간다!', hunter: '…저건 내가 떨어뜨린다. 아무도 손대지 마.', low: '아직 날 수 있어! 물러나는 건 제국 돌격대가 아니야!' } },
 };
 SA.CONVOY = { hp: 420, r: 18, speed: 42, waveEvery: 20, waveN: 3 };   // 호위 수송선 (임시)
 SA.REPAIRKIT_DUR = 40;   // 수리킷을 부품에 쓰면 내구도 +40 (최대 내구도는 그대로)

@@ -428,18 +428,21 @@ SA.HangarScene = (() => {
   const mech = () => findNpc('teo') ? 'teo' : findNpc('mina') ? 'mina' : null;
   const npcLine = (o) => {
     const L = SA.HG_LINES, prof = P(), K = SA.Contracts;
-    if (o.npc === 'pilot') return SA.PILOTS[o.pid].quote;
+    if (o.npc === 'pilot') {
+      if (o.pid === 'raven' && !prof.ravenTalk) { prof.ravenTalk = true; SA.Save.store(prof); return L.ravenFirst; }   // 합류 뒤 첫마디 (한 번)
+      return SA.U.pick([SA.PILOTS[o.pid].quote, ...SA.stageLines((L.pilot || {})[o.pid], prof)]);
+    }
     if (o.npc === 'os') {
       if (SA.STORY.contracts.some(c => K.open(c) && K.st(c.id).accepted && !K.st(c.id).done && K.canClaim(c))) return L.claim;
       if (!K.active().length) return L.noJob;
-      return SA.U.pick([...L.idle.os, ...L.tips]);
+      return SA.U.pick([...L.idle.os, ...SA.stageLines(L.stage.filter(x => x.who === 'os'), prof), ...L.tips]);
     }
     if (o.npc === 'teo' || o.npc === 'mina') {
       const worn = SA.loUids(prof.loadouts[prof.ship]).map(u => prof.parts.find(p => p.uid === u)).some(p => p && p.dur / p.max < 0.5);
       if (worn) return L.worn[o.npc];
-      return SA.U.pick(L.idle[o.npc]);
+      return SA.U.pick([...L.idle[o.npc], ...SA.stageLines(L.stage.filter(x => x.who === o.npc), prof)]);
     }
-    return SA.U.pick(L.idle[o.npc] || ['…']);
+    return SA.U.pick([...(L.idle[o.npc] || ['…']), ...SA.stageLines(L.stage.filter(x => x.who === o.npc), prof)]);
   };
   const npcClick = (o) => {
     const btn = [];
@@ -480,7 +483,7 @@ SA.HangarScene = (() => {
       chatT -= dt;
       if (chatT <= 0) {
         const pool = ['os', mech(), findNpc('dori') && 'dori', ...pilotsHere().slice(0, 2)].filter(Boolean);
-        const who = SA.U.pick(pool), o = findNpc(who);
+        const who = !P().ravenTalk && findNpc('raven') ? 'raven' : SA.U.pick(pool), o = findNpc(who);   // 레이븐이 막 합류했으면 그 첫마디가 먼저
         if (o) say(o, npcLine(o)); else chatT = 8;
       }
     }

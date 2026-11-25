@@ -62,7 +62,7 @@ SA.Save = (() => {
       bring: {},              // 이번 출격에 가져갈 소모품 개수
       rescued: { teo: false, deliv: false },   // 조난 구조로 연 시설 (테오: 강화 제작, 도리: 배달 상점)
       resc: { escapes: 0, pity: 0, pending: null },   // 구조 신호 상태: 직전 구조 후 탈출 수, 불운 보정, 아직 못 구한 신호
-      rescMig: true,
+      rescMig: true, mqV2: true,
       cellMig: true,
       raven: { stage: 0, done: false },   // 0: 둥지 첫 대결 · 1: 도주 후 재대결 · done: 포드 들고 탈출
       lumina: { wins: 0, tries: 0 },      // 1막 최종 보스: 균열에서 이긴 횟수 · 들어간 횟수
@@ -92,6 +92,12 @@ SA.Save = (() => {
       p.rescMig = true;
       const ri = SA.STORY.main.findIndex(q => q.rescue);
       if (p.mq && p.mq.i >= ri) p.mq.i++;   // 새로 끼워 넣은 구조 퀘스트 칸만큼 밀어 진행도를 지킨다
+    }
+    // 1막 스토리 재작성 (v0.89): 세레나 호위(mS)·기록 포드(mB)를 끼워 넣었다 — 예전 순서의 목표 id로 새 칸을 찾는다
+    if (!p.mqV2) {
+      p.mqV2 = true;
+      const OLD = ['m1', 'm2', 'm3', 'mR', 'm4', 'm5', 'm6', 'mL', 'm7'];
+      if (p.mq) { const id = OLD[p.mq.i]; const ni = SA.STORY.main.findIndex(q => q.id === id); if (id && ni >= 0) p.mq.i = ni; }
     }
     for (const it of p.stash.items.slice()) if (SA.ITEMS[it.id].kind === 'capsule') SA.Grid.remove(p.stash, it.uid);
     // 레이븐 3단계·의뢰 수주 도입 전 세이브
@@ -130,7 +136,7 @@ SA.Save = (() => {
   const load = () => {
     try {
       const s = localStorage.getItem(KEY);
-      if (s) { const j = JSON.parse(s), p = Object.assign(fresh(), j); p.rescMig = !!j.rescMig; p.cellMig = !!j.cellMig; p.tierMig = !!j.tierMig; p.tutDone = j.tutDone !== undefined ? !!j.tutDone : !!((j.stats && j.stats.raids > 0) || j.deathModeSet); return migrate(p); }   // 이미 하던 세이브는 튜토리얼을 건너뛴다
+      if (s) { const j = JSON.parse(s), p = Object.assign(fresh(), j); p.rescMig = !!j.rescMig; p.mqV2 = !!j.mqV2; p.cellMig = !!j.cellMig; p.tierMig = !!j.tierMig; p.tutDone = j.tutDone !== undefined ? !!j.tutDone : !!((j.stats && j.stats.raids > 0) || j.deathModeSet); return migrate(p); }   // 이미 하던 세이브는 튜토리얼을 건너뛴다
     } catch (e) { console.warn('save load failed', e); }
     return fresh();
   };

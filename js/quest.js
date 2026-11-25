@@ -38,7 +38,8 @@ SA.Quest = (() => {
     const T = (m, c, d) => setTimeout(() => SA.Hangar.toast(m, c), d);
     T(`메인 목표 완료: ${q.text}${q.reward ? ' — ₵' + q.reward : ''}`, '#5dffb0', 0);
     if (q.line) T(q.line, '#cfe3ff', 600);
-    if (bpMsg) T(bpMsg, '#ffd166', 1200);
+    if (q.line2) T(q.line2, '#cfe3ff', 1800);
+    if (bpMsg) T(bpMsg, '#ffd166', q.line2 ? 3000 : 1200);
   };
   // 미리 해 둔 목표(레이븐 포획·테오 구조)는 차례가 오면 바로 완료. 1막 끝에서 2막 루트를 정한다.
   const sync = () => {

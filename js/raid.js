@@ -135,7 +135,7 @@ SA.Raid = (() => {
     const S = C();
 
     const rv = SA.profile.raven, joined = !!(SA.profile.pilots.raven || rv.done);
-    // 레이븐이 합류한 뒤에는 그가 둥지에 없다 — 놓친 전용 설계도는 둥지 상자에서 (모르는 것만)
+    // 레이븐이 합류한 뒤에는 그녀가 둥지에 없다 — 놓친 전용 설계도는 둥지 상자에서 (모르는 것만)
     const nestLoot = joined ? LOOT.nest.concat([['bp_raven', .2], ['bp_sensor', .25]].filter(([id]) => !SA.profile.recipes.includes(id.slice(3)))) : LOOT.nest;
     const empty = joined || rv.stage >= 1;
     const nest = addPoi('nest', ell(R, 0.06, U.rnd(0, 6.28)), { clear: 160, label: joined ? '버려진 둥지' : empty ? '비어 있는 레이븐 둥지' : '레이븐 둥지' });
@@ -160,6 +160,7 @@ SA.Raid = (() => {
       const rp = place(0.3, 0.58, 700) || ell(R, 0.45, U.rnd(0, 6.28));
       addPoi('rescue', rp, { clear: 150, label: '구조 신호', target: rid, seen: true, waves: 0, started: false });
       R.rescueId = rid;
+      if (SA.STORY.signals[rid]) msg(SA.STORY.signals[rid], '#ffd166', 7);   // 구조 대상의 첫 조난 문구
     }
     S.spawnEnemy(R, 'crate', nest.x + 30, nest.y + 20, { crate: true, def: { hp: 30, r: 11 }, loot: nestLoot });
     for (let i = 0; i < 2; i++) S.spawnEnemy(R, F() + 'fighter', nest.x + U.rnd(-80, 80), nest.y + U.rnd(-80, 80));
@@ -173,6 +174,12 @@ SA.Raid = (() => {
     for (let i = 0; i < 3; i++) {
       const w = addPoi('wreck', place(0.33, 0.72), { label: i === bbIdx ? '추락한 정찰선' : '난파선', blackbox: i === bbIdx, seed: Math.random() });
       { const f = F(); for (let k = 0; k < 2; k++) S.spawnEnemy(R, f + 'fighter', w.x + U.rnd(-120, 120), w.y + U.rnd(-120, 120)); }
+    }
+    // 메인 목표 mB: 결정 속 식별 신호를 따라 '추락한 기록 포드' (루미나 기록 L1)
+    if ((SA.STORY.main[(SA.profile.mq || {}).i || 0] || {}).id === 'mB') {
+      const w = addPoi('wreck', place(0.5, 0.82, 650), { label: '추락한 기록 포드', lumina: true, seen: true, seed: Math.random() });
+      for (let k = 0; k < 2; k++) S.spawnEnemy(R, 'corrode', w.x + U.rnd(-110, 110), w.y + U.rnd(-110, 110));
+      msg('왕국 군용 식별 신호 — 추락한 기록 포드 (미니맵 표시)', '#ffe9a8', 6);
     }
     for (let i = 0; i < 2; i++) {
       const c = addPoi('container', place(0.55, 0.8), { label: '보급 컨테이너' });
@@ -217,7 +224,7 @@ SA.Raid = (() => {
       if ((q && q.id === 'mL') || (lu.wins > 0 && Math.random() < SA.RIFT.again)) {
         R.rift = addPoi('rift', place(0.3, 0.75, 500), { label: '공간 균열', seen: true, clear: 120 });
         SA.Audio.preload('lumina');
-        msg('공간 균열이 감지됐다 — 미니맵 보라 표시', '#d9b8ff', 6);
+        msg(q && q.id === 'mL' ? '공간 균열 — 주변 침식이 짙어지고 있다. 미니맵 보라 표시' : '공간 균열이 감지됐다 — 미니맵 보라 표시', '#d9b8ff', 6);
       }
     }
     // 회수 모드: 지난 출격에서 떨어뜨린 잔해 (이번 한 번뿐)
@@ -525,10 +532,11 @@ SA.Raid = (() => {
       if (R.stage >= 2 && Math.random() < 0.25) p.loot.push('crystal');   // 침식 3단계 이상: 잔해에 침식 결정
       while (p.loot.length < 2) p.loot.push('scrap');
       // 한 난파선에서 나오는 아이템은 마지막 보상까지 합쳐 최대 5개 (임시). 넘치면 값싼 것부터 뺀다
-      const cap = SA.WRECK.maxItems - 1 - (p.blackbox ? 1 : 0);
+      const cap = SA.WRECK.maxItems - 1 - (p.blackbox || p.lumina ? 1 : 0);
       const cheap = (id) => { const d = SA.ITEMS[id]; return d ? d.val / (d.w * d.h) : 9999; };
       while (p.loot.length > cap) { let k = 0; for (let i = 1; i < p.loot.length; i++) if (cheap(p.loot[i]) < cheap(p.loot[k])) k = i; p.loot.splice(k, 1); }
       if (p.blackbox) p.loot.unshift('blackbox');
+      if (p.lumina) p.loot.unshift('bb_lumina');
       p.total = p.loot.length + 1; p.cur = 0;
     }
     if (d < 46) { p.cur += dt; SA.Audio.sfx('salvage', p.cur / wreckNeed(p)); }
@@ -539,6 +547,7 @@ SA.Raid = (() => {
       const id = p.loot.shift();
       spawnItem(R, id, p.x, p.y, 100);
       if (id === 'blackbox') msg(SA.Decode.dropId(SA.profile, id) === id ? '블랙박스 발견' : '신호 블랙박스 발견', '#ff8f3d');
+      if (id === 'bb_lumina') msg('기록 포드의 블랙박스 — 들고 탈출하라', '#ffe9a8', 4);
       SA.Audio.sfx('open');
     } else {
       let got = null;
@@ -924,12 +933,20 @@ SA.Raid = (() => {
     const first = !lu.wins; lu.wins++;
     const rw = first ? RF.first : RF.again2, got = [];
     for (const [id, n] of rw.items) for (let i = 0; i < n; i++) { if (!SA.Grid.add(prof.stash, id)) prof.credits += SA.ITEMS[id].val; got.push(id); }
+    if (first) { if (!SA.Grid.add(prof.stash, 'bb_lumina')) prof.credits += SA.ITEMS.bb_lumina.val; got.push('bb_lumina'); }   // 1막 엔딩: 루미나의 마지막 기록 (L2)
     const cr = rw.cr + (R.arena.bonus || 0); prof.credits += cr;
     const names = {}; for (const id of got) names[id] = (names[id] || 0) + 1;
     R.luminaRes = `성운 나방 루미나 격추${first ? ' — 1막 완료' : ''} · ` + Object.keys(names).map(id => `${SA.ITEMS[id].name}${names[id] > 1 ? ' ×' + names[id] : ''}`).join(', ') + ` · ₵${cr}${R.arena.bonus ? ` (보너스 ₵${R.arena.bonus} 포함)` : ''} — 창고로 보냈다`;
     R.arena.won = true; R.arena.winT = 2.8; R.boss = null; R.eb = [];
     R.player.invuln = 99; SA.Audio.stop();
     msg('성운 나방 루미나 격추 — 균열이 닫힌다', '#ffe9a8', 4);
+    if (first) {   // 1막 엔딩: 보스 맵에서 통신 몇 줄을 듣고 균열 밖으로
+      msg('블랙박스 회수 — 균열 속 기록', '#ffe9a8', 5);
+      say('serena', '처리했나. 기록은 왕국으로 넘겨. 다른 데 흘리면 곤란해져.');
+      say('mina', '…그 사람이에요. 제가 고치던 기체의.');
+      say('dan', '…균열이 하나뿐이면 좋겠군.');
+      R.arena.winT = 17;
+    }
     C().fx(R, e.x, e.y, 120, '#ffe9a8', 260, 1.2, 2.5);
     SA.Save.store(prof);
   };
@@ -1036,7 +1053,7 @@ SA.Raid = (() => {
     SA.Save.store(prof);
     // 메인퀘스트 (지금 목표에만 센다)
     const cnt = (id) => brought.filter(it => it.id === id).length;
-    if (ok) { SA.Quest.event('extract'); SA.Quest.event('blackbox', cnt('blackbox')); }
+    if (ok) { SA.Quest.event('extract'); SA.Quest.event('blackbox', cnt('blackbox')); SA.Quest.event('lumbox', cnt('bb_lumina')); }
     SA.Quest.event('crystal', cnt('crystal'));
     SA.Quest.sync();
     SA.Main.showResult({ ok, brought, lost, value, overflow, time: R.t, kills: R.kills, graze: R.graze, corr: R.corr, ravenKilled: R.ravenKilled, pilot: R.player.pilot, rescued: rescuedMsgs, lostCaps, lostPart, ravenFled: R.ravenFled, repMsgs, mode, lostAll, recovered, giftPulse: R.giftPulse, emergency: R.emergency, partsIn, decoded: dec && dec.text, lumina: R.luminaRes });
