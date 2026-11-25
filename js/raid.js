@@ -909,7 +909,13 @@ SA.Raid = (() => {
     const A = R.arena; A.t += dt;
     const W = R.map.w, H = R.map.h;
     R.eb = R.eb.filter(b => b.x > -6 && b.y > -10 && b.x < W + 6 && b.y < H + 6);   // 아레나 밖으로 나간 탄은 바로 지운다
-    if (A.won) { A.winT -= rdt; if (A.winT <= 0) finish(true); }
+    if (A.won) {
+      if (A.talk) {   // 1막 엔딩 통신: Space로 한 줄씩 넘긴다. 다 끝나면 곧 귀환
+        if (SA.Input.hit('Space') && R.dialog && R.dialog.length) R.dialog.shift();
+        if (!R.dialog || !R.dialog.length) A.winT = Math.min(A.winT, 1.2);
+      }
+      A.winT -= rdt; if (A.winT <= 0) finish(true);
+    }
   };
   // 격추 → 바깥 맵을 되살리고 들어간 자리로 튕겨 나온다. 장착 부품 내구도 -35, 체력 50%. 이 판 균열은 닫힌다
   const riftFail = () => {
@@ -945,7 +951,7 @@ SA.Raid = (() => {
       say('serena', '처리했나. 기록은 왕국으로 넘겨. 다른 데 흘리면 곤란해져.');
       say('mina', '…그 사람이에요. 제가 고치던 기체의.');
       say('dan', '…균열이 하나뿐이면 좋겠군.');
-      R.arena.winT = 17;
+      R.arena.winT = 17; R.arena.talk = true;
     }
     C().fx(R, e.x, e.y, 120, '#ffe9a8', 260, 1.2, 2.5);
     SA.Save.store(prof);

@@ -637,7 +637,7 @@ SA.Render = (() => {
       }
       T(ctx, c.name, bx + bw, by + 22, c.last ? '#ffb347' : '#d9b8ff', 12, 'right');
     }
-    if (A.won) T(ctx, '성운 나방 루미나 격추', W / 2, H * 0.36, '#ffe9a8', 24, 'center');
+    if (A.won) { T(ctx, '성운 나방 루미나 격추', W / 2, H * 0.36, '#ffe9a8', 24, 'center'); if (A.talk && R.dialog && R.dialog.length) T(ctx, 'Space: 다음', W / 2, H * 0.36 + 26, '#8f9bb8', 12, 'center'); }
   };
   const drawHUD = (ctx, R, camX, camY) => {
     const P = R.player, W = ctx.canvas.width, H = ctx.canvas.height, Zw = R.zoom || Z;
