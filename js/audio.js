@@ -158,7 +158,7 @@ SA.Audio = (() => {
     lumina: { url: 'assets/bgm_lumina.mp3', loopA: 60.05, loopB: 120.05, gain: 0.5 },   // 136BPM, 34마디(드롭) 지점부터 후반부 반복. gain은 합성 곡과 음량 맞춤
   };
   const fbuf = {}, floading = {};
-  let fsrc = null, fg = null;
+  let fsrc = null, fg = null, fname = null, fst = 0;   // fname·fst: 지금 재생 중인 받은 곡 이름과 시작 시각 (박자 맞추기용)
   const loadFile = (name) => {
     if (!FILES[name] || !ctx) return Promise.resolve(null);
     if (fbuf[name]) return Promise.resolve(fbuf[name]);
@@ -170,7 +170,7 @@ SA.Audio = (() => {
   };
   const stopFile = (fade) => {
     if (!fsrc) return;
-    const s = fsrc, g = fg, t = ctx.currentTime; fsrc = fg = null;
+    const s = fsrc, g = fg, t = ctx.currentTime; fsrc = fg = null; fname = null;
     try { g.gain.cancelScheduledValues(t); g.gain.setValueAtTime(g.gain.value, t); g.gain.setTargetAtTime(0, t, fade / 4); s.stop(t + fade + 0.1); } catch (e) {}
   };
   const startFile = (name) => {
@@ -179,9 +179,11 @@ SA.Audio = (() => {
     s.buffer = buf; s.loop = true; s.loopStart = f.loopA; s.loopEnd = f.loopB;
     g.gain.setValueAtTime(0.0001, t); g.gain.linearRampToValueAtTime(f.gain, t + 0.4);
     s.connect(g); g.connect(musicBus); s.start(t + 0.05, 0);
-    fsrc = s; fg = g;
+    fsrc = s; fg = g; fname = name; fst = t + 0.05;
   };
   const preload = (name) => { loadFile(name); };   // 균열이 생기는 순간 미리 읽어 둔다
+  // 받은 곡이 시작된 뒤 흐른 시간(초, 반복 구간에서도 되감지 않는다). 그 곡이 재생 중이 아니면 null → 보스 패턴은 게임 시간으로 박자를 센다
+  const musicTime = (name) => (fsrc && ctx && fname === name ? Math.max(0, ctx.currentTime - fst) : null);
   const tick = () => {
     if (!ctx || !track || !TR[track]) return;
     const tr = TR[track], sp = 60 / tr.bpm / 4;
@@ -260,5 +262,5 @@ SA.Audio = (() => {
     return btoa(bin);
   };
 
-  return { init, sfx, play, stop, preload, setVolumes, setCorrosion, stream, capStart, capStop, renderLog, get track() { return track; } };
+  return { init, sfx, play, stop, preload, musicTime, setVolumes, setCorrosion, stream, capStart, capStop, renderLog, get track() { return track; } };
 })();

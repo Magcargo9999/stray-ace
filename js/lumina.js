@@ -1,6 +1,7 @@
 // 1막 최종 보스 「성운 나방 루미나」: 균열 아레나 안에서만 나온다.
 // 동방식: 루미나는 위, 기체는 아래. 페이즈마다 체력바가 새로 차고, 패턴 이름이 뜬다.
 // 3페이즈 + 마지막 발악(무적, 30초 버티기). 수치는 SA.RIFT (전부 임시).
+// v0.92 리듬 리워크: 모든 탄을 보스곡 박자(136BPM)에 맞춰 쏜다. 8마디 한 바퀴(7마디 + 쉬며 자리 이동 1마디), 바퀴마다 단계가 오른다.
 // 탄 간격 원칙 (사양서 0장): 탄 사이 통과 폭 ≥ 기체 판정 + 탄 판정 ×2 + 여유 6px. 느린 큰 구슬은 피할 길이 항상 남게.
 SA.Lumina = (() => {
   const U = SA.U, C = () => SA.Combat;
@@ -11,16 +12,30 @@ SA.Lumina = (() => {
     { name: '「타오르는 날개」', last: true },
   ];
 
+  // ── 박자 (v0.92 리듬 리워크, 수치 임시) ──
+  // 보스곡 136BPM에 맞춰 쏜다. 시계는 보스곡 재생 시각(SA.Audio.musicTime), 곡이 없으면 아레나 시간.
+  // 박자 단위: 1박 = 60/136초, 32분음표(1/8박)마다 한 번 확인한다. 4박 = 1마디.
+  // 페이즈는 마디 머리에서 시작하고, 8마디(32박, 약 14초)가 한 바퀴: 7마디 쏘고 마지막 1마디는 쉬면서 자리를 옮긴다.
+  // 바퀴가 지날 때마다 단계가 오른다: 0 가르치기 → 1 기본 → 2 → 3 (최대). 한 번 이긴 뒤 다시 만나면 1단계부터.
+  const BEAT = 60 / 136, CYC = 32, REST = 28;          // 한 바퀴 32박, 28박째부터 쉼
+  const SPOT = [150, 95, 205, 150];                      // 쉬는 마디마다 옮겨 갈 자리 (x)
+  const clock = (R) => {
+    const m = SA.Audio.musicTime ? SA.Audio.musicTime('lumina') : null;
+    return (m != null ? m : R.arena.t) - (SA.RIFT.beatOff || 0);   // beatOff: 곡 첫 박 위치 보정 (초, 해 보고 맞춘다)
+  };
+
   const init = (R, e) => {
     e.ph = -1; e.intro = 2.2; e.noHit = true; e.face = Math.PI / 2;
-    e.onZero = onZero;
+    e.onZero = onZero; e.tx = SA.RIFT.w / 2;
+    e.again = !!(SA.profile && SA.profile.lumina && SA.profile.lumina.wins > 0);
     R.arena.card = null; R.arena.bonus = 0; R.arena.hits = 0;
   };
 
   const start = (R, e, i) => {
     const RF = SA.RIFT, ph = PH[i];
     e.ph = i; e.pt = 0; e.gap = RF.gap; e.noHit = true;
-    e.k1 = 0; e.k2 = 0; e.k3 = 0; e.v = 0; e.sa = 0;
+    e.k1 = 0; e.k2 = 0; e.k3 = 0; e.v = 0; e.sa = 0; e.n = 0;
+    e.t0 = null; e.last32 = null; e.warn = [];
     e.hp = e.maxHp = ph.last ? 1 : RF.hp[i];
     e.hits0 = R.arena.hits;
     R.arena.card = { name: ph.name, t: 0, last: !!ph.last };
@@ -54,6 +69,92 @@ SA.Lumina = (() => {
     C().damageEnemy(R, e, 99);
   };
 
+  // 32분음표 한 칸마다 부른다. q = 페이즈 시작부터 센 32분음표 번호
+  const step = (R, e, q) => {
+    const W = SA.RIFT.w, H = SA.RIFT.h, P = R.player, S = C(), eb = S.eb, fan = S.fan, ring = S.ring;
+    const beat = q >> 3, sub = q & 7, onBeat = sub === 0, on8 = (sub & 3) === 0, on16 = (sub & 1) === 0;
+    const cyc = Math.floor(beat / CYC), cb = beat % CYC;           // 몇 번째 바퀴, 바퀴 안 몇 번째 박
+    const lv = Math.min(3, cyc + (e.again ? 1 : 0));               // 단계 0~3
+    const last = PH[e.ph].last;
+    // 쉬는 마디: 쏘지 않고 다음 자리로 옮긴다 (발악은 쉬지 않고 가운데)
+    if (!last && cb >= REST) { if (cb === REST && onBeat) e.tx = SPOT[(cyc + 1) % SPOT.length]; return; }
+    switch (e.ph) {
+      case 0: {   // 인광의 비: 2박마다 날개 부채꼴(0~1단계는 한쪽씩 번갈아, 2단계부터 양쪽) + 8분음표마다 가루
+        if (onBeat && beat % 2 === 0) {
+          e.v++;
+          const sw = Math.sin(e.v * 0.7) * 0.35, alt = e.v % 2 ? -1 : 1;
+          const sides = lv >= 2 ? [-1, 1] : [alt];
+          const n = lv >= 3 && beat % 4 === 0 ? 9 : 7;              // 3단계: 마디 첫 박은 9갈래
+          for (const side of sides) {
+            const wx = e.x + side * 38, wy = e.y + 6;
+            fan(R, wx, wy, U.ang(wx, wy, P.x, P.y) + side * sw, n, n === 9 ? 1.15 : 0.95, 92, { r: 3, col: side < 0 ? '#ffd98a' : '#ffb3e6' });
+          }
+          SA.Audio.sfx('enemyShot');
+        }
+        if (lv >= 1 ? on8 : onBeat) {                            // 가르치기 단계는 가루를 박마다 (적게)
+          const k = lv >= 3 ? 2 : 1;
+          for (let i = 0; i < k; i++) eb(R, U.rnd(8, W - 8), -4, Math.PI / 2 + U.rnd(-0.15, 0.15), U.rnd(40, 62), { r: 2.5, col: '#fff3c4', turn: U.rnd(-0.25, 0.25), life: 9 });
+        }
+        break;
+      }
+      case 1: {   // 두 개의 눈: 마디의 1~3박은 서로 반대로 도는 나선, 4박째는 나선을 멈추고 큰 구슬 고리 (부르고 대답하기)
+        if (beat % 4 !== 3) {
+          if (on16) {
+            e.sa += 0.2;
+            const lx = e.x - 34, rx = e.x + 34, y = e.y + 12;
+            for (let arm = 0; arm < 2; arm++) {
+              eb(R, lx, y, e.sa + arm * Math.PI, 72, { r: 3.2, col: '#8fe9ff' });
+              if (lv >= 1) eb(R, rx, y, Math.PI - e.sa + arm * Math.PI, 72, { r: 3.2, col: '#ff9de2' });
+            }
+          }
+        } else if (onBeat) {
+          const every2 = lv <= 1;                                   // 0~1단계: 2마디마다, 2단계부터 마디마다
+          if (!every2 || beat % 8 === 7) {
+            const n = lv === 2 ? 12 : 16;
+            e.n++; ring(R, e.x, e.y + 8, n, 48, (e.n % 2) * Math.PI / n + e.n * 0.07, { r: 6, col: '#ffe9a8' });
+            SA.Audio.sfx('enemyShot');
+          }
+        }
+        break;
+      }
+      case 2: {   // 은빛 실타래: 2박마다 처음 0.33초(32분음표 6칸) 동안 휘는 탄줄 + 6박마다 느린 큰 구슬
+        e.k3 += 0.25 * BEAT / 8;
+        if (beat % 2 === 0 && sub < 6) {
+          const k = lv === 0 ? 4 : 6;
+          for (let i = 0; i < k; i++) eb(R, e.x, e.y + 8, e.k3 + i * Math.PI * 2 / k, 80, { r: 2.8, col: '#e8eefc', turn: i % 2 ? 0.55 : -0.55 });
+        }
+        if (onBeat && cb % 6 === 0) {                               // 바퀴 안 0·6·12·18·24박
+          e.n++;
+          const aP = U.ang(e.x, e.y, P.x, P.y), n = lv >= 3 && e.n % 2 === 0 ? 4 : 3;   // 3단계: 3발·4발 번갈아 (홀짝)
+          fan(R, e.x, e.y + 10, aP, n, n === 4 ? 1.2 : 0.9, 38, { r: 9, col: '#c9d6ff', dmg: 14 });
+          SA.Audio.sfx('enemyShot');
+        }
+        if (lv >= 2 && onBeat && cb % 6 === 4) {                    // 2단계부터: 2박 뒤 아래 벽에서 구슬 하나가 올라온다. 지금 예고 원
+          const wx = Math.max(20, Math.min(W - 20, P.x));
+          e.warn.push({ x: wx, at: q + 16 });
+          R.rings.push({ x: wx, y: H - 6, r: 4, max: 22, life: 2 * BEAT, col: '#c9d6ff' });
+        }
+        for (const w of e.warn) if (w.at === q) eb(R, w.x, H + 4, -Math.PI / 2, 38, { r: 9, col: '#c9d6ff', dmg: 14 });
+        e.warn = e.warn.filter(w => w.at > q);
+        break;
+      }
+      case 3: {   // 타오르는 날개: 무적. 16분음표마다 대칭 나선(점점 빨라진다), 2마디마다 마지막 박은 쉼 + 8분음표마다 불씨
+        const s = Math.min(1, e.pt / SA.RIFT.lastT);
+        if (on16 && beat % 8 !== 7) {
+          e.sa += 0.19 + 0.03 * s;
+          for (let k = 0; k < 3; k++) {
+            const a = e.sa + k * Math.PI * 2 / 3;
+            eb(R, e.x, e.y + 10, a, 70 + 25 * s, { r: 3, col: '#ffb347' });
+            eb(R, e.x, e.y + 10, Math.PI - a, 70 + 25 * s, { r: 3, col: '#ff8a3d' });
+          }
+        }
+        if (on8) { const k = SA.RIFT.lastT - e.pt < 10 ? 2 : 1; for (let i = 0; i < k; i++) eb(R, U.rnd(8, W - 8), -4, Math.PI / 2 + U.rnd(-0.1, 0.1), U.rnd(55, 90), { r: 2.6, col: '#ff8a3d', turn: U.rnd(-0.3, 0.3), life: 9 }); }
+        if (onBeat && beat % 4 === 0) R.rings.push({ x: e.x, y: e.y, r: 20, max: 70, life: 0.35, col: '#ffb347' });   // 마디 첫 박: 빛 고리 (탄 아님)
+        break;
+      }
+    }
+  };
+
   const update = (R, e, dt, aP) => {
     const W = SA.RIFT.w, P = R.player, A = R.arena;
     if (!A) return;
@@ -64,78 +165,23 @@ SA.Lumina = (() => {
       e.intro -= dt; if (e.intro <= 0) start(R, e, 0);
       return;
     }
-    // 위쪽에서 천천히 좌우로 떠다닌다 (발악 때는 가운데)
-    const last = PH[e.ph].last, sway = last ? 0 : [40, 26, 34][e.ph];
-    const tx = W / 2 + Math.sin(A.t * 0.5) * sway, ty = 70 + Math.sin(A.t * 1.3) * 6;
-    e.x += (tx - e.x) * Math.min(1, 2 * dt); e.y += (ty - e.y) * Math.min(1, 2 * dt);
+    // 정한 자리(e.tx) 둘레에서 살짝 떠다닌다 (발악 때는 가운데)
+    const last = PH[e.ph].last;
+    if (last) e.tx = W / 2;
+    const tx = e.tx + Math.sin(A.t * 0.5) * (last ? 0 : 8), ty = 70 + Math.sin(A.t * 1.3) * 6;
+    e.x += (tx - e.x) * Math.min(1, 1.6 * dt); e.y += (ty - e.y) * Math.min(1, 2 * dt);
     if (e.gap > 0) { e.gap -= dt; if (e.gap <= 0) e.noHit = !!last; return; }
+    // 페이즈 시작을 다음 마디 머리에 맞춘다 (최대 1마디 기다림)
+    const q32 = Math.floor(clock(R) / BEAT * 8);
+    if (e.t0 === null) { e.t0 = Math.ceil(q32 / 32) * 32; e.last32 = e.t0 - 1; }
+    if (q32 < e.t0) return;
     e.pt += dt;
     const limit = last ? SA.RIFT.lastT : SA.RIFT.phaseT;
     if (e.pt >= limit) { if (last) win(R, e); else end(R, e, false); return; }
     if (P.dead) return;
-    const S = C(), eb = S.eb, fan = S.fan, ring = S.ring;
-    switch (e.ph) {
-      case 0: {   // 인광의 비: 양 날개에서 좌우 대칭 부채꼴 + 위에서 흩날리는 가루
-        e.k1 += dt;
-        if (e.k1 > 1.0) {
-          e.k1 = 0; e.v++;
-          const sw = Math.sin(e.v * 0.7) * 0.35;
-          for (const side of [-1, 1]) {
-            const wx = e.x + side * 38, wy = e.y + 6;
-            fan(R, wx, wy, U.ang(wx, wy, P.x, P.y) + side * sw, 7, 0.95, 92, { r: 3, col: side < 0 ? '#ffd98a' : '#ffb3e6' });
-          }
-          SA.Audio.sfx('enemyShot');
-        }
-        e.k2 += dt;
-        while (e.k2 > 0.14) { e.k2 -= 0.14; eb(R, U.rnd(8, W - 8), -4, Math.PI / 2 + U.rnd(-0.15, 0.15), U.rnd(40, 62), { r: 2.5, col: '#fff3c4', turn: U.rnd(-0.25, 0.25), life: 9 }); }
-        break;
-      }
-      case 1: {   // 두 개의 눈: 날개의 눈 무늬 두 곳에서 서로 반대로 도는 나선 + 가끔 큰 고리
-        e.k1 += dt;
-        while (e.k1 > 0.1) {
-          e.k1 -= 0.1; e.sa += 0.23;
-          const lx = e.x - 34, rx = e.x + 34, y = e.y + 12;
-          for (let arm = 0; arm < 2; arm++) {
-            eb(R, lx, y, e.sa + arm * Math.PI, 72, { r: 3.2, col: '#8fe9ff' });
-            eb(R, rx, y, Math.PI - e.sa + arm * Math.PI, 72, { r: 3.2, col: '#ff9de2' });
-          }
-        }
-        e.k2 += dt;
-        if (e.k2 > 3.2) { e.k2 = 0; ring(R, e.x, e.y + 8, 16, 48, Math.random(), { r: 6, col: '#ffe9a8' }); SA.Audio.sfx('enemyShot'); }
-        break;
-      }
-      case 2: {   // 은빛 실타래: 휘어 들어오는 끊긴 탄줄 6가닥(서로 반대로 휜다) + 느린 큰 구슬
-        e.k3 += dt * 0.25;
-        e.k1 += dt;
-        const cyc = e.k1 % 0.9;
-        if (cyc < 0.36) {
-          e.k2 += dt;
-          while (e.k2 > 0.06) {
-            e.k2 -= 0.06;
-            for (let i = 0; i < 6; i++) eb(R, e.x, e.y + 8, e.k3 + i * Math.PI / 3, 80, { r: 2.8, col: '#e8eefc', turn: i % 2 ? 0.55 : -0.55 });
-          }
-        } else e.k2 = 0;
-        e.v += dt;
-        if (e.v > 2.6) { e.v = 0; fan(R, e.x, e.y + 10, aP, 3, 0.9, 38, { r: 9, col: '#c9d6ff', dmg: 14 }); SA.Audio.sfx('enemyShot'); }
-        break;
-      }
-      case 3: {   // 타오르는 날개: 무적. 대칭 나선(점점 빨라진다) + 위에서 떨어지는 불씨
-        const s = Math.min(1, e.pt / SA.RIFT.lastT);
-        e.k1 += dt;
-        while (e.k1 > 0.1) {
-          e.k1 -= 0.1; e.sa += 0.19 + 0.06 * s;
-          for (let k = 0; k < 3; k++) {
-            const a = e.sa + k * Math.PI * 2 / 3;
-            eb(R, e.x, e.y + 10, a, 70 + 30 * s, { r: 3, col: '#ffb347' });
-            eb(R, e.x, e.y + 10, Math.PI - a, 70 + 30 * s, { r: 3, col: '#ff7a5c' });
-          }
-        }
-        e.k2 += dt;
-        while (e.k2 > 0.16) { e.k2 -= 0.16; eb(R, U.rnd(8, W - 8), -4, Math.PI / 2 + U.rnd(-0.1, 0.1), U.rnd(55, 90), { r: 2.6, col: '#ff5d3a', turn: U.rnd(-0.3, 0.3), life: 9 }); }
-        if (Math.random() < 0.3) S.fx(R, e.x + U.rnd(-50, 50), e.y + U.rnd(-20, 20), 1, '#ffb347', 40, 0.5, 1.5);
-        break;
-      }
-    }
+    // 지나간 32분음표 칸을 차례로 처리 (멈췄다 돌아오면 밀린 칸은 버리고 지금 칸부터)
+    if (q32 - e.last32 > 8) e.last32 = q32 - 1;
+    while (e.last32 < q32) { e.last32++; step(R, e, e.last32 - e.t0); }
   };
 
   // 남은 시간 (HUD)
