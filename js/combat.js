@@ -604,6 +604,7 @@ SA.Combat = (() => {
       if (e.pullT > 0) { e.pullT -= dt; e.x += (e.pullX - e.x) * Math.min(1, 14 * dt); e.y += (e.pullY - e.y) * Math.min(1, 14 * dt); }
       if (e.stun > 0) { e.stun -= dt; e.vx *= 0.9; e.vy *= 0.9; e.x += e.vx * dt; e.y += e.vy * dt; pushOutAsteroids(R, e, e.r); continue; }
       e.t += dt;
+      if (e.awake) e.wakeT = (e.wakeT || 0) + dt;   // 깨어난 뒤 시간: 첫 사격 지연(0.5초)에 쓴다 — 화면·시야와 무관
       const T = e.tgt && !e.tgt.dead ? e.tgt : P;   // 수송선·윙맨을 노리는 적은 그쪽을 조준한다
       const aP = U.ang(e.x, e.y, T.x, T.y);
       if (T !== P) dist = Math.sqrt(U.d2(e.x, e.y, T.x, T.y));
@@ -617,7 +618,7 @@ SA.Combat = (() => {
           const tx = Math.cos(aP) * want + Math.cos(aP + Math.PI / 2) * e.dir * 0.7;
           const ty = Math.sin(aP) * want + Math.sin(aP + Math.PI / 2) * e.dir * 0.7;
           e.vx += (tx * D.speed - e.vx) * Math.min(1, 3 * dt); e.vy += (ty * D.speed - e.vy) * Math.min(1, 3 * dt);
-          if (e.t > (emp ? 1.6 : 1.9) && alive && dist < 360) {
+          if (e.t > (emp ? 1.6 : 1.9) && alive && dist < 360 && e.wakeT > 0.5) {
             e.t = U.rnd(0, 0.4);
             if (emp) { e.burst = 3; e.burstT = 0; }                          // 제국: 빠른 3연사
             else fan(R, e.x, e.y, aP, 3, 0.42, 112, { col: '#ff8fb0' });      // 왕국: 3갈래 조준탄
@@ -632,19 +633,20 @@ SA.Combat = (() => {
           if (!e.awake) break;
           const want = dist > 240 ? 1 : dist < 170 ? -0.6 : 0;
           e.vx += (Math.cos(aP) * want * 38 - e.vx) * Math.min(1, dt); e.vy += (Math.sin(aP) * want * 38 - e.vy) * Math.min(1, dt);
-          if (e.t > 2.7 && alive && dist < 420) {
+          if (e.t > 2.7 && alive && dist < 420 && e.wakeT > 0.5) {
             e.t = 0; e.a = (e.a + 1) % 2;
             if (emp) { for (let k = 0; k < 3; k++) ring(R, e.x, e.y, 10, 70 + k * 14, e.a * 0.3 + k * 0.1, { r: 3.5, col: '#ff5d6d' }); }   // 제국: 겹친 고리
             else ring(R, e.x, e.y, 18, 78, e.a * Math.PI / 18, { r: 4, col: '#ff7a9c' });
             SA.Audio.sfx('enemyShot');
           }
           e.t2 += dt;
-          if (e.t2 > 4.3 && alive && dist < 420) { e.t2 = 0; e.burst = 3; e.burstT = 0; }
+          if (e.t2 > 4.3 && alive && dist < 420 && e.wakeT > 0.5) { e.t2 = 0; e.burst = 3; e.burstT = 0; }
           if (e.burst > 0 && (e.burstT -= dt) <= 0) { e.burst--; e.burstT = 0.18; eb(R, e.x, e.y, aP, 105, { r: 6, dmg: 16, col: '#ff4d6d' }); }
           break;
         }
         case 'turret': {
           if (dist > 330 || !alive) { e.t = 0; break; }
+          if (e.t < 0.5) break;            // 사거리에 들어온 직후 0.5초는 쏘지 않는다 (거리 기준, 시야와 무관)
           const cyc = e.t % 4.5;
           if (emp) {                       // 제국 쌍포대: 플레이어를 노리고 두 줄 연사
             e.a += U.clamp(U.angDiff(e.a, aP), -2 * dt, 2 * dt);
@@ -652,7 +654,7 @@ SA.Combat = (() => {
             if (cyc < 2.5) while (e.t2 > 0.16) { e.t2 -= 0.16; for (const s of [-1, 1]) eb(R, e.x + Math.cos(e.a + 1.57) * 3 * s, e.y + Math.sin(e.a + 1.57) * 3 * s, e.a, 120, { r: 3, col: '#ff4d6d' }); }
           } else if (D.faction === 'mine') {   // 폐광 포대: 느린 4갈래 회전 + 주기마다 조준 3연발
             e.t2 += dt;
-            if (cyc < 3) while (e.t2 > 0.16) { e.t2 -= 0.16; e.a += 0.17 * e.dir; for (let k = 0; k < 4; k++) eb(R, e.x, e.y, e.a + k * 1.5708, 70, { r: 3.5, col: '#ffcf6b' }); }
+            if (cyc < 3) while (e.t2 > 0.16) { e.t2 -= 0.16; e.a += 0.14 * e.dir; for (let k = 0; k < 4; k++) eb(R, e.x, e.y, e.a + k * 1.5708, 70, { r: 3.5, col: '#ffcf6b' }); }
             else if (cyc > 3.6 && e.t2 > 0.3) { e.t2 = 0; eb(R, e.x, e.y, aP, 110, { r: 5, dmg: 16, col: '#ffb040' }); }
           } else if (cyc < 3) {            // 왕국 포대: 회전 나선
             e.t2 += dt;
@@ -662,11 +664,19 @@ SA.Combat = (() => {
         }
         case 'corrode': {
           const D0 = SA.ENEMIES.corrode;
+          e.nearT = dist < 240 ? (e.nearT || 0) + dt : 0;   // 사거리에 들어온 뒤 시간 (거리 기준)
           e.lungeCd = (e.lungeCd || U.rnd(1, 3)) - dt;
-          if (e.lungeT > 0) e.lungeT -= dt;   // 돌진 중에는 방향 유지
-          else if (e.lungeCd <= 0 && dist < 150 && alive) { e.lungeCd = 3.5; e.lungeT = 0.35; e.vx = Math.cos(aP) * 230; e.vy = Math.sin(aP) * 230; }
+          const stopTo = (k) => { e.vx += (0 - e.vx) * Math.min(1, k * dt); e.vy += (0 - e.vy) * Math.min(1, k * dt); };
+          if (e.windT > 0) {                  // 돌진 예고: 멈추고 떨린다. 마지막 0.2초는 방향을 고정
+            e.windT -= dt; stopTo(14);
+            if (e.windT > 0.2) e.lungeA = aP;
+            if (e.windT <= 0) { e.lungeT = 0.35; e.recT = 0.8; e.vx = Math.cos(e.lungeA) * 230; e.vy = Math.sin(e.lungeA) * 230; }
+          }
+          else if (e.lungeT > 0) e.lungeT -= dt;   // 돌진 중에는 방향 유지
+          else if (e.recT > 0) { e.recT -= dt; stopTo(6); }   // 돌진 뒤 회복: 제자리 (반격할 틈)
+          else if (e.lungeCd <= 0 && dist < 150 && alive) { e.lungeCd = 3.5; e.windT = 0.6; e.lungeA = aP; }
           else { e.vx += (Math.cos(aP) * D0.speed - e.vx) * Math.min(1, 2 * dt); e.vy += (Math.sin(aP) * D0.speed - e.vy) * Math.min(1, 2 * dt); }
-          if (e.t > 2.4 && dist < 240 && alive) { e.t = 0; ring(R, e.x, e.y, 8, 62, Math.random(), { r: 4, col: '#c9a2ff' }); }
+          if (e.t > 2.4 && dist < 240 && alive && e.nearT > 0.5 && !(e.windT > 0)) { e.t = 0; ring(R, e.x, e.y, 8, 62, Math.random(), { r: 4, col: '#c9a2ff' }); }
           if (dist < e.r + SA.CFG.BODY_PAD) hurtPlayer(R, 14);
           break;
         }

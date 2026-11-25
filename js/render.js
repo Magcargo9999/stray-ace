@@ -290,6 +290,15 @@ SA.Render = (() => {
     if (P.odT > 0) { ctx.strokeStyle = `rgba(255,77,109,${0.4 + 0.3 * Math.sin(R.t * 20)})`; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(P.x, P.y, 20, 0, 6.29); ctx.stroke(); }
     for (const f of R.fx) { ctx.globalAlpha = Math.max(0, f.life / f.max); ctx.fillStyle = f.col; ctx.fillRect(f.x - f.size / 2, f.y - f.size / 2, f.size, f.size); }
     ctx.globalAlpha = 1;
+    for (const f of R.lostFx || []) {   // 격추: 실은 화물이 흩어져 날아간다
+      const d = SA.ITEMS[f.id]; if (!d) continue;
+      const w = d.w * 8, h = d.h * 8, k = Math.max(0, f.life / f.max);
+      ctx.save(); ctx.translate(f.x, f.y); ctx.rotate(f.rot); ctx.globalAlpha = Math.min(1, k * 1.6);
+      ctx.fillStyle = '#ff6b6b'; ctx.globalAlpha *= 0.45; ctx.fillRect(-w / 2 - 2, -h / 2 - 2, w + 4, h + 4);
+      ctx.globalAlpha = Math.min(1, k * 1.6); ctx.imageSmoothingEnabled = false; ctx.drawImage(icon(f.id), -w / 2, -h / 2, w, h);
+      ctx.restore();
+    }
+    ctx.globalAlpha = 1;
     for (const r of R.rings) { ctx.globalAlpha = Math.max(0, r.life * 3); ctx.strokeStyle = r.col; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(r.x, r.y, r.r, 0, 6.29); ctx.stroke(); }
     ctx.globalAlpha = 1;
     for (const t of R.texts) { ctx.globalAlpha = Math.min(1, t.life * 2); label(ctx, t.s, t.x, t.y, t.col, 7); }
@@ -479,11 +488,19 @@ SA.Render = (() => {
     if (e.type === 'lumina') { SA.Lumina.draw(ctx, R, e); return; }
     const P = R.player, a = U.ang(e.x, e.y, P.x, P.y), fl = e.flash > 0;
     const D = SA.ENEMIES[e.type];
+    if (e.windT > 0) {   // 침식체 돌진 예고: 돌진 판정과 같은 폭의 반투명 띠 (판정 = 몸통 반지름 + 여유)
+      const k = 1 - e.windT / 0.6, la = e.lungeA || 0, hw = e.r + SA.CFG.BODY_PAD;
+      ctx.save(); ctx.lineCap = 'butt';
+      ctx.globalAlpha = 0.10 + 0.22 * k; ctx.strokeStyle = '#c9a2ff'; ctx.lineWidth = hw * 2;
+      ctx.beginPath(); ctx.moveTo(e.x, e.y); ctx.lineTo(e.x + Math.cos(la) * 90, e.y + Math.sin(la) * 90); ctx.stroke();
+      ctx.globalAlpha = 0.35 + 0.4 * k; ctx.lineWidth = 1; ctx.strokeStyle = '#ffffff'; ctx.stroke();
+      ctx.restore();
+    }
     let spr = D && pre['en_' + e.type];
     if (spr && D.anim) { const k = Math.floor(R.t * D.anim.fps + e.homeX) % D.anim.n; spr = (k && pre['en_' + e.type + '_' + k]) || spr; }   // 프레임 애니메이션
     if (spr) {   // 도트 적기: 기수가 위를 향한 그림을 진행 방향으로 돌린다
       const w = D.size[0], h = D.size[1], pv = D.pivot || [0.5, 0.5];
-      ctx.save(); ctx.translate(e.x, e.y); ctx.rotate((D.ai === 'turret' ? e.a : e.face) + Math.PI / 2);
+      ctx.save(); ctx.translate(e.x + (e.windT > 0 ? Math.sin(R.t * 90) * 1.4 : 0), e.y); ctx.rotate((D.ai === 'turret' ? e.a : e.face) + Math.PI / 2);
       if (e.inv > 0) ctx.globalAlpha = 0.5;
       if (e.type === 'corrode') { const pu = 1 + 0.05 * Math.sin(R.t * 5 + e.homeX); ctx.scale(pu, pu); }   // 침식체는 숨 쉬듯 맥동
       ctx.imageSmoothingEnabled = true;

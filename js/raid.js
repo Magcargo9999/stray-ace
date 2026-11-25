@@ -26,7 +26,7 @@ SA.Raid = (() => {
       t: 0, state: 'play', timeScale: 1, tabOpen: false, paused: false,
       map: { w: Math.round(SA.CFG.VIEW_W * m.sx * S), h: Math.round(SA.CFG.VIEW_H * m.sy * S), name: m.name },
       asteroids: [], astGrid: new Map(), nebulas: [], pois: [], extracts: [],
-      enemies: [], eb: [], pb: [], items: [], fx: [], texts: [], rings: [], after: [],
+      enemies: [], eb: [], pb: [], items: [], fx: [], texts: [], rings: [], after: [], lostFx: [],
       cargo: SA.Grid.make(ship.cargo[0], ship.cargo[1] + (hasP('cargo') ? 1 : 0)),
       secure: SA.Grid.make(SA.CFG.SECURE_W + (hasP('secure2') ? 1 : 0), SA.CFG.SECURE_H),
       bolts: [], beams: [], strikes: [], wells: [],
@@ -388,6 +388,8 @@ SA.Raid = (() => {
 
     for (const f of R.fx) { f.x += f.vx * dt; f.y += f.vy * dt; f.vx *= 0.94; f.vy *= 0.94; f.life -= dt; }
     R.fx = R.fx.filter(f => f.life > 0);
+    for (const f of R.lostFx) { f.life -= dt; f.x += f.vx * dt; f.y += f.vy * dt; f.vx *= 0.96; f.vy *= 0.96; f.rot += f.vr * dt; }   // 격추로 흩어지는 화물
+    R.lostFx = R.lostFx.filter(f => f.life > 0);
     if (R.fx.length > 900) R.fx.splice(0, R.fx.length - 900);
     for (const t of R.texts) { t.y -= 18 * dt; t.life -= dt; }
     R.texts = R.texts.filter(t => t.life > 0);
@@ -963,6 +965,10 @@ SA.Raid = (() => {
     if (R.arena && !R.arena.won) { riftFail(); return; }   // 균열 안에서 격추: 내구도를 잃고 튕겨 나온다
     R.state = 'dying'; R.deathT = 1.3; R.player.dead = true;
     SA.Audio.sfx('bigboom');
+    for (const it of (R.cargo.items || []).slice(0, 16)) {   // 실은 화물이 사방으로 흩어진다 (잃는다는 것이 눈에 보이게)
+      const a = Math.random() * 6.28, s = U.rnd(170, 300);
+      R.lostFx.push({ id: it.id, x: R.player.x, y: R.player.y, vx: Math.cos(a) * s, vy: Math.sin(a) * s, rot: 0, vr: U.rnd(-6, 6), life: 1.3, max: 1.3 });
+    }
     C().fx(R, R.player.x, R.player.y, 80, '#ffb347', 220, 0.9, 2);
     C().fx(R, R.player.x, R.player.y, 30, '#fff', 120, 0.5, 1.5);
     R.shake = 16;
