@@ -1,6 +1,6 @@
 ![STRAY//ACE](assets/thumbnail.png)
 
-# STRAY//ACE 프로토타입 v0.90
+# STRAY//ACE 프로토타입 v0.91
 
 바로 플레이: https://magcargo9999.github.io/stray-ace/
 

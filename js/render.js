@@ -637,7 +637,6 @@ SA.Render = (() => {
       }
       T(ctx, c.name, bx + bw, by + 22, c.last ? '#ffb347' : '#d9b8ff', 12, 'right');
     }
-    if (A.won) { T(ctx, '성운 나방 루미나 격추', W / 2, H * 0.36, '#ffe9a8', 24, 'center'); if (A.talk && R.dialog && R.dialog.length) T(ctx, 'Space: 다음', W / 2, H * 0.36 + 26, '#8f9bb8', 12, 'center'); }
   };
   const drawHUD = (ctx, R, camX, camY) => {
     const P = R.player, W = ctx.canvas.width, H = ctx.canvas.height, Zw = R.zoom || Z;
@@ -737,6 +736,10 @@ SA.Render = (() => {
     }
     // 보스 체력
     if (R.arena && R.boss && R.boss.type === 'lumina' && !R.boss.dead) drawLuminaHUD(ctx, R, W, H);
+    else if (R.arena && R.arena.won) {   // 격추 뒤에는 R.boss가 비므로 따로 그린다 (1막 엔딩 통신 안내 포함)
+      T(ctx, '성운 나방 루미나 격추', W / 2, H * 0.36, '#ffe9a8', 24, 'center');
+      if (R.arena.talk && R.dialog && R.dialog.length) T(ctx, 'Space: 다음', W / 2, H * 0.36 + 26, '#8f9bb8', 12, 'center');
+    }
     else if (R.boss && !R.boss.dead) {
       const b = R.boss, bw = 420, bx = W / 2 - bw / 2, by = 92;
       T(ctx, SA.ENEMIES[b.type].name, W / 2, by - 6, '#ff8fa3', 14, 'center');
