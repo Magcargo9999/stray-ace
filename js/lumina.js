@@ -125,8 +125,8 @@ SA.Lumina = (() => {
         }
         if (onBeat && cb % 6 === 0) {                               // 바퀴 안 0·6·12·18·24박
           e.n++;
-          const aP = U.ang(e.x, e.y, P.x, P.y), n = lv >= 3 && e.n % 2 === 0 ? 4 : 3;   // 3단계: 3발·4발 번갈아 (홀짝)
-          fan(R, e.x, e.y + 10, aP, n, n === 4 ? 1.2 : 0.9, 38, { r: 9, col: '#c9d6ff', dmg: 14 });
+          const aP = U.ang(e.x, e.y, P.x, P.y);   // 3발 고정 (홀짝 교대는 2막 보스용으로 아껴 둔다)
+          fan(R, e.x, e.y + 10, aP, 3, 0.9, 38, { r: 9, col: '#c9d6ff', dmg: 14 });
           SA.Audio.sfx('enemyShot');
         }
         if (lv >= 2 && onBeat && cb % 6 === 4) {                    // 2단계부터: 2박 뒤 아래 벽에서 구슬 하나가 올라온다. 지금 예고 원
