@@ -79,9 +79,9 @@ SA.Hangar = (() => {
     SA.Contracts.sync(); credits();
     const g = goalParts();
     const pl = SA.Need.pinLine();
-    $('#hg-goal').innerHTML = `<span class="k">목표</span>${g[0]}${g[1] ? `<div class="hint">${g[1]}</div>` : ''}${pl ? `<div class="pinl${pl[2] ? ' ok' : ''}"><span class="k">제작</span>${pl[0]} — ${pl[2] ? '재료 다 모았다, 작업대에서 제작' : pl[1]}</div>` : ''}`;
+    $('#hg-goal').innerHTML = `<span class="k">${SA.Quest.tag()}</span>${g[0]}${g[1] ? `<div class="hint">${g[1]}</div>` : ''}${pl ? `<div class="pinl${pl[2] ? ' ok' : ''}"><span class="k">제작</span>${pl[0]} — ${pl[2] ? '재료 다 모았다, 작업대에서 제작' : pl[1]}</div>` : ''}`;
     document.querySelectorAll('#hg-bar .hb').forEach(b => b.classList.toggle('alert', !!(SA.HGUI.barAlerts && S().alerts()[b.dataset.p])));
-    tip($('#hg-goal'), () => `${SA.Quest.label()}${SA.Quest.rewardText()}<br><span class="dim">누르면 의뢰 게시판</span>`);
+    tip($('#hg-goal'), () => `${SA.Quest.label()}${SA.Quest.rewardText()}<br><br>${SA.Quest.listHtml()}<br><span class="dim">누르면 의뢰 게시판</span>`);
     document.querySelectorAll('#hg-bar .hb').forEach(b => { b.classList.toggle('lock', locked(b.dataset.p)); b.classList.toggle('on', b.dataset.p === panel); });
   };
   // 목표: 괄호 속 힌트(진행 숫자 말고)와 ' — ' 뒤 설명은 흐린 보조 줄로

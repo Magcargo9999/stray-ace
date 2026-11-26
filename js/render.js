@@ -841,8 +841,8 @@ SA.Render = (() => {
     T(ctx, fmtT(R.t), W / 2, gy + 50, '#8f9bb8', 12, 'center', false);
 
     // 메인 목표 한 줄 (좌상단)
-    const ql = R.arena ? '' : SA.Quest.label();   // 아레나에선 목표 줄을 숨긴다 (보스 체력바 자리)
-    if (ql) { ctx.fillStyle = 'rgba(8,10,18,0.6)'; ctx.font = 'bold 13px "Galmuri11", "Malgun Gothic", sans-serif'; const qw = ctx.measureText('목표  ' + ql).width; ctx.fillRect(14, 14, qw + 20, 26); T(ctx, '목표', 24, 32, '#8f9bb8', 13); T(ctx, ql, 60, 32, '#ffd166', 13); }
+    const ql = R.arena ? '' : SA.Quest.label().split(' — ')[0];   // 출격 중엔 설명(— 뒤)을 빼고 짧게   // 아레나에선 목표 줄을 숨긴다 (보스 체력바 자리)
+    if (ql) { ctx.fillStyle = 'rgba(8,10,18,0.6)'; ctx.font = 'bold 13px "Galmuri11", "Malgun Gothic", sans-serif'; const qt = SA.Quest.tag(), tw = ctx.measureText(qt + '  ').width, qw = ctx.measureText(qt + '  ' + ql).width; ctx.fillRect(14, 14, qw + 20, 26); T(ctx, qt, 24, 32, '#8f9bb8', 13); T(ctx, ql, 24 + tw, 32, '#ffd166', 13); }
     const pl = pinL;
     if (pl) { const t = `${pl[0]} — ${pl[2] ? '재료 다 모았다' : pl[1]}`; ctx.font = '12px "Galmuri11", "Malgun Gothic", sans-serif'; const pw = ctx.measureText('제작  ' + t).width; ctx.fillStyle = 'rgba(8,10,18,0.6)'; ctx.fillRect(14, 42, pw + 20, 20); T(ctx, '제작', 24, 56, '#8f9bb8', 12); T(ctx, t, 56, 56, pl[2] ? '#5dffb0' : '#ffd166', 12); }
     }

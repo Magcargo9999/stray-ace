@@ -433,3 +433,5 @@ h3 { margin: 6px 0 8px; font-size: 15px; color: #cfe3ff; } h4 { margin: 10px 0 6
 .sx-tabs { grid-column: 1 / -1; display: flex; gap: 6px; align-self: start; }
 .p-sortie #hg-body { grid-template-rows: auto 1fr; }
 .p-sortie.sx-parts #hg-body { display: flex; flex-direction: column; }
+
+.hg-goal.guide-hi { border-color: #ffd166; box-shadow: 0 0 0 2px rgba(255,209,102,.5), 0 0 18px rgba(255,209,102,.45); z-index: 50; }

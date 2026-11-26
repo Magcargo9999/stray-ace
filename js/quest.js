@@ -61,7 +61,19 @@ SA.Quest = (() => {
     return m;
   };
   const rewardText = () => { const { q } = cur(); return q && q.bp ? ` · 보상 설계도: ${SA.PARTS[q.bp].name}` : q && q.rescue ? ' · 보상: 테오 합류(작업대 강화 의뢰) + 강화 합금 2 · 양자 회로 1' : ''; };
-  return { event, label, rewardText, cur, sync, ravenCaught };
+  // 1막 진행: 몇 번째 단계인지 (actEnd 전까지가 한 막)
+  const prog = () => { const M = SA.STORY.main, end = M.findIndex(x => x.actEnd), i = (SA.profile.mq || {}).i || 0; return { n: Math.min(i + 1, end), total: end, done: i >= end }; };
+  const tag = () => { const g = prog(); return g.done ? '메인 · 1막 완료' : `메인 1막 · ${g.n}/${g.total}`; };
+  // 마우스 올리면 뜨는 1막 단계 목록 (끝낸 것 ✓ · 지금 강조 · 마지막은 보스)
+  const listHtml = () => {
+    const M = SA.STORY.main, end = M.findIndex(x => x.actEnd), i = (SA.profile.mq || {}).i || 0;
+    const short = (t) => t.replace(/\s*\([^)]*\)/g, '').split(' — ')[0];
+    return '<b>1막 메인 퀘스트</b><br>' + M.slice(0, end).map((x, k) => {
+      const nm = x.id === 'mL' ? '보스: 루미나 — 출격 맵의 보라색 균열' : short(x.text);
+      return k < i ? `<span class="dim">✓ ${k + 1}. ${nm}</span>` : k === i ? `<span style="color:#ffd166">▶ ${k + 1}. ${nm}</span>` : `<span style="color:#8f9bb8">· ${k + 1}. ${nm}</span>`;
+    }).join('<br>');
+  };
+  return { event, label, rewardText, cur, sync, ravenCaught, prog, tag, listHtml };
 })();
 
 // 조난 구조: 한 판 최대 1개의 신호. 누구를 구할지는 여기서 정한다.

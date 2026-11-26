@@ -490,16 +490,16 @@ SA.HangarScene = (() => {
   };
 
   // ── 첫 방문 안내: 장면이 어두워지고 한 곳만 밝다. 오스가 한 줄씩 ──
-  const GUIDE = ['rack', 'board', 'rack'];
+  const GUIDE = ['goal', 'rack', 'board', 'rack'];
   const startGuide = () => { guide = { i: 0, target: GUIDE[0] }; showGuideLine(); };
-  const showGuideLine = () => { say('os', SA.HG_LINES.guide[guide.i], [], 60000); if (bubble) bubble.el.classList.add('guide'); };
+  const showGuideLine = () => { const ge = document.getElementById('hg-goal'); if (ge) ge.classList.toggle('guide-hi', guide.target === 'goal'); say('os', SA.HG_LINES.guide[guide.i], [], 60000); if (bubble) bubble.el.classList.add('guide'); };
   const guideNext = () => {
     guide.i++;
-    if (guide.i >= GUIDE.length) { guide = null; hideBubble(); P().hgGuide = true; SA.Save.store(P()); return; }
+    if (guide.i >= GUIDE.length) { const ge = document.getElementById('hg-goal'); if (ge) ge.classList.remove('guide-hi'); guide = null; hideBubble(); P().hgGuide = true; SA.Save.store(P()); return; }
     guide.target = GUIDE[guide.i]; showGuideLine();
   };
   const drawGuide = () => {
-    const o = OBJ.find(x => x.id === guide.target), p = placed(o), os = OBJ.find(x => x.id === 'os');
+    const o = OBJ.find(x => x.id === guide.target), p = o && placed(o), os = OBJ.find(x => x.id === 'os');
     ctx.save(); ctx.fillStyle = 'rgba(5,7,13,0.72)'; ctx.beginPath(); ctx.rect(0, 0, W, H);
     if (p) { const cx = p.x + p.s.w / 2, cy = p.y + p.s.h / 2, rr = Math.max(p.s.w, p.s.h) * 0.62; ctx.moveTo(cx + rr, cy); ctx.arc(cx, cy, rr, 0, 6.29, true); }
     const r = npcRect(os); ctx.moveTo(r.x + 70, r.y - r.h / 2); ctx.arc(r.x, r.y - r.h / 2, 70, 0, 6.29, true);
