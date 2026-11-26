@@ -45,10 +45,10 @@ SA.ITEMS = {
   stardata: { name: '성구 데이터', w: 1, h: 1, val: 120, kind: 'data', tier: '일반', color: '#a8c8ff', desc: '사용: 이 구역의 지도를 한 번에 밝힌다 (소행성·장소 전부). 단축키 3.' },
   bb_reward: { name: '신호 블랙박스', w: 1, h: 1, val: 150, kind: 'lore', tier: '강화', color: '#ffb347', desc: '좌표가 남아 있는 블랙박스. 기지에서 해독하면 다음 출격 맵에 신호 지점이 뜬다.' },
   // 해독키: 필드에서 줍고 기지에서 보안해독기에 '등록'한다. 등록하면 사용 횟수가 생기고, 다 쓰면 상점에서 충전한다
-  key_box1: { name: '상자 해독키 (일반)', w: 1, h: 1, val: 80, kind: 'key', tier: '일반', code: 'box1', color: '#9fb3c8', desc: '일반 등급 잠긴 상자의 코드 칩. 기지에서 등록하면 보안해독기로 5번 연다.' },
-  key_box2: { name: '상자 해독키 (강화)', w: 1, h: 1, val: 220, kind: 'key', tier: '강화', code: 'box2', color: '#5dffb0', desc: '강화 등급 잠긴 상자의 코드 칩. 등록하면 3번. 2막 보급고에서 주로 쓰인다.' },
-  key_box3: { name: '상자 해독키 (행성)', w: 1, h: 1, val: 600, kind: 'key', tier: '행성', code: 'box3', color: '#ffd166', desc: '행성 등급 잠긴 상자의 코드 칩. 등록하면 1번. 3막의 금고 규격이다.' },
-  key_zone: { name: '왕국 산하 행성 해독키', w: 1, h: 1, val: 300, kind: 'key', tier: '강화', code: 'zone', color: '#8fb6ff', desc: '보안 구역 역장의 출입 코드. 어째서 이런 폐광 소행성대에 왕국 산하 행성의 해독키가…? 등록하면 3번.' },
+  key_box1: { name: '상자 해독키 (일반)', w: 1, h: 1, val: 80, kind: 'key', img: 'assets/i_key1.png', tier: '일반', code: 'box1', color: '#9fb3c8', desc: '일반 등급 잠긴 상자의 코드 칩. 기지에서 등록하면 보안해독기로 5번 연다.' },
+  key_box2: { name: '상자 해독키 (강화)', w: 1, h: 1, val: 220, kind: 'key', img: 'assets/i_key2.png', tier: '강화', code: 'box2', color: '#5dffb0', desc: '강화 등급 잠긴 상자의 코드 칩. 등록하면 3번. 2막 보급고에서 주로 쓰인다.' },
+  key_box3: { name: '상자 해독키 (행성)', w: 1, h: 1, val: 600, kind: 'key', img: 'assets/i_key3.png', tier: '행성', code: 'box3', color: '#ffd166', desc: '행성 등급 잠긴 상자의 코드 칩. 등록하면 1번. 3막의 금고 규격이다.' },
+  key_zone: { name: '왕국 산하 행성 해독키', w: 1, h: 1, val: 300, kind: 'key', img: 'assets/i_keyz.png', tier: '강화', code: 'zone', color: '#8fb6ff', desc: '보안 구역 역장의 출입 코드. 어째서 이런 폐광 소행성대에 왕국 산하 행성의 해독키가…? 등록하면 3번.' },
   // 동력원: 주무기 에너지. 장착 1개 + 예비는 화물칸. 기지에 돌아오면 무료로 가득 찬다. cap = 펄스건 연사 기준 초, dmg = 주무기 피해 배율 (임시)
   cell1:    { name: '동력원 (일반)', w: 1, h: 1, val: 60, kind: 'cell', img: 'assets/i_cell1.png', tier: '일반', cap: 90, dmg: 1.0, color: '#7fe3ff', desc: '주무기 에너지. 펄스건으로 약 90초. 피해 ×1.0. R로 교체. 쓴 만큼 줄어든 채 유지된다. 다 쓰면 분해하거나 판다.' },
   cell2:    { name: '동력원 (강화)', w: 1, h: 1, val: 180, kind: 'cell', img: 'assets/i_cell2.png', tier: '강화', cap: 150, dmg: 1.2, color: '#5dffb0', desc: '주무기 에너지. 펄스건으로 약 150초. 피해 ×1.2. R로 교체. 쓴 만큼 줄어든 채 유지된다. 다 쓰면 분해하거나 판다.' },
@@ -56,7 +56,7 @@ SA.ITEMS = {
   cell4:    { name: '동력원 (은하)', w: 1, h: 1, val: 900, kind: 'cell', img: 'assets/i_cell4.png', tier: '은하', cap: 330, dmg: 1.6, color: '#c08bff', desc: '주무기 에너지. 펄스건으로 약 330초. 피해 ×1.6. 심연 핵으로 만든다. R로 교체. 쓴 만큼 줄어든 채 유지된다. 다 쓰면 분해하거나 판다.' },
   // 보스 재료: 은하 각성에 들어간다 (보스마다 각성 규칙 1개)
   chip:     { name: '비행 기록 칩', w: 1, h: 1, val: 600, kind: 'umat', tier: '은하', color: '#ff8fb0', desc: '레이븐의 회피 기동이 통째로 기록된 칩. 은하 부품에 넣으면 스칠 때마다 위력이 오른다 (레이븐 각성).' },
-  lumdust:  { name: '루미나의 인분', w: 1, h: 1, val: 800, kind: 'umat', tier: '은하', color: '#ffe9a8', desc: '성운 나방 루미나의 날개에서 떨어진 빛가루. 은하 제작 「인광 날개 포탑」에 들어간다 (탄막이 짙을수록 강해진다).' },
+  lumdust:  { name: '루미나의 인분', w: 1, h: 1, val: 800, kind: 'umat', img: 'assets/i_lumdust.png', tier: '은하', color: '#ffe9a8', desc: '성운 나방 루미나의 날개에서 떨어진 빛가루. 은하 제작 「인광 날개 포탑」에 들어간다 (탄막이 짙을수록 강해진다).' },
   abyss:    { name: '심연 핵', w: 1, h: 1, val: 700, kind: 'umat', tier: '은하', color: '#a06bff', desc: '사냥꾼의 몸속에서 뛰던 것. 은하 부품에 넣으면 침식이 깊을수록 위력이 오른다 (심연 각성).' },
   flamecore: { name: '화염 코어', w: 1, h: 1, val: 450, kind: 'umat', tier: '은하', color: '#ff7a3d', desc: '제국 순양함 기관부의 과열 코어. 아직 뜨겁다. 은하 부품 재료.' },
   klens:    { name: '왕국 렌즈', w: 1, h: 1, val: 450, kind: 'umat', tier: '은하', color: '#8fd3ff', desc: '왕국 함선의 조준 렌즈. 빛을 한 줄로 모은다. 은하 부품 재료.' },
