@@ -1094,6 +1094,7 @@ SA.Raid = (() => {
   const useItem = (it, from) => {
     const R = SA.R, P = R.player;
     if (it.id === 'canister') { R.corr = Math.max(0, R.corr - 25); msg('정화 캐니스터 사용 — 침식 -25%', '#7ff0e0'); }
+    else if (it.id === 'accel') { R.corr = Math.min(100, R.corr + 25); msg('침식 촉진제 사용 — 침식 +25%', '#d58cff'); }
     else if (it.id === 'stardata') { R.fog.fill(1); for (const p of R.pois) p.seen = true; msg('성구 데이터 — 구역 지도가 모두 밝혀졌다 (M: 큰 지도)', '#a8c8ff', 4); }
     else if (it.id === 'repairkit') { if (P.hp >= P.maxHp) return false; P.hp = Math.min(P.maxHp, P.hp + 40); msg('수리킷 사용 — 체력 +40', '#9df07f'); }
     else return false;
@@ -1108,6 +1109,7 @@ SA.Raid = (() => {
     if (!it) { msg(`${nm}이(가) 없다`, '#ffb3b3', 1.5); SA.Audio.sfx('deny'); R.qf[q.id] = -0.35; return; }
     if (q.id === 'repairkit' && P.hp >= P.maxHp) { msg('체력이 가득 차 있다', '#ffb3b3', 1.5); SA.Audio.sfx('deny'); return; }
     if (q.id === 'canister' && R.corr <= 0) { msg('침식이 없다', '#ffb3b3', 1.5); SA.Audio.sfx('deny'); return; }
+    if (q.id === 'accel' && R.corr >= 100) { msg('이미 침식이 최대다', '#ffb3b3', 1.5); SA.Audio.sfx('deny'); return; }
     if (useItem(it, R.cargo)) R.qf[q.id] = 0.4;
   };
   const dropToSpace = (id, src) => {

@@ -36,6 +36,7 @@ SA.ITEMS = {
   bb_empire: { name: '블랙박스 (제국 순양함)', w: 1, h: 1, val: 150, kind: 'lore', img: 'assets/i_blackbox.png', color: '#ff8f3d', desc: '제국 순양함의 기록 장치. 함장의 보고서가 남아 있을지도.' },
   bb_hunter: { name: '블랙박스 (심연)', w: 1, h: 1, val: 250, kind: 'lore', img: 'assets/i_blackbox.png', color: '#8a5cff', desc: '사냥꾼의 몸속에 박혀 있던 기록 장치. 차갑다.' },
   bb_lumina: { name: '블랙박스 (기록 포드)', w: 1, h: 1, val: 250, kind: 'lore', img: 'assets/i_blackbox.png', color: '#ffe9a8', desc: '3년 전 왕국 함대에서 쏘아 보낸 기록 포드의 기록 장치. 결정 가루가 앉아 있다.' },
+  accel:    { name: '침식 촉진제', w: 1, h: 2, val: 260, kind: 'use', color: '#d58cff', desc: '사용: 침식률 +25%. 단축키 4. 침식 결정으로 만든다. 침식이 깊을수록 위험하지만 잔해에서 결정이 더 나온다.' },
   canister: { name: '정화 캐니스터', w: 1, h: 2, val: 70, kind: 'use', img: 'assets/i_canister.png', color: '#7ff0e0', desc: '사용: 침식률 -25%. 단축키 2.' },
   repairkit:{ name: '수리킷', w: 1, h: 1, val: 60, kind: 'use', img: 'assets/i_repairkit.png', color: '#9df07f', desc: '사용: 체력 40 회복 (단축키 1). Tab 화물칸에서 장착 부품에 끌어다 놓으면 그 부품 내구도 +40.' },
   // 상위 재료: 하위 재료 2~3개를 합성 (설계도 없이). 강화·행성 부품 제작에 들어간다 (임시)
@@ -340,6 +341,7 @@ SA.CRAFT = {
   cell3: { mats: { cell2: 1, scrap: 1, goldchip: 1, crystal: 1 } },
   cell4: { mats: { cell3: 1, scrap: 1, abyss: 1 } },
   repairkit: { mats: { scrap: 2, wire: 1 } },
+  accel:    { mats: { crystal: 1, wire: 1 } },
   alloy:    { mats: { scrap: 2, core: 1 } },
   fcore:    { mats: { core: 2, engine: 1 } },
   qcircuit: { mats: { goldchip: 1, prec: 1, crystal: 1 } },
@@ -408,7 +410,7 @@ for (const id in SA.PARTS) {
 }
 // 아이템 분류 이름
 // 레이드 소모품 단축키: 상단 숫자 1·2·3 = 숫자패드 1·2·3 (화물칸에서 알아서 찾아 쓴다)
-SA.QUICK = [{ n: 1, id: 'repairkit' }, { n: 2, id: 'canister' }, { n: 3, id: 'stardata' }];
+SA.QUICK = [{ n: 1, id: 'repairkit' }, { n: 2, id: 'canister' }, { n: 3, id: 'stardata' }, { n: 4, id: 'accel' }];
 SA.KIND_NAME = { mchip: '개조 칩', pbp: '행성 설계도', mat: '재료', umat: '상위 재료', cell: '동력원', use: '소모품', key: '해독키', lore: '정보', data: '정보', bp: '설계도', capsule: '구조', part: '부품', ticket: '고용권' };
 // 강화·행성 레시피에 상위 재료 추가 (한 번만)
 for (const id in SA.RECIPES) Object.assign(SA.RECIPES[id].mats, SA.UMAT_ADD(id));
@@ -609,7 +611,7 @@ SA.galCost = (gid) => { const g = SA.GALAXY[gid], b = SA.PARTS[g.base]; return {
 
 // ── 등급 색 단일 기준 (v0.70) ──
 // 재료·소모품·칩·설계도·부품 전부 등급이 있고, 색은 SA.TIER_COL 하나에서만 정한다. (이야기 아이템인 블랙박스·고용권·구조 캡슐은 등급 없이 자기 색)
-for (const id of ['scrap', 'wire', 'core', 'engine', 'debris', 'canister', 'repairkit']) SA.ITEMS[id].tier = '일반';
+for (const id of ['scrap', 'wire', 'core', 'engine', 'debris', 'canister', 'repairkit', 'accel']) SA.ITEMS[id].tier = '일반';
 for (const k of SA.CHIPS) SA.ITEMS['mc_' + k].tier = '일반';
 SA.TIER_SHORT = { 일반: '일', 강화: '강', 행성: '행', 은하: '은' };
 SA.itemTier = (id, it) => {
