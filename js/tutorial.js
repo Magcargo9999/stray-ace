@@ -140,16 +140,16 @@ SA.Tutorial = (() => {
       }
       case 4: {
         const w = T.wreck, f = T.f;
-        if (!w.done) T.goal = '잔해 위에 머물러 뒤지기 — 나온 것은 기체로 끌려와 화물칸에 들어간다';
+        if (!w.done) T.goal = '잔해 위에 머물러 뒤지기 — 나온 것은 바닥에 떨어진다';
         else if (!f.told) {
           f.told = true;
-          prompt(['Tab'], '화물칸 열기', () => R.tabOpen, '여는 동안 시간이 느려진다. 이동은 되지만 사격은 못 한다');
+          prompt(['Tab'], '화물칸 열기', () => R.tabOpen, '여는 동안 시간이 멈춘다 (침식만 흐른다). 「주변 바닥」에서 클릭해야 줍는다');
           msg('격추되면 화물칸은 날아간다. 보안 칸(2×2)에 넣은 것만 살아남는다 — 다 넣을 수는 없다. 가장 값진 것을 골라라', '#ffd166', 10);
         }
         if (w.done) {
           const n = R.secure.items.length;
-          if (!R.tabOpen && !n) T.goal = 'Tab — 화물칸 열기';
-          else if (R.tabOpen) T.goal = `좋은 것(양자 회로·설계도·부품)을 끌어서 보안 칸에 넣기 — 지금 ${n}개 · 다 됐으면 Tab으로 닫기`;
+          if (!R.tabOpen && !n) T.goal = 'Tab — 화물칸 열고 주변 바닥 아이템 줍기';
+          else if (R.tabOpen) T.goal = `바닥 아이템을 클릭해 줍고, 좋은 것(양자 회로·설계도·부품)을 끌어서 보안 칸에 넣기 — 지금 ${n}개 · 다 됐으면 Tab으로 닫기`;
           else T.goal = `보안 칸 ${n}개 — 더 넣으려면 Tab, 됐으면 그대로 출발`;
           if (n && !R.tabOpen) { T.n += rdt; if (T.n > 1.2) go(5); } else T.n = 0;
         }

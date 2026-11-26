@@ -9,10 +9,11 @@ SA.CFG = {
   GRAZE_R: 14,
   BULLET_HIT: 0.72,   // 적 탄의 피격 판정 = 보이는 반지름 × 이 값 (v0.79: 1 → 0.72, 동방식으로 그림보다 판정을 작게 · 임시). 스침 판정은 보이는 크기 그대로
   BODY_PAD: 2,        // 적 몸통에 닿아 입는 피해: 몸통 반지름 + 이 값 (v0.79: 5~6 → 2 · 임시)
-  TAB_TIMESCALE: 0.3,
+  TAB_TIMESCALE: 0,
   EXTRACT_TIME: 10,
   EXTRACT_R: 78,   // 탈출 원 반지름 (v0.69: 52 → 78, 안에서 피할 공간 확보 · 임시)
   MAGNET_R: 42,
+  DROP_LIFE: 3, DROP_LIFE_HI: 5,   // 버린 아이템이 바닥에 남는 초 (낮은 등급 / 높은 등급, 임시)
   SECURE_W: 2, SECURE_H: 2,
   STASH_W: 10, STASH_H: 14,
   MAX_ENEMY_BULLETS: 2600,
@@ -101,7 +102,7 @@ SA.PARTS = {
   discharge: { name: '스침 방전', slot: 'act', tier: '강화', val: 500, cd: 6, desc: '지난 사용 뒤 스친 횟수만큼 번개를 쏜다.' },
   timestop:{ name: '탄막 정지', slot: 'act', tier: '강화', val: 600, cd: 25, desc: '주변 적 탄이 2.5초 멈췄다가 느리게 움직인다.' },
   // 패시브
-  magnet:  { name: '자력 수집기', slot: 'pas', tier: '일반', val: 120, fx: 1.0, desc: '아이템 흡수 거리 +{0}%.' },
+  magnet:  { name: '자력 수집기', slot: 'pas', tier: '일반', val: 120, fx: 1.0, desc: 'Tab 창 「주변 바닥」에서 주울 수 있는 거리 +{0}%.' },
   cooler:  { name: '냉각기', slot: 'pas', tier: '일반', val: 160, fx: 0.15, desc: '주무기 연사 +{0}%.' },
   plating: { name: '차폐 장갑', slot: 'pas', tier: '일반', val: 160, fx: [0.2, 0.3], desc: '침식 상승 속도 -{0}%, 침식 디버프 -{1}% (연사·이속 감소, 내구도·체력 감소).' },
   engine2: { name: '추진 엔진', slot: 'pas', tier: '일반', val: 160, fx: 0.12, desc: '이동 속도 +{0}%.' },
@@ -255,7 +256,7 @@ SA.modsFor = (id) => { const d = SA.PARTS[id]; if (!d || !['main', 'sub', 'act']
 SA.randMod = (id) => { const l = SA.modsFor(id); return l.length ? l[Math.floor(Math.random() * l.length)] : null; };
 // 행성 전용 (패시브·관측): 행성으로 올리면 붙는다 (임시)
 Object.assign(SA.MODS, {
-  p_magnet: { slot: 'pas', only: ['magnet'], name: '흡수 공명', desc: '아이템을 흡수할 때마다 스침 스택 +1.' },
+  p_magnet: { slot: 'pas', only: ['magnet'], name: '흡수 공명', desc: '바닥에서 아이템을 주울 때마다 스침 스택 +1.' },
   p_cool:   { slot: 'pas', only: ['cooler'], name: '급속 교체', desc: '동력원 교체 시간 절반, 교체 직후 2초간 연사 +30%.' },
   p_plate:  { slot: 'pas', only: ['plating'], name: '장판 차단', desc: '침식 장판 위에서 피해를 받지 않는다.' },
   p_engine: { slot: 'pas', only: ['engine2'], name: '잔상 추진', desc: '스칠 때마다 1초간 이동 속도 +20%.' },

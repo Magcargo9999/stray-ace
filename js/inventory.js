@@ -34,7 +34,7 @@ SA.UI = (() => {
       n.addEventListener('mousedown', (e) => onItemDown(e, name, it));
       n.addEventListener('mouseenter', (e) => showTip(e, it.id, it.dur !== undefined ? `<br>내구도 ${it.dur}/${SA.LV_MAX[it.lv || 0]}` : SA.ITEMS[it.id].kind === 'cell' ? `<br>충전 ${Math.round(SA.cellCh(it) * 100)}%` : '', it));
       n.addEventListener('mouseleave', hideTip);
-      n.addEventListener('contextmenu', (e) => { e.preventDefault(); openMenu(e, name, it); });
+      n.addEventListener('contextmenu', (e) => { e.preventDefault(); if (opts.onRightClick) opts.onRightClick(it, grid); else openMenu(e, name, it); });
       el.appendChild(n);
     }
     const prev = h('div', 'preview'); prev.style.display = 'none'; el.appendChild(prev);
@@ -56,7 +56,7 @@ SA.UI = (() => {
     const tier = SA.itemTier(id, it);
     tip.innerHTML = `<b style="color:${SA.itemCol(id, it)}">${d.name}</b> <span class="dim">${d.w}×${d.h} · ${SA.KIND_NAME[d.kind] || ''}${tier ? ' · ' + tier : ''}</span><br>` +
       `₵${d.val} <span class="dim">· 칸당 ₵${Math.round(d.val / cells)}</span><br><span class="desc">${d.desc}</span>${extra}${SA.Need && SA.profile ? SA.Need.tipHtml(id) : ''}` +
-      `<div class="keys">끌기: 이동 · R: 회전 · 우클릭: 메뉴${SA.R && SA.R.tabOpen ? ' · Shift+클릭: 보안칸↔화물칸 · Ctrl+클릭: 버리기' : ''}</div>`;
+      `<div class="keys">끌기: 이동 · R: 회전 · ${SA.R && SA.R.tabOpen ? '우클릭: 버리기 (화물칸) · 보안 칸은 끌어서만' : '우클릭: 메뉴'}</div>`;
     tip.style.display = 'block'; moveTip(e);
   };
   const showTipHtml = (e, html) => {
@@ -86,8 +86,6 @@ SA.UI = (() => {
     if (e.button !== 0) return;
     e.preventDefault(); e.stopPropagation();
     const v = views[gname];
-    if (e.ctrlKey && v.opts.onQuickDiscard) { v.opts.onQuickDiscard(it, v.grid); refreshAll(); return; }
-    if (e.shiftKey && v.opts.onQuickMove) { v.opts.onQuickMove(it, v.grid); refreshAll(); return; }
     const r = e.currentTarget.getBoundingClientRect();
     startDrag(e, { id: it.id, rot: it.rot, src: { kind: 'grid', name: gname, it },
       offX: Math.floor((e.clientX - r.left) / CELL), offY: Math.floor((e.clientY - r.top) / CELL) });
@@ -148,7 +146,7 @@ SA.UI = (() => {
     if (d.src.kind === 'grid' && Math.hypot(e.clientX - d.sx, e.clientY - d.sy) < 5 && views[d.src.name].opts.onSelect) { views[d.src.name].opts.onSelect(d.src.it); return; }
     // 주변 아이템: 끌지 않고 좌클릭만 하면 화물칸 빈자리로
     if (d.src.kind === 'ground' && Math.hypot(e.clientX - d.sx, e.clientY - d.sy) < 5) {
-      if (SA.Grid.add(SA.R.cargo, d.id, d.src.item.ch !== undefined ? { ch: d.src.item.ch } : undefined)) { d.src.item.taken = true; SA.Audio.sfx('pickup', 1); } else { SA.Audio.sfx('deny'); SA.Raid.msg('화물칸에 자리가 없다', '#ffb3b3', 2); }
+      SA.Raid.pickGround(d.src.item);
       refreshAll(); if (SA.R && SA.R.tabOpen) renderGround(); return;
     }
     const t = targetAt(e.clientX, e.clientY, d);
@@ -190,23 +188,17 @@ SA.UI = (() => {
     const R = SA.R; if (!R || R.state !== 'play') return;
     R.tabOpen = true; R.timeScale = SA.CFG.TAB_TIMESCALE;
     const w = $('#tabwin'); w.style.display = 'block';
-    const quickMove = (it, g) => {
-      const other = g === R.cargo ? R.secure : R.cargo;
-      const s = SA.Grid.findSpot(other, it.id);
-      if (!s) { SA.Audio.sfx('deny'); return; }
-      SA.Grid.remove(g, it.uid); Object.assign(it, s); other.items.push(it); SA.Audio.sfx('click');
-    };
     const discard = (it, g) => { SA.Grid.remove(g, it.uid); SA.Raid.dropToSpace(it.id, it); };
     const menu = (it, g) => {
       const a = [];
       if (SA.ITEMS[it.id].kind === 'use' || it.id === 'stardata') a.push(['사용', () => SA.Raid.useItem(it, g)]);
-      a.push([g === R.cargo ? '보안 칸으로' : '화물칸으로', () => quickMove(it, g)]);
       a.push(['버리기', () => discard(it, g)]);
       return a;
     };
-    const opts = { onQuickMove: quickMove, onQuickDiscard: discard, onDiscard: discard, menu };
+    // 줍기 = 주변 바닥 좌클릭 · 버리기 = 화물칸 아이템 우클릭 한 번 · 보안 칸은 끌어서만 옮긴다
+    const opts = { onDiscard: discard, onRightClick: (it, g) => { if (g === R.cargo) { discard(it, g); refreshAll(); renderGround(); } else SA.Audio.sfx('deny'); }, menu };
     gridView('cargo', $('#tw-cargo'), R.cargo, opts);
-    gridView('secure', $('#tw-secure'), R.secure, opts);
+    gridView('secure', $('#tw-secure'), R.secure, { onDiscard: discard, onRightClick: opts.onRightClick, menu });
     $('#tw-sort').onclick = () => { if (!SA.Grid.autoSort(R.cargo)) SA.Audio.sfx('deny'); else SA.Audio.sfx('click'); refreshAll(); };
     renderGround(); renderStatus();
     clearInterval(statusTimer); statusTimer = setInterval(() => { renderStatus(); renderGround(true); }, 250);
@@ -262,17 +254,17 @@ SA.UI = (() => {
   let groundSig = '';
   const renderGround = (onlyIfChanged) => {
     const R = SA.R, box = $('#tw-ground');
-    const list = SA.Raid.nearbyGround(90);
+    const list = SA.Raid.nearbyGround();
     const sig = list.map(i => i.id + (i.taken ? 1 : 0)).join(',');
     if (onlyIfChanged && sig === groundSig) return;
     groundSig = sig;
-    box.innerHTML = list.length ? '' : '<div class="dim">근처에 떠 있는 아이템이 없다.<br>버린 아이템이나 칸이 부족해 못 주운 아이템이 여기 보인다.</div>';
+    box.innerHTML = list.length ? '' : '<div class="dim">근처에 떠 있는 아이템이 없다.<br>잔해·적·상자에서 나온 것과 버린 것이 여기 보인다. 버린 것은 몇 초 뒤 사라진다.</div>';
     for (const gi of list) {
       const d = SA.ITEMS[gi.id], n = h('div', 'gitem');
       const img = h('img'); img.src = SA.Render.iconSrc(gi.id); img.style.width = d.w * 24 + 'px'; img.style.height = d.h * 24 + 'px';
-      n.appendChild(img); n.appendChild(h('span', '', `${d.name}<br><span class="dim">${d.w}×${d.h} · ₵${d.val}</span>`));
+      n.appendChild(img); n.appendChild(h('span', '', `${d.name}<br><span class="dim">${d.w}×${d.h} · ₵${d.val}</span>${gi.life !== undefined ? ` <span class="bad">${Math.ceil(gi.life)}초</span>` : ''}`));
       n.addEventListener('mousedown', (e) => { if (e.button !== 0) return; e.preventDefault(); startDrag(e, { id: gi.id, rot: 0, src: { kind: 'ground', item: gi }, offX: 0, offY: 0 }); });
-      n.addEventListener('mouseenter', (e) => showTip(e, gi.id, '<div class="keys">좌클릭: 빈자리에 자동으로 · 끌어서 원하는 칸에 놓기</div>'));
+      n.addEventListener('mouseenter', (e) => showTip(e, gi.id, '<div class="keys">좌클릭: 주워서 화물칸 빈자리에 · 끌어서 원하는 칸에 놓기</div>'));
       n.addEventListener('mouseleave', hideTip);
       box.appendChild(n);
     }

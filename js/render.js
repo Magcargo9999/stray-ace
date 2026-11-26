@@ -294,11 +294,13 @@ SA.Render = (() => {
       const d = SA.ITEMS[it.id], w = d.w * 8, h = d.h * 8, bob = Math.sin(it.t * 4) * 1;
       if (it.glow && !it.full) { ctx.globalAlpha = 0.25 + 0.2 * Math.sin(it.t * 6); ctx.fillStyle = SA.TIER_COL[it.glow] || '#5dffb0'; ctx.beginPath(); ctx.arc(it.x, it.y + bob, Math.max(w, h) * 0.8 + 4, 0, 6.29); ctx.fill(); }
       ctx.globalAlpha = 0.35 + 0.25 * Math.sin(it.t * 5);
-      ctx.fillStyle = it.full ? '#ff6b6b' : SA.itemCol(it.id, it);
+      const fade = it.life !== undefined && it.life < 1.2 ? (Math.sin(it.t * 30) > 0 ? 1 : 0.25) : 1;   // 사라지기 직전 깜빡임
+      ctx.fillStyle = SA.itemCol(it.id, it);
       ctx.fillRect(it.x - w / 2 - 2, it.y - h / 2 - 2 + bob, w + 4, h + 4);
-      ctx.globalAlpha = 1;
+      ctx.globalAlpha = fade;
       ctx.imageSmoothingEnabled = false;
       ctx.drawImage(icon(it.id), it.x - w / 2, it.y - h / 2 + bob, w, h);
+      ctx.globalAlpha = 1;
       const nd = NM[it.id] && NM[it.id].mark;
       if (nd) {   // 필요한 재료: 위에 작은 마름모 (노랑 = 제작 목표, 초록 = 납품 의뢰)
         const mx = it.x, my = it.y - h / 2 - 7 + bob - Math.abs(Math.sin(it.t * 3)) * 2;
@@ -968,11 +970,7 @@ SA.Render = (() => {
     ctx.globalAlpha = 1;
     if (R.nearCol && !R.tabOpen) T(ctx, '[F] 수집가와 거래', W / 2, H - 140, '#ff9fd8', 16, 'center');
     else if (R.nearRift && !R.tabOpen && !R.arena) T(ctx, '[F] 공간 균열로 들어가기', W / 2, H - 140, '#d9b8ff', 16, 'center');
-    if (R.hint === 'full') {
-      const sw = SA.Raid.swapPlan();
-      T(ctx, sw ? `[F] ${sw.dropNames} 버리고 ${sw.name} 줍기 (+₵${sw.gain})` : '화물칸이 가득 찼다 — Tab에서 정리하거나 버리기', W / 2, H - 110, sw ? '#ffd166' : '#ffb3b3', 15, 'center');
-    }
-
+    else if (!R.tabOpen && !R.arena && SA.Raid.nearbyGround().length) T(ctx, `[Tab] 주변 바닥 아이템 ${SA.Raid.nearbyGround().length}개 줍기`, W / 2, H - 140, '#ffd166', 16, 'center');
     // 비상탈출: 길게 누르는 중 / 버티는 중
     if (R.emT > 0) { T(ctx, `비상탈출 ${R.emT.toFixed(1)}초 — 버텨라`, W / 2, H / 2 + 90, '#ff8f3d', 20, 'center'); bar(ctx, W / 2 - 100, H / 2 + 100, 200, 6, 1 - R.emT / SA.EXIT.emTime, '#ff8f3d'); }
     else if (R.emHold > 0) { T(ctx, '비상탈출 준비 — 화물칸을 버린다', W / 2, H / 2 + 90, '#ff8f3d', 16, 'center'); bar(ctx, W / 2 - 100, H / 2 + 100, 200, 6, R.emHold / SA.EXIT.emHold, '#ff8f3d'); }

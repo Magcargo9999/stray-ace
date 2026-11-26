@@ -361,7 +361,7 @@ SA.Raid = (() => {
       if (R.deathT <= 0) finish(false);
     }
 
-    if (SA.Input.hit('KeyF') && R.state === 'play') { if (document.getElementById('colwin')) SA.UI.tabClose(); else if (!R.tabOpen) { if (R.nearCol) SA.UI.collectorOpen(); else if (R.nearRift && !R.arena) enterRift(R.nearRift); else doSwap(); } }
+    if (SA.Input.hit('KeyF') && R.state === 'play') { if (document.getElementById('colwin')) SA.UI.tabClose(); else if (!R.tabOpen) { if (R.nearCol) SA.UI.collectorOpen(); else if (R.nearRift && !R.arena) enterRift(R.nearRift); } }
     if (R.qf) for (const k in R.qf) R.qf[k] = R.qf[k] > 0 ? Math.max(0, R.qf[k] - rdt) : Math.min(0, R.qf[k] + rdt);
     if (R.state === 'play' && !R.tabOpen && !R.tut && !R.range && !document.getElementById('colwin')) {
       for (const q of SA.QUICK) if (SA.Input.hit('Digit' + q.n) || SA.Input.hit('Numpad' + q.n)) quickUse(q);
@@ -379,7 +379,7 @@ SA.Raid = (() => {
     else if (R.arena) updateArena(R, dt, rdt);   // 균열 아레나: 출격 시간·침식·비콘·탈출이 멈춘다   // 튜토리얼: 침식·비콘·리스폰 없음, 대본대로
     else {
       updatePois(R, dt);
-      updateCorrosion(R, dt);
+      updateCorrosion(R, R.tabOpen ? rdt : dt);   // Tab 중에는 시간이 멈추지만 침식은 흐른다
       updateExtraction(R, dt);
       updateExits(R, dt);
       ambientSpawns(R, dt);
@@ -409,41 +409,27 @@ SA.Raid = (() => {
   };
 
   const updateItems = (R, dt) => {
-    const P = R.player;
-    const mag = SA.CFG.MAGNET_R * (1 + C().pv(P, 'magnet'));
+    // v0.101: 자동 줍기 없음 — 바닥 아이템은 Tab 창의 「주변 바닥」에서만 줍는다. 버린 것은 life초 뒤 사라진다
     for (const it of R.items) {
       it.t += dt;
       it.vx *= 0.92; it.vy *= 0.92;
-      const d = Math.sqrt(U.d2(it.x, it.y, P.x, P.y));
-      if (!P.dead && it.t > 0.35) {
-        if (it.full) {
-          it.chk -= dt;
-          if (d < 16 && it.chk <= 0) { it.chk = 0.6; tryPickup(R, it); }
-        } else if (d < mag) {
-          const a = U.ang(it.x, it.y, P.x, P.y), s = 260 * (1 - d / mag) + 60;
-          it.vx = Math.cos(a) * s; it.vy = Math.sin(a) * s;
-          if (d < 10) tryPickup(R, it);
-        }
-      }
+      if (it.life !== undefined && (it.life -= dt) <= 0) it.taken = true;
       it.x += it.vx * dt; it.y += it.vy * dt;
     }
     R.items = R.items.filter(it => !it.taken);
   };
   const itemState = (it) => { const o = {}; for (const k of ['ch', 'dur', 'lv', 'mod', 'awk']) if (it[k] !== undefined) o[k] = it[k]; return o; };   // 동력원 충전량 등은 줍고 버려도 유지
-  const tryPickup = (R, it) => {
-    const d = SA.ITEMS[it.id];
+  // Tab 창의 「주변 바닥」에서 좌클릭: 화물칸 빈자리에 넣는다 (성공하면 true)
+  const pickGround = (it, at) => {
+    const R = SA.R, d = SA.ITEMS[it.id];
     const placed = SA.Grid.add(R.cargo, it.id, itemState(it));
-    if (placed) {
-      it.taken = true;
-      if (C().pm(R.player, 'p_magnet')) R.graze += 1;   // 행성 자력 수집기
-      SA.Audio.sfx('pickup', d.val >= 150 ? 3 : d.val >= 60 ? 2 : 1);
-      R.pickLog.push({ text: `+ ${d.kind === 'part' && it.lv ? SA.partName({ id: d.part, lv: it.lv, mod: it.mod }) : d.name}`, val: SA.itemVal(it), col: SA.itemCol(it.id, it), life: 3 });
-      if (R.pickLog.length > 5) R.pickLog.shift();
-    } else {
-      if (!it.full) { SA.Audio.sfx('full'); C().text(R, it.x, it.y - 8, '칸 부족', '#ffb3b3'); }
-      it.full = true; it.chk = 0.6; it.vx *= 0.2; it.vy *= 0.2;
-      R.hint = 'full'; R.hintT = 4;
-    }
+    if (!placed) { SA.Audio.sfx('deny'); msg('화물칸에 자리가 없다', '#ffb3b3', 2); return false; }
+    it.taken = true;
+    if (C().pm(R.player, 'p_magnet')) R.graze += 1;   // 행성 자력 수집기
+    SA.Audio.sfx('pickup', d.val >= 150 ? 3 : d.val >= 60 ? 2 : 1);
+    R.pickLog.push({ text: `+ ${d.kind === 'part' && it.lv ? SA.partName({ id: d.part, lv: it.lv, mod: it.mod }) : d.name}`, val: SA.itemVal(it), col: SA.itemCol(it.id, it), life: 3 });
+    if (R.pickLog.length > 5) R.pickLog.shift();
+    return true;
   };
   // 수집가 재고: 행성 설계도 · 행성 부품 · 특수 재료 (출격마다 새로)
   const collectorStock = () => {
@@ -818,7 +804,7 @@ SA.Raid = (() => {
       R.emHold = (R.emHold || 0) + dt;
       if (R.emHold >= E.emHold) {
         R.emUsed = true; R.emT = E.emTime; R.emHold = 0;
-        for (const it of R.cargo.items.slice()) { SA.Grid.remove(R.cargo, it.uid); if (SA.ITEMS[it.id].kind !== 'capsule') dropToSpace(it.id, it); else dropToSpace(it.id); }
+        for (const it of R.cargo.items.slice()) { SA.Grid.remove(R.cargo, it.uid); if (SA.ITEMS[it.id].kind !== 'capsule') dropToSpace(it.id, it); else dropToSpace(it.id, null, true); }
         msg(`비상탈출 — 화물칸을 버렸다. ${E.emTime}초 버텨라 (보안 칸·장착 부품만 가져간다)`, '#ff8f3d', 6); SA.Audio.sfx('siren');
       }
     } else R.emHold = 0;
@@ -1112,44 +1098,18 @@ SA.Raid = (() => {
     if (q.id === 'accel' && R.corr >= 100) { msg('이미 침식이 최대다', '#ffb3b3', 1.5); SA.Audio.sfx('deny'); return; }
     if (useItem(it, R.cargo)) R.qf[q.id] = 0.4;
   };
-  const dropToSpace = (id, src) => {
-    const R = SA.R, P = R.player;
-    const it = { id, x: P.x + U.rnd(-14, 14), y: P.y + 22, vx: 0, vy: 40, full: true, chk: 2.5, t: 0, ch: src && src.ch, dur: src && src.dur };
+  const dropToSpace = (id, src, keep) => {
+    const R = SA.R, P = R.player, d = SA.ITEMS[id], t = SA.itemTier(id, src);
+    const it = { id, x: P.x + U.rnd(-14, 14), y: P.y + 22, vx: 0, vy: 40, full: false, t: 0 };
+    for (const k of ['ch', 'dur', 'lv', 'mod', 'awk']) if (src && src[k] !== undefined) it[k] = src[k];
+    if (!keep) it.life = (t && t !== '일반') || d.val >= 150 ? SA.CFG.DROP_LIFE_HI : SA.CFG.DROP_LIFE;   // 버린 것은 낮은 등급 3초 · 높은 등급 5초 뒤 사라진다 (임시)
     R.items.push(it);
     SA.Audio.sfx('drop');
   };
-  // 화물칸이 꽉 찼을 때: 칸당 가치가 낮은 것부터 버리고 더 비싼 걸 줍는 계획 (손해면 null)
-  const swapPlan = () => {
-    const R = SA.R; if (!R) return null;
-    const P = R.player;
-    const it = R.items.filter(i => i.full && !i.taken && U.d2(i.x, i.y, P.x, P.y) < 70 * 70)
-      .sort((a, b) => SA.ITEMS[b.id].val - SA.ITEMS[a.id].val)[0];
-    if (!it) return null;
-    const nd = SA.ITEMS[it.id], per = (x) => SA.ITEMS[x.id].val / (SA.ITEMS[x.id].w * SA.ITEMS[x.id].h);
-    const g = SA.Grid.make(R.cargo.w, R.cargo.h, R.cargo.items.map(x => Object.assign({}, x)));
-    const cands = g.items.slice().filter(x => per(x) < nd.val / (nd.w * nd.h)).sort((a, b) => per(a) - per(b));
-    const dropped = [];
-    for (const c of cands) {
-      SA.Grid.remove(g, c.uid); dropped.push(c);
-      const lost = dropped.reduce((n, x) => n + SA.ITEMS[x.id].val, 0);
-      if (lost >= nd.val) return null;
-      if (SA.Grid.findSpot(g, it.id) || (SA.Grid.autoSort(g) && SA.Grid.findSpot(g, it.id)))
-        return { it, g, dropped, name: nd.name, gain: nd.val - lost, dropNames: dropped.map(x => SA.ITEMS[x.id].name).join('·') };
-    }
-    return null;
-  };
-  const doSwap = () => {
-    const R = SA.R, plan = swapPlan();
-    if (!plan) { SA.Audio.sfx('deny'); return; }
-    R.cargo.items = plan.g.items;
-    for (const d of plan.dropped) dropToSpace(d.id, d);
-    plan.it.full = false; plan.it.chk = 0;
-    tryPickup(R, plan.it);
-  };
   const nearbyGround = (r = 90) => {
-    const R = SA.R, P = R.player;
+    const R = SA.R, P = R.player; r *= 1 + C().pv(P, 'magnet');   // 자력 수집기: 주변 바닥 범위 확대
     return R.items.filter(it => !it.taken && U.d2(it.x, it.y, P.x, P.y) < r * r);
   };
 
-  return { start, spawnDummy, update, msg, collectorBuy, collectorSell, say, swapPlan, doSwap, dropLoot, spawnItem, playerDied, bossEngaged, bossKilled, ravenGiveUp, ravenFlee, ravenFled, allyDown, convoyArrived, finish, useItem, dropToSpace, nearbyGround, grazeBonus, grazeDmg, queueRespawn, hunterWake, beaconBroken, fogged };
+  return { start, spawnDummy, update, msg, collectorBuy, collectorSell, say, pickGround, dropLoot, spawnItem, playerDied, bossEngaged, bossKilled, ravenGiveUp, ravenFlee, ravenFled, allyDown, convoyArrived, finish, useItem, dropToSpace, nearbyGround, grazeBonus, grazeDmg, queueRespawn, hunterWake, beaconBroken, fogged };
 })();
