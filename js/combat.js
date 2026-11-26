@@ -225,7 +225,7 @@ SA.Combat = (() => {
         P.fireCd = 0.25;
         if (!startReload(R, P, false) && (P.dryT || 0) <= R.t) { P.dryT = R.t + 1.2; SA.Audio.sfx('deny'); text(R, P.x, P.y - 18, '에너지 없음 · 비상 발전', '#ffb3b3'); }
       } else {
-        if (R.range) { /* 연습장: 에너지 소모 없음 */ } else if (src === 'cell') P.cell.e = Math.max(0, P.cell.e - cost); else P.emer -= cost;
+        if (R.range) { /* 연습장: 에너지 소모 없음 */ } else if (src === 'cell') P.cell.e = Math.max(0, P.cell.e - cost * SA.CELL.drain);   // 소모 속도 ×2 (v0.103, 임시) else P.emer -= cost;
         P.fireCd = 1 / rate;
         const cmul = src === 'cell' ? cellDef(P).dmg : 1;
         const full = d.sniper && (P.aimC >= P.aimMax || P.freeFull), dmul = cmul * (full ? EN.sniperMul : 1); P.freeFull = false;

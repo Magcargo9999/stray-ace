@@ -4,11 +4,12 @@ SA.Raid = (() => {
 
   const LOOT = {
     // 'bp:강화'는 dropLoot에서 출처별 배율(SA.BP_MUL)이 곱해진다. 'part:등급' = 부품 완성품
-    wreck: [['scrap', 1], ['scrap', .7], ['wire', .5], ['core', .5], ['engine', .25], ['debris', .22], ['goldchip', .15], ['prec', .15], ['bp:일반', .12], ['bp:강화', .03], ['pbp', .04], ['mchip', .04], ['alloy', .06], ['key_box1', .03], ['key_zone', .015], ['stardata', .08], ['bb_reward', .05]],
-    crate: [['core', .4], ['repairkit', .35], ['canister', .3], ['goldchip', .2], ['wire', .5], ['prec', .3], ['bp:일반', .2], ['bp:강화', .06], ['pbp', .05], ['mchip', .06], ['alloy', .08], ['fcore', .06], ['cell1', .2], ['key_box1', .06], ['stardata', .1], ['bb_reward', .04]],
-    cache: [['core', 1], ['engine', .6], ['scrap', 1], ['prec', .8], ['prec', .4], ['bp:일반', .15], ['bp:강화', .12], ['alloy', .25], ['key_box1', .15]],
-    nest:  [['goldchip', .6], ['engine', 1], ['debris', .7], ['canister', .6], ['prec', .6], ['bp:강화', .5], ['pbp', .3], ['key_box1', .4], ['part:강화', .2]],
-    distress: [['repairkit', 1], ['canister', .8], ['goldchip', .8], ['scrap', 1], ['prec', .4], ['bp:강화', .25], ['cell1', .5]],
+    // v0.103 개편 (임시): 기본 상자·잔해는 낮은 재료 + 일반 설계도 위주, 양 약 30% 감소. 동력원·부품 완성품은 적 기체에서
+    wreck: [['scrap', .7], ['scrap', .35], ['wire', .3], ['core', .22], ['engine', .12], ['debris', .1], ['goldchip', .1], ['prec', .1], ['bp:일반', .2], ['bp:강화', .02], ['pbp', .01], ['mchip', .03], ['alloy', .04], ['key_box1', .03], ['key_zone', .015], ['stardata', .08], ['bb_reward', .04]],
+    crate: [['scrap', .25], ['core', .22], ['repairkit', .25], ['canister', .2], ['goldchip', .12], ['wire', .3], ['prec', .2], ['bp:일반', .22], ['bp:강화', .04], ['pbp', .01], ['mchip', .04], ['alloy', .06], ['fcore', .04], ['key_box1', .05], ['stardata', .08], ['bb_reward', .03]],
+    cache: [['core', 1], ['scrap', .6], ['engine', .35], ['prec', .5], ['prec', .25], ['bp:일반', .25], ['bp:강화', .1], ['alloy', .12], ['key_box1', .12]],
+    nest:  [['goldchip', .5], ['engine', .8], ['debris', .45], ['canister', .5], ['prec', .45], ['bp:강화', .4], ['pbp', .2], ['key_box1', .3]],
+    distress: [['repairkit', 1], ['canister', .6], ['goldchip', .5], ['scrap', 1], ['prec', .3], ['bp:강화', .2], ['cell1', .4]],
   };
 
   const F = () => U.pick(['k_', 'e_']);   // 왕국군/제국군 무작위
@@ -306,31 +307,44 @@ SA.Raid = (() => {
     if (tier === '일반' && unk2.length && Math.random() < SA.BENCH.upRoll) return 'bp_' + U.pick(unk2);
     return U.pick(SA.BENCH.fallback);
   };
+  const mm = (id, p) => p >= 1 ? p : Math.min(.98, p * (SA.MAT_MUL[id] || 1));   // 재료 희귀도 배율 (확정은 그대로)
   const dropLoot = (e) => {
     if (e.type === 'lumina') return;   // 루미나 보상은 균열에서 따로 (riftWin)
     const R = SA.R, D = SA.ENEMIES[e.type] || {}, table = e.loot || D.drops || [], b = grazeBonus();
     // 강화·행성 설계도 배율: 네임드·보스·대형은 높게, 그 외는 낮게
     const bm = e.boss ? SA.BP_MUL.boss : D.ai === 'frigate' ? SA.BP_MUL.frigate : SA.BP_MUL.normal;
     for (const [id, p] of table) {
+      if (e.type === 'raven' && id === 'bp_raven' && SA.profile.recipes.includes('raven')) continue;   // 이미 아는 레이븐 설계도는 다시 안 나온다 (부품은 낮은 확률로)
       const k = id === 'bp:강화' ? bm : 1;
       const sure = e.type === 'raven' && id === 'bp_raven' && !SA.profile.recipes.includes('raven');   // 레이븐 추진기 설계도는 처음 잡을 때 확정
-      if (sure || Math.random() < (p >= 1 ? 1 : p * k * (1 + b) * pity(id))) spawnItem(R, id, e.x, e.y);
+      if (sure || Math.random() < (p >= 1 ? 1 : mm(id, p) * k * (1 + b) * pity(id))) spawnItem(R, id, e.x, e.y);
     }
     // 적별 전용 강화 설계도: 아직 모르는 것만
     const sig = (SA.SIG_BP[e.type] || []).filter(r => !SA.profile.recipes.includes(r));
     if (sig.length && Math.random() < (SA.SIG_RATE[D.ai] || 0) * (1 + b) * pity('bp')) spawnItem(R, 'bp_' + U.pick(sig), e.x, e.y);
+    // 적 기체: 쓰던 동력원(일반, 거의 소모된 상태) + 장착 부품. 소형은 낮게, 대형은 높게
+    if (!e.crate && !e.noDrop && !e.boss && SA.CELL.drop[D.ai] && Math.random() < SA.CELL.drop[D.ai]) spawnItem(R, 'cell1', e.x, e.y, 70, { ch: U.rnd(SA.CELL.dropCh[0], SA.CELL.dropCh[1]) });
+    // 네임드·보스 확정: 높은 동력원 1개 + 전용 부품 완성품 (처음 잡을 때만 확정, 이후엔 낮은 확률)
+    const ND = SA.NAMED_DROP[e.type];
+    if (ND && !e.crate && !e.noDrop && !SA.R.range) {
+      if (ND.cell) spawnItem(R, ND.cell, e.x, e.y, 70, { ch: U.rnd(.4, .6) });
+      if (ND.part) {
+        const first = e.type === 'raven' ? !SA.profile.recipes.includes('raven') : true;
+        if (Math.random() < (first ? ND.first : ND.later)) spawnItem(R, ND.part, e.x, e.y);
+      }
+    }
     // 부품 완성품 드랍 (적 격추)
     if (!e.crate && !e.noDrop) {
       const pp = e.boss ? SA.PART_DROP.pbp.boss : SA.PART_DROP.pbp[D.ai] || 0; if (Math.random() < pp) spawnItem(R, 'pbp', e.x, e.y);   // 행성 설계도
       const ch = e.boss ? SA.PART_DROP.chance.boss : SA.PART_DROP.chance[D.ai] || 0;
-      if (Math.random() < ch * (1 + b)) { const r = Math.random(); const t = (SA.PART_DROP.tierRoll.find(([, p]) => r < p) || ['일반'])[0]; spawnItem(R, 'part:' + (e.boss && t === '일반' ? '강화' : t), e.x, e.y); }
+      if (Math.random() < ch * (1 + b)) { const r = Math.random(); const t = ((e.boss ? SA.PART_DROP.tierRoll : SA.PART_DROP.tierNormal).find(([, p]) => r < p) || ['일반'])[0]; spawnItem(R, 'part:' + (e.boss && t === '일반' ? '강화' : t), e.x, e.y); }
     }
   };
   const gradeOf = (id) => { const d = SA.ITEMS[id]; if (!d) return '일반'; if (d.kind === 'bp') return (SA.PARTS[d.recipe] || {}).tier || '일반'; return d.tier || '일반'; };
   // 행성급 부품 완성품: 키울 수 있는 부품 중 무작위 + 무작위 개조 (레이븐 추진기 제외)
   const PLANET_POOL = () => Object.keys(SA.PARTS).filter(k => SA.canUp(k) && k !== 'raven');
-  const spawnItem = (R, id, x, y, spd = 70) => {
-    let ex = null;
+  const spawnItem = (R, id, x, y, spd = 70, extra = null) => {
+    let ex = extra;
     if (id === 'part:행성') { const k = U.pick(PLANET_POOL()); id = 'pt_' + k; ex = { lv: 1 }; }
     else id = resolve(id);
     if (id.startsWith('pt_') && Math.random() < SA.PART_DROP.chip) { const c = SA.randChip(id.slice(3)); if (c) (ex = ex || {}).mod = c; }   // 드랍 부품에 칩이 끼워져 나온다
@@ -516,7 +530,7 @@ SA.Raid = (() => {
     const W = SA.WRECK;
     if (!p.loot) {
       p.loot = [];
-      for (const [id, pr] of LOOT.wreck) if (Math.random() < pr * (1 + grazeBonus()) * pity(id)) p.loot.push(id);
+      for (const [id, pr] of LOOT.wreck) if (Math.random() < mm(id, pr) * (1 + grazeBonus()) * pity(id)) p.loot.push(id);
       if (R.stage >= 2 && Math.random() < 0.25) p.loot.push('crystal');   // 침식 3단계 이상: 잔해에 침식 결정
       while (p.loot.length < 2) p.loot.push('scrap');
       // 한 난파선에서 나오는 아이템은 마지막 보상까지 합쳐 최대 5개 (임시). 넘치면 값싼 것부터 뺀다
@@ -565,8 +579,8 @@ SA.Raid = (() => {
     p.prog += dt; SA.Audio.sfx(p.type === 'secure' ? 'hack' : 'salvage', Math.min(1, p.prog / need));
     if (p.prog >= need) {
       p.done = true;
-      if (p.type === 'locked') { codes()[code]--; for (const [id, pr] of SA.LOOT_LOCKED[p.grade]) if (Math.random() < pr) spawnItem(R, id, p.x, p.y, 90); }
-      else for (const [id, pr] of SA.LOOT_SECURE) if (Math.random() < pr) spawnItem(R, id, p.x, p.y, 90);
+      if (p.type === 'locked') { codes()[code]--; for (const [id, pr] of SA.LOOT_LOCKED[p.grade]) if (Math.random() < mm(id, pr)) spawnItem(R, id, p.x, p.y, 90); }
+      else for (const [id, pr] of SA.LOOT_SECURE) if (Math.random() < mm(id, pr)) spawnItem(R, id, p.x, p.y, 90);
       msg(p.type === 'locked' ? `잠긴 상자 개방 — ${SA.CODES[code].name} 남은 ${codes()[code]}회` : '보안상자 해킹 완료', '#5dffb0', 3); SA.Audio.sfx('unlock');
     }
   };
@@ -632,7 +646,7 @@ SA.Raid = (() => {
       spawnItem(R, 'goldchip', p.x, p.y);
     } else {
       msg('조난자 구조 — 보급품을 받았다', '#7ff0b0', 4);
-      for (const [id, pr] of LOOT.distress) if (Math.random() < pr) spawnItem(R, id, p.x, p.y, 100);
+      for (const [id, pr] of LOOT.distress) if (Math.random() < mm(id, pr)) spawnItem(R, id, p.x, p.y, 100);
       SA.Audio.sfx('extract');
     }
   };
@@ -1111,5 +1125,5 @@ SA.Raid = (() => {
     return R.items.filter(it => !it.taken && U.d2(it.x, it.y, P.x, P.y) < r * r);
   };
 
-  return { start, spawnDummy, update, msg, collectorBuy, collectorSell, say, pickGround, dropLoot, spawnItem, playerDied, bossEngaged, bossKilled, ravenGiveUp, ravenFlee, ravenFled, allyDown, convoyArrived, finish, useItem, dropToSpace, nearbyGround, grazeBonus, grazeDmg, queueRespawn, hunterWake, beaconBroken, fogged };
+  return { LOOT, start, spawnDummy, update, msg, collectorBuy, collectorSell, say, pickGround, dropLoot, spawnItem, playerDied, bossEngaged, bossKilled, ravenGiveUp, ravenFlee, ravenFled, allyDown, convoyArrived, finish, useItem, dropToSpace, nearbyGround, grazeBonus, grazeDmg, queueRespawn, hunterWake, beaconBroken, fogged };
 })();

@@ -189,7 +189,16 @@ SA.LV_MAX = [100, 120, 120];    // 최대 내구도
 SA.LV_VAL = [1, 2, 2];        // 가치 배율
 SA.partTier = (p) => p.lv ? '행성' : SA.PARTS[p.id].tier;
 // 동력원: 쓴 만큼 충전량(ch 0~1)이 줄어든 채로 유지된다. 가치는 빈 것 25% ~ 가득 100% (임시)
-SA.CELL = { emptyVal: 0.25, salvage: { cell1: { scrap: 1 }, cell2: { scrap: 1, wire: 1 }, cell3: { scrap: 2, prec: 1 }, cell4: { scrap: 2, crystal: 1 } } };
+// 제작 재료 희귀도 배율 (임시): 낮은 재료는 조금 더, 높은 재료는 덜 나온다 (확정 드랍에는 적용 안 함)
+SA.MAT_MUL = { scrap: 1.3, wire: 1.3, core: 1.3, prec: 0.6, goldchip: 0.6, alloy: 0.6, fcore: 0.6, qcircuit: 0.6 };
+// 네임드·보스 확정 드랍 (임시): 높은 동력원 1(절반쯤 충전) + 전용 부품 완성품. 에이스 각인은 각 드랍표에 확정으로 들어 있다
+// first = 처음 잡을 때 확정, later = 이후 확률 (전용 부품이 있는 네임드만)
+SA.NAMED_DROP = {
+  raven:  { cell: 'cell3', part: 'pt_raven', first: 1, later: 0.08 },
+  mimic:  { cell: 'cell2' },
+  hunter: { cell: 'cell3', part: 'part:행성', first: 1, later: 1 },
+};
+SA.CELL = { drain: 2, drop: { fighter: 0.2, turret: 0.2, frigate: 0.6 }, dropCh: [0, 0.3], emptyVal: 0.25, salvage: { cell1: { scrap: 1 }, cell2: { scrap: 1, wire: 1 }, cell3: { scrap: 2, prec: 1 }, cell4: { scrap: 2, crystal: 1 } } };
 SA.cellCh = (it) => it.ch === undefined ? 1 : Math.max(0, Math.min(1, it.ch));
 SA.itemVal = (it) => { const d = SA.ITEMS[it.id], v = Math.round(d.val * SA.LV_VAL[it.lv || 0]); return d.kind === 'cell' ? Math.round(v * (SA.CELL.emptyVal + (1 - SA.CELL.emptyVal) * SA.cellCh(it))) : v; };   // 화물 아이템 가치 (행성급 부품 완성품 포함)
 SA.partVal = (p) => Math.round(SA.PARTS[p.id].val * SA.LV_VAL[p.lv || 0]);
@@ -354,15 +363,16 @@ SA.CODES = { box1: { name: '일반 상자 코드', uses: 5, price: 150 }, box2: 
 // 상자: 일반(부수기) / 잠긴 상자(해독기+상자 코드, 머물러 열기) / 보안상자(해독기만, 해킹 5초 버티기) (임시)
 SA.BOX = { openHold: 1.5, hackHold: 5, r: 46 };
 SA.LOOT_LOCKED = {
-  1: [['bp:일반', .5], ['bp:강화', .15], ['alloy', .5], ['cell1', .4], ['prec', .6], ['goldchip', .35], ['part:일반', .12], ['mchip', .2], ['key_box1', .08]],
-  2: [['bp:강화', .5], ['alloy', 1], ['fcore', .5], ['qcircuit', .2], ['pbp', .15], ['cell2', .35], ['goldchip', .6], ['part:강화', .15], ['key_box2', .06]],
-  3: [['bp:강화', .6], ['pbp', .4], ['qcircuit', 1], ['alloy', .6], ['cell3', .3], ['part:행성', .25]],
+  1: [['bp:일반', .5], ['bp:강화', .15], ['alloy', .5], ['cell1', .4], ['prec', .6], ['goldchip', .35], ['mchip', .2], ['key_box1', .08]],
+  2: [['bp:강화', .5], ['alloy', 1], ['fcore', .5], ['qcircuit', .2], ['pbp', .15], ['cell2', .35], ['goldchip', .6], ['key_box2', .06]],
+  3: [['bp:강화', .6], ['pbp', .4], ['qcircuit', 1], ['alloy', .6], ['cell3', .3]],
 };
-SA.LOOT_SECURE = [['part:강화', .5], ['part:행성', .25], ['bp:강화', .6], ['pbp', .3], ['qcircuit', .5], ['alloy', .8], ['fcore', .4], ['key_zone', .1]];
+SA.LOOT_SECURE = [['bp:강화', .6], ['pbp', .3], ['qcircuit', .5], ['alloy', .8], ['fcore', .4], ['key_zone', .1]];
 // 부품 완성품 필드 드랍: 화물칸 크기 (주무기 3×1, 그 외 2×1), 내구도 40~80 무작위. 적 격추 확률 (임시)
 SA.PART_DROP = { size: { main: [3, 1], sub: [2, 1], act: [2, 1], pas: [2, 1], obs: [2, 1] }, dur: [40, 80],
   chip: 0.3, pbp: { frigate: 0.06, boss: 0.5 },   // 드랍 부품에 칩이 끼워져 있을 확률 · 행성 설계도 (임시)
-  chance: { fighter: 0.01, turret: 0.015, frigate: 0.03, boss: 0.25 }, tierRoll: [['행성', .05], ['강화', .25], ['일반', 1]] };
+  chance: { fighter: 0.01, turret: 0.015, frigate: 0.06, boss: 0.25 }, tierRoll: [['행성', .05], ['강화', .25], ['일반', 1]],
+  tierNormal: [['강화', .15], ['일반', 1]] };   // 일반 적 부품: 행성은 안 나온다 (네임드·보스만). 부품은 적에게서만 — 상자에선 안 나온다 (v0.103, 임시)
 // 설계도 확률: 일반은 그대로, 강화·행성은 낮추고 네임드·보스·대형은 높인다
 SA.BP_MUL = { normal: 0.8, frigate: 1.8, boss: 2.5 };
 SA.HIT_WEAR = 3;
@@ -541,7 +551,7 @@ SA.ENEMIES = {
   n_serena:  { name: '세레나 전용기', ai: 'none', img: 'assets/w_serena.png', size: [28, 31], hp: 1, r: 7 },
   n_volk:    { name: '볼크 전용기', ai: 'none', img: 'assets/w_volk.png', size: [31, 29], hp: 1, r: 7 },
   convoy_ship: { name: '호위 화물선', ai: 'none', img: 'assets/convoy.png', size: [27, 75], hp: 1, r: 18 },
-  hunter:  { name: '심연의 사냥꾼', ai: 'hunter', img: 'assets/hunter_0.png', anim: { n: 6, fps: 8 }, size: [64, 81], hp: 1400, r: 28, speed: 90, color: '#8a5cff', boss: true, drops: [['crystal', 1], ['crystal', 1], ['crystal', .5], ['ace', 1], ['ace', .4], ['abyss', 1], ['bb_hunter', 1], ['qcircuit', .6], ['part:행성', .35], ['goldchip', 1], ['goldchip', .5]] },
+  hunter:  { name: '심연의 사냥꾼', ai: 'hunter', img: 'assets/hunter_0.png', anim: { n: 6, fps: 8 }, size: [64, 81], hp: 1400, r: 28, speed: 90, color: '#8a5cff', boss: true, drops: [['crystal', 1], ['crystal', 1], ['crystal', .5], ['ace', 1], ['ace', .4], ['abyss', 1], ['bb_hunter', 1], ['qcircuit', .6], ['goldchip', 1], ['goldchip', .5]] },
   raven:   { name: '네임드 용병 레이븐', ai: 'raven', img: 'assets/raven_hull.png', size: [30, 27], pivot: [0.5, 0.5], hp: 1500, r: 12, speed: 150, color: '#ff4d6d', boss: true, drops: [['chip', 1], ['bp_raven', .5], ['bp_sensor', .3], ['ace', 1], ['ace', .4], ['bp:강화', .8], ['goldchip', 1], ['goldchip', .6], ['bb_raven', 1], ['engine', .5], ['key_box2', .3]] },
   lumina:  { name: '성운 나방 루미나', ai: 'lumina', size: [130, 103], hp: 1, r: 26, speed: 0, color: '#ffe9a8', boss: true, drops: [],
     hb: { cx: 0, cy: 4, rx: 60, ry: 34 },              // 몸 전체 판정(타원): 날개까지 맞는다 (v0.94, 임시)
