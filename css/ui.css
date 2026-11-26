@@ -42,12 +42,12 @@ h3 { margin: 6px 0 8px; font-size: 15px; color: #cfe3ff; } h4 { margin: 10px 0 6
 #hg-bar .hb:hover, #hg-bar .hb.hi { border-color: #d8e6ff; background: #18233a; color: #fff; }
 #hg-bar .hb.on { border-color: #5dffb0; }
 #hg-bar .hb.lock { opacity: .4; } #hg-bar .hb.lock img.hgi { filter: grayscale(1); }
-.hg-bubble { position: absolute; width: 320px; display: flex; gap: 10px; background: rgba(11,17,32,.95); border: 1px solid #3a4a6b; padding: 9px 11px; font-size: 12px; color: #e6edf3; z-index: 3; }
+.hg-bubble { position: absolute; width: 560px; box-sizing: border-box; align-items: center; display: flex; gap: 10px; background: rgba(11,17,32,.95); border: 1px solid #3a4a6b; padding: 9px 11px; font-size: 12px; color: #e6edf3; z-index: 3; }
 .hg-bubble.guide { border-color: #ffd166; }
 .hg-bubble .por { width: 44px; height: 44px; flex: none; object-fit: cover; object-position: 50% 18%; background: #000; border: 1px solid #3a4a6b; }
 .por.ini, .ini { display: inline-flex; align-items: center; justify-content: center; width: 30px; height: 30px; flex: none; border: 1px solid var(--c); color: var(--c); background: #0b1120; font-weight: bold; }
 .hg-bubble .por.ini { width: 44px; height: 44px; font-size: 18px; }
-.hg-bubble .tx { flex: 1; line-height: 1.45; } .hg-bubble .bt { display: flex; gap: 6px; margin-top: 7px; }
+.hg-bubble .tx { flex: 1; line-height: 1.45; font-size: 13px; } .hg-bubble .bt { display: flex; gap: 6px; margin-top: 7px; }
 
 #hg-panel { position: fixed; inset: 0; z-index: 8; background: rgba(5,7,13,.62); display: flex; align-items: center; justify-content: center; }
 #hg-panel .pn { position: relative; width: min(1000px, calc(100vw - 340px)); height: min(690px, 92vh); background: #0b1120; border: 1px solid #3a4a6b; display: flex; flex-direction: column; }

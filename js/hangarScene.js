@@ -415,7 +415,7 @@ SA.HangarScene = (() => {
     b.innerHTML = `${por}<div class="tx"><b style="color:${info.color}">${info.name}</b><div>${strip(text)}</div></div>`;
     if (buttons.length) { const row = document.createElement('div'); row.className = 'bt'; for (const [lab, fn] of buttons) { const x = document.createElement('button'); x.className = 'btn tiny'; x.textContent = lab; x.onclick = (e) => { e.stopPropagation(); hideBubble(); fn(); }; row.appendChild(x); } b.querySelector('.tx').appendChild(row); }
     stage.appendChild(b);
-    const r = npcRect(o); b.style.left = Math.min(W - 330, Math.max(10, r.x - 40)) + 'px'; b.style.top = Math.max(8, r.y - r.h - 16 - b.offsetHeight) + 'px';
+    b.style.left = Math.round((W - 560) / 2) + 'px'; b.style.top = '72px';   // v0.102: 화면 위 가운데에 고정 (오브젝트를 가리지 않게). 화자는 초상화·이름으로 알린다
     bubble = { el: b, o, t: buttons.length ? 9 : ms / 1000 };
     chatT = 10 + Math.random() * 6;
     return true;
