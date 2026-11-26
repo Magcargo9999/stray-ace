@@ -12,7 +12,7 @@ SA.Quest = (() => {
     }
     if (q.raven) return SA.profile.raven.stage < 1 ? '레이븐 둥지에서 레이븐을 몰아붙이기 (체력 30%가 되면 도주한다)' : '도주한 레이븐과 재대결 — 격추 후 탈출 포드를 싣고 탈출';
     if (q.actEnd) { const r = SA.profile.route || SA.Contracts.lean(); return `${q.text} · 2막 루트: ${r ? SA.Contracts.FAC[r] : '미정 (진영 의뢰를 완료하면 정해진다)'}`; }
-    return q.ev ? `${q.text} (${Math.min(st.p, q.need)}/${q.need})` : q.text;
+    return q.ev ? `${q.text} (${Math.min(q.have ? Math.max(st.p, q.have(SA.profile)) : st.p, q.need)}/${q.need})` : q.text;
   };
   const event = (ev, n = 1) => {
     const { q, st } = cur();
