@@ -142,7 +142,7 @@ SA.Main = (() => {
     const notes = [];
     const n = (cls, txt, tipTxt) => notes.push(`<div class="${cls}"${tipTxt ? ` title="${tipTxt}"` : ''}>${txt}</div>`);
     if (!r.ok && r.pilot !== 'cmdr') n('warn', `${pl.name} 부상 · ${SA.INJURY_RAIDS}회 휴식`, SA.profile.pilot !== r.pilot ? `다음 출격은 ${SA.PILOTS[SA.profile.pilot].name}` : '');
-    if (!r.ok && r.mode === 'normal') n('dim', '장착 부품 내구도 -40%', '작업대에서 수리할 수 있다');
+    if (!r.ok && r.mode === 'normal') n('dim', '장착 부품 내구도 -40%', '출격 준비 → 보유 부품에서 수리할 수 있다');
     if (!r.ok && r.mode === 'easy') n('dim', '쉬움 — 장착 부품 무사');
     if (!r.ok && r.mode === 'recover') n('warn', '다음 출격에 잔해 신호', '찾아서 들고 탈출하면 부품을 되찾는다 (한 번뿐)');
     if (r.lostPart) n('bad', `잃은 부품: ${r.lostPart}`);

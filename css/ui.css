@@ -415,3 +415,21 @@ h3 { margin: 6px 0 8px; font-size: 15px; color: #cfe3ff; } h4 { margin: 10px 0 6
 .ld-tip { position: absolute; right: 40px; bottom: 44px; max-width: 420px; text-align: right; color: #8f9bb8; font-size: 13px; line-height: 1.6; animation: ldIn .45s .1s ease both; }
 .ld-tip b { color: #ffd166; margin-right: 6px; font-weight: normal; letter-spacing: 1px; }
 @keyframes ldIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+
+/* v0.98 작업대 제작: 종류 칸 → 등급 탭 */
+.bn-cats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; align-content: start; width: 100%; }
+.bcat { position: relative; display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 18px 8px 14px; background: #070b14; border: 1px solid #1d2840; color: #d8e6ff; font: inherit; cursor: pointer; }
+.bcat .ci { width: 48px; height: 48px; object-fit: contain; image-rendering: pixelated; }
+.bcat b { font-size: 15px; } .bcat:hover { border-color: #4bb4f4; } .bcat.has { border-color: #2f6a8f; }
+.bcat .newtag { position: absolute; left: 6px; top: 6px; background: #ffd166; color: #0b1120; font-size: 10px; padding: 0 5px; }
+.bn-col { flex: 1; display: flex; flex-direction: column; min-height: 0; }
+.bn-cathd { display: flex; align-items: center; gap: 12px; margin-bottom: 8px; }
+.bn-cathd .cnm { display: inline-flex; align-items: center; gap: 6px; font-size: 15px; } .bn-cathd .ci { width: 26px; height: 26px; object-fit: contain; }
+.bn-tiers { display: flex; gap: 4px; margin-left: 8px; }
+.ttab { background: #070b14; border: 1px solid #1d2840; color: #8f9bb8; font: inherit; font-size: 13px; padding: 4px 14px; cursor: pointer; }
+.ttab.on { border-color: #d8e6ff; background: #101a2e; } .ttab:hover { border-color: #4bb4f4; } .ttab.alert { box-shadow: inset 0 -2px #ffd166; }
+.mat .nd { color: #d8e6ff; } .mat .sl { color: #4a5670; margin: 0 3px; } .mat .hv { color: #8f9bb8; }
+.mat.ok .hv { color: #5dffb0; } .mat.bad .hv { color: #ff6b81; }
+.sx-tabs { grid-column: 1 / -1; display: flex; gap: 6px; align-self: start; }
+.p-sortie #hg-body { grid-template-rows: auto 1fr; }
+.p-sortie.sx-parts #hg-body { display: flex; flex-direction: column; }

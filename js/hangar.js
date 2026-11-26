@@ -127,7 +127,7 @@ SA.Hangar = (() => {
     pt.style.display = N ? '' : 'none';
     pt.querySelector('.pnm').textContent = N ? N.name : '';
     pt.querySelector('.pjob').textContent = N ? N.title : '';
-    body.innerHTML = '';
+    body.innerHTML = ''; SA.UI.hideTip();
     ({ sortie, stash, bench, contracts, decoder, shop, deliv, rack, pilots })[panel](body);
   };
   const go = (t) => openPanel(t);   // 예전 호출 호환
@@ -142,7 +142,7 @@ SA.Hangar = (() => {
         toast(`설계도 등록: ${SA.PARTS[d.recipe].name} — 작업대에서 제작 가능`, '#ffd166');
       } else if (d.kind === 'pbp' && SA.Bench.grantPlanet(d.part)) {
         SA.Grid.remove(st, it.uid);
-        toast(`행성 설계도 등록: ${SA.PLANET[d.part][0]} — 작업대 → 행성`, SA.TIER_COL['행성']);
+        toast(`행성 설계도 등록: ${SA.PLANET[d.part][0]} — 작업대 → 제작 → 행성`, SA.TIER_COL['행성']);
       }
     }
     save();
@@ -172,7 +172,13 @@ SA.Hangar = (() => {
 
   // ── 출격 준비: 파일럿 | 기체 둘레 장착 칸 | 지역·소모품·출격 ──
   const sortie = (body) => {
-    const prof = P();
+    const prof = P(), pn = $('#hg-panel .pn');
+    const st = h('div', 'sx-tabs');
+    for (const [k, nm] of [['equip', '장착'], ['parts', `보유 부품 <span class="dim small">${prof.parts.length}</span>`]]) { const b = h('button', 'tabb' + (sortieTab === k ? ' on' : ''), nm); b.onclick = () => { sortieTab = k; SA.Audio.sfx('click'); render(); }; st.appendChild(b); }
+    if (prof.parts.some(p => p.dur < p.max * 0.5)) st.lastChild.classList.add('alert');
+    body.appendChild(st);
+    pn.classList.toggle('sx-parts', sortieTab === 'parts');
+    if (sortieTab === 'parts') { partsView(body); return; }
     const healthy = Object.keys(prof.pilots).filter(id => !prof.pilots[id].injury);
     if (!healthy.length) prof.pilot = 'cmdr';
     else if (prof.pilot === 'cmdr' || prof.pilots[prof.pilot].injury) prof.pilot = healthy[0];
@@ -447,45 +453,129 @@ SA.Hangar = (() => {
     toast(r.text, '#ff8f3d'); SA.Audio.sfx('unlock'); stashSel = null; save(); render();
   };
 
-  // ── 작업대: [부품] 고르면 할 수 있는 것만 · [제작] 만들 수 있는 것부터 ──
-  let benchTab = 'parts', benchKind = 'all', benchSel = null;
+  // ── 작업대: [제작] 종류 고르기 → 등급 탭 · [작업대 N단계]. 보유 부품은 출격 준비 → 보유 부품 ──
+  let benchTab = 'craft', benchCat = null, benchTier = '일반', benchKind = 'all', benchSel = null, sortieTab = 'equip';
   const KINDS = [['all', '전체', 'pt_emblem'], ['main', '주무기', 'pt_main'], ['sub', '서브', 'pt_sub'], ['act', '액티브', 'pt_act'], ['pas', '패시브', 'pt_pas'], ['obs', '관측', 'pt_obs']];
-  const CKINDS = [...KINDS, ['item', '동력원·소모품', 'pt_cell'], ['mat', '상위 재료', 'pt_pod']];
+  const CATS = [['main', '주무기', 'pt_main'], ['sub', '서브', 'pt_sub'], ['act', '액티브', 'pt_act'], ['pas', '패시브', 'pt_pas'], ['obs', '관측', 'pt_obs'], ['item', '동력원·소모품', 'pt_cell'], ['mat', '상위 재료', 'pt_pod']];
   const TIERS = ['일반', '강화', '행성', '은하'];
   const tierOf = (id) => (SA.PARTS[id] || SA.ITEMS[id] || {}).tier || '일반';
-  const matIcons = (mats, have) => Object.keys(mats).map(k => { const n = have(k), ok = n >= mats[k]; return `<span class="mat ${ok ? 'ok' : 'bad'}" style="border-left:3px solid ${SA.itemCol(k)}"><img src="${SA.Render.iconSrc(k)}">${SA.ITEMS[k].name} ${n}/${mats[k]}${ok || !n ? '' : `<i class="short">${mats[k] - n} 부족</i>`}</span>`; }).join('');
-  const costHtml = (c, have) => matIcons(c.mats, have) + ` <span class="mat ${P().credits >= c.cr ? 'ok' : 'bad'}">₵${c.cr}</span>`;
+  const matIcons = (mats, have) => Object.keys(mats).map(k => { const n = have(k), ok = n >= mats[k]; return `<span class="mat ${ok ? 'ok' : 'bad'}" style="border-left:3px solid ${SA.itemCol(k)}"><img src="${SA.Render.iconSrc(k)}">${SA.ITEMS[k].name} <span class="nd">필요 ${mats[k]}</span><span class="sl">/</span><span class="hv">보유 ${n}</span></span>`; }).join('');
+  const costHtml = (c, have) => matIcons(c.mats, have) + ` <span class="mat ${P().credits >= c.cr ? 'ok' : 'bad'}"><span class="nd">₵${c.cr}</span><span class="sl">/</span><span class="hv">보유 ₵${P().credits}</span></span>`;
   const benchClaimable = () => { const c = SA.Bench.contract(SA.Bench.lv() + 1); return !!c && SA.Contracts.open(c) && SA.Contracts.canClaim(c); };
   let benchOnlyOk = false;
   const bench = (body) => {
     const prof = P(), top = h('div', 'bn-top');
     SA.Contracts.sync();
-    for (const [k, nm] of [['parts', '부품'], ['craft', '제작'], ['up', '행성·은하'], ['lv', `작업대 ${SA.Bench.lv()}단계`]]) {
-      const b = h('button', 'tabb' + (benchTab === k ? ' on' : '') + (k === 'lv' && benchClaimable() ? ' alert' : ''), nm);
-      if (k === 'up') tip(b, '부품을 행성으로 올리고(행성 설계도 필요), 행성 부품으로 은하 부품을 만든다');
-      if (k === 'up' && (prof.newRecipes || []).some(r => r.startsWith('pl:'))) b.classList.add('alert');
+    for (const [k, nm] of [['craft', '제작'], ['lv', `작업대 ${SA.Bench.lv()}단계`]]) {
+      const b = h('button', 'tabb' + (benchTab === k ? ' on' : '') + (k === 'lv' && (benchClaimable() || prof.pbpPick > 0) ? ' alert' : '') + (k === 'craft' && (prof.newRecipes || []).length ? ' alert' : ''), nm);
       if (k === 'lv') tip(b, '테오의 의뢰로 작업대를 키우면 설계도와 행성이 열린다');
-      if (k === 'lv' && prof.pbpPick > 0) b.classList.add('alert');
-      b.onclick = () => { benchTab = k; render(); }; top.appendChild(b);
+      b.onclick = () => { benchTab = k; if (k === 'craft') benchCat = null; render(); }; top.appendChild(b);
     }
     top.appendChild(h('div', 'grow'));
-    if (benchTab === 'parts') {
-      const needRep = prof.parts.filter(p => p.dur < p.max), cost = needRep.reduce((n, p) => n + repairCost(p), 0);
-      const all = h('button', 'btn small' + (needRep.length ? '' : ' dis'), needRep.length ? `전부 수리 ₵${cost}` : '수리할 것 없음');
-      tip(all, '수리하면 내구도가 가득 차지만 최대 내구도가 3씩 준다');
-      all.onclick = () => { if (!needRep.length) return; if (prof.credits < cost) { toast('크레딧이 부족하다.', '#ffb3b3'); SA.Audio.sfx('deny'); return; } prof.credits -= cost; needRep.forEach(repair); SA.Audio.sfx('repair'); save(); render(); };
-      top.appendChild(all);
-    }
-    if (benchTab === 'craft') { const b = h('button', 'btn small tog' + (benchOnlyOk ? ' on' : ''), (benchOnlyOk ? '✓ ' : '') + '만들 수 있는 것만'); b.onclick = () => { benchOnlyOk = !benchOnlyOk; render(); }; top.appendChild(b); }
+    if (benchTab === 'craft' && benchCat) { const b = h('button', 'btn small tog' + (benchOnlyOk ? ' on' : ''), (benchOnlyOk ? '✓ ' : '') + '만들 수 있는 것만'); b.onclick = () => { benchOnlyOk = !benchOnlyOk; render(); }; top.appendChild(b); }
     body.appendChild(top);
-    if (benchTab !== 'lv') {
-      const kinds = h('div', 'kinds');
-      for (const [k, nm, ic] of (benchTab === 'craft' ? CKINDS : KINDS)) { const b = h('button', 'kb' + (benchKind === k ? ' on' : ''), `${ico(ic)}<span>${nm}</span>`); b.onclick = () => { benchKind = k; render(); }; kinds.appendChild(b); }
-      body.appendChild(kinds);
-    }
-    if (benchTab !== 'craft' && ['item', 'mat'].includes(benchKind)) benchKind = 'all';
     const wrap = h('div', 'bn-wrap'); body.appendChild(wrap);
-    ({ parts: benchParts, craft: benchCraft, up: benchUp, lv: benchLvTab })[benchTab](wrap);
+    if (benchTab === 'lv') benchLvTab(wrap);
+    else if (!benchCat) benchCats(wrap);
+    else benchCatView(wrap);
+  };
+  // 한 종류(cat)의 제작 줄 전부. tier로 등급 탭을 나눈다
+  const craftRows = (cat) => {
+    const prof = P(), have = (k) => SA.Grid.count(prof.stash, k), rows = [], isPart = !['item', 'mat'].includes(cat);
+    const equipped = new Set(); for (const s in prof.loadouts) SA.loUids(prof.loadouts[s]).forEach(u => equipped.add(u));
+    if (isPart) {
+      for (const rid of prof.recipes) {
+        const r = SA.RECIPES[rid], d = SA.PARTS[rid]; if (!r || !d || d.slot !== cat) continue;
+        const fromOk = !r.from || prof.parts.some(p => p.id === r.from), lock = !SA.Bench.canTier(d.tier);
+        const ok = !lock && fromOk && Object.keys(r.mats).every(k => have(k) >= r.mats[k]);
+        rows.push({ ok, lock, id: rid, pin: true, tier: d.tier, isNew: (prof.newRecipes || []).includes(rid), html: `${d.img ? `<img class="pimg" src="${d.img}">` : ico(KIND_IC[d.slot], 'pimg')}<span class="nm" style="color:${SA.TIER_COL[d.tier]}">${d.name}</span><span class="mats">${r.from ? `<span class="mat ${fromOk ? 'ok' : 'bad'}">${SA.PARTS[r.from].name} <span class="nd">필요 1</span><span class="sl">/</span><span class="hv">${fromOk ? '있음' : '없음'}</span></span>` : ''}${matIcons(r.mats, have)}</span>`, tip: `<b>${d.name}</b> <span class="dim">${d.tier}</span><br><span class="desc">${SA.partDesc(rid, 0)}</span>${lock ? '<br><span class="bad">작업대 2단계(테오의 의뢰)부터 만들 수 있다</span>' : ''}`, btn: '제작', fn: () => craft(rid) });
+      }
+      // 행성: 가진 부품을 올린다
+      for (const p of prof.parts.filter(p => SA.canUp(p.id) && !p.lv && SA.PARTS[p.id].slot === cat)) {
+        const [ok, why, c] = planetCheck(p), know = SA.Bench.knowsPlanet(p.id), pm = SA.MODS[SA.planetMod(p.id)];
+        rows.push({ ok, lock: !(know && SA.Bench.canUp(1)), id: 'pl:' + p.uid, tier: '행성', isNew: (prof.newRecipes || []).includes('pl:' + p.id),
+          html: `${partIcon(p)}<span class="nm">${SA.partHtml(p)}${equipped.has(p.uid) ? ' <span class="dim small">장착</span>' : ''}<br><span class="small">→ <span style="color:${SA.TIER_COL['행성']}">${SA.PLANET[p.id][0]}</span></span></span><span class="mats">${know ? costHtml(c, have) : `<span class="small ${SA.Bench.canUp(1) ? 'bad' : 'dim'}">${why}</span>`}</span>`,
+          tip: `${partTipHtml(p)}<br><span style="color:${SA.TIER_COL['행성']}">→ ${SA.PLANET[p.id][0]}</span>: 주 스탯 +30% · 전용 「${pm.name}」 ${pm.desc}`, btn: '행성으로', up: true, fn: (e) => upMenu(e, p) });
+      }
+      // 은하: 행성 부품 + 특수 재료 (작업대 3단계)
+      const L3 = SA.Bench.lv() >= 3;
+      for (const gid in SA.GALAXY) {
+        const g = SA.GALAXY[gid], b = SA.PARTS[g.base]; if (b.slot !== cat) continue;
+        const src = galSrc(gid), c = SA.galCost(gid), okM = prof.credits >= c.cr && Object.keys(c.mats).every(k => have(k) >= c.mats[k]), ok = !!(L3 && src && okM);
+        rows.push({ ok, lock: !L3, id: gid, tier: '은하',
+          html: `${b.img ? `<img class="pimg" src="${b.img}">` : ico(KIND_IC[b.slot], 'pimg')}<span class="nm"><span style="color:${SA.TIER_COL['은하']}">${g.name}</span><br><span class="small ${src ? 'ok' : 'bad'}">${SA.PLANET[g.base][0]} ${src ? '있음' : '필요'}</span></span><span class="mats">${costHtml(c, have)}</span>`,
+          tip: `<b style="color:${SA.TIER_COL['은하']}">${g.name}</b> ← ${SA.PLANET[g.base][0]}<br><span class="desc">${g.fx}</span><br><span class="dim">주 스탯 ×${SA.GAL_MUL} · 최대 내구도 ${SA.GAL_MAX} · 전용 「${SA.MODS[SA.planetMod(g.base)].name}」 유지</span>${L3 ? '' : '<br><span class="bad">작업대 3단계부터</span>'}`, btn: '은하 제작', up: true, fn: () => galCraft(gid) });
+      }
+    } else {
+      for (const id in SA.CRAFT) {
+        const k = SA.ITEMS[id].kind; if (cat === 'mat' ? k !== 'umat' : k === 'umat') continue;
+        const r = SA.CRAFT[id], d = SA.ITEMS[id], ok = Object.keys(r.mats).every(m => have(m) >= r.mats[m]);
+        rows.push({ ok, id, pin: true, tier: tierOf(id), html: `<img class="pimg" src="${SA.Render.iconSrc(id)}"><span class="nm">${SA.itemNameHtml(id)} <span class="dim small">보유 ${have(id)}</span></span><span class="mats">${matIcons(r.mats, have)}</span>`, tip: `<b style="color:${SA.itemCol(id)}">${d.name}</b> <span class="dim">${SA.itemTier(id)}</span><br><span class="desc">${d.desc}</span>`, btn: '제작', fn: () => craftItem(id) });
+      }
+    }
+    return rows;
+  };
+  // 첫 화면: 종류 7칸 (만들 수 있는 개수 · NEW)
+  const benchCats = (wrap) => {
+    const g = h('div', 'bn-cats');
+    for (const [k, nm, ic] of CATS) {
+      const rows = craftRows(k), nOk = rows.filter(r => r.ok).length, nw = rows.some(r => r.isNew);
+      const b = h('button', 'bcat' + (nOk ? ' has' : ''), `${nw ? '<span class="newtag">NEW</span>' : ''}${ico(ic, 'ci')}<b>${nm}</b><span class="small ${nOk ? 'ok' : 'dim'}">${nOk ? `지금 만들 수 있음 ${nOk}` : `제작법 ${rows.filter(r => r.pin).length}`}</span>`);
+      b.onclick = () => { benchCat = k; const ts = TIERS.filter(t => rows.some(r => r.tier === t)); benchTier = ts.find(t => rows.some(r => r.tier === t && r.ok)) || ts[0] || '일반'; SA.Audio.sfx('click'); render(); };
+      g.appendChild(b);
+    }
+    wrap.appendChild(g);
+  };
+  // 종류 안: 등급 탭 + 목록
+  const benchCatView = (wrap) => {
+    const prof = P(), [, nm, ic] = CATS.find(c => c[0] === benchCat), rows = craftRows(benchCat), col = h('div', 'bn-col');
+    const hd = h('div', 'bn-cathd'), back = h('button', 'btn small', '← 종류');
+    back.onclick = () => { benchCat = null; SA.Audio.sfx('click'); render(); };
+    hd.append(back, h('span', 'cnm', `${ico(ic, 'ci')}<b>${nm}</b>`));
+    const tabs = h('div', 'bn-tiers');
+    const tiers = ['item', 'mat'].includes(benchCat) ? TIERS.filter(t => rows.some(r => r.tier === t)) : TIERS;
+    if (!tiers.includes(benchTier)) benchTier = tiers[0] || '일반';
+    for (const t of tiers) {
+      const rs = rows.filter(r => r.tier === t), nOk = rs.filter(r => r.ok).length;
+      const b = h('button', 'ttab' + (benchTier === t ? ' on' : '') + (rs.some(r => r.isNew) ? ' alert' : ''), `<span style="color:${SA.TIER_COL[t]}">${t}</span>${nOk ? ` <span class="ok small">${nOk}</span>` : ''}`);
+      b.onclick = () => { benchTier = t; render(); }; tabs.appendChild(b);
+    }
+    hd.appendChild(tabs); col.appendChild(hd);
+    const list = h('div', 'bn-list');
+    const note = { 행성: `작업대 2단계 ${SA.Bench.canUp(1) ? '<span class="ok">✓</span>' : '(잠김)'} · 행성 설계도 ${(prof.planetBp || []).length}/${Object.keys(SA.PLANET).length} · 가진 부품을 행성으로 올린다 (주 스탯 +30% + 전용 개조)`, 은하: `작업대 3단계 ${SA.Bench.lv() >= 3 ? '<span class="ok">✓</span>' : '(잠김)'} · 바탕 행성 부품을 써서 만든다 (칩은 옮겨진다)`, 강화: SA.Bench.canTier('강화') ? '' : '강화 등급은 작업대 2단계(테오의 의뢰)부터 만들 수 있다' }[benchTier];
+    if (note) list.appendChild(h('div', 'small pad dim', note));
+    let shown = rows.filter(r => r.tier === benchTier);
+    shown.sort((a, b) => (b.id === prof.pin) - (a.id === prof.pin) || (!!b.isNew - !!a.isNew) || (b.ok - a.ok) || (!!a.lock - !!b.lock));
+    if (benchOnlyOk) shown = shown.filter(r => r.ok);
+    if (!shown.length) list.appendChild(h('div', 'dim small pad', benchOnlyOk && rows.some(r => r.tier === benchTier) ? '지금 재료로 만들 수 있는 것이 없다. 「만들 수 있는 것만」을 끄면 전부 보인다.' : benchTier === '행성' ? '행성으로 올릴 이 종류 부품이 없다.' : '아는 제작법이 없다. 설계도는 필드에서 줍거나 작업대를 키우면 받는다.'));
+    for (const r of shown) {
+      const pinned = prof.pin === r.id;
+      const row = h('div', 'crow2' + (r.ok ? '' : ' no') + (r.lock ? ' lock' : '') + (r.isNew ? ' isnew' : '') + (pinned ? ' pinned' : ''), (r.isNew ? '<span class="newtag">NEW</span>' : '') + r.html + (r.lock ? ico('ic_lock', 'lk') : ''));
+      tip(row, r.tip);
+      if (r.pin) {
+        const pb = h('button', 'btn tiny pin' + (pinned ? ' on' : ''), pinned ? '고정 중' : '고정');
+        tip(pb, '제작 목표로 고정 — 필요한 재료가 창고·화물칸·필드에서 표시되고 목표 줄에 뜬다');
+        pb.onclick = (e) => { e.stopPropagation(); prof.pin = pinned ? null : r.id; SA.Audio.sfx('click'); save(); render(); hud(); };
+        row.appendChild(pb);
+      }
+      const b = h('button', 'btn small' + (r.up ? ' up' : '') + (r.ok ? '' : ' dis'), r.btn); b.onclick = r.fn; row.appendChild(b);
+      list.appendChild(row);
+    }
+    col.appendChild(list); wrap.appendChild(col);
+  };
+  // 출격 준비 → 보유 부품: 부품 칸 + 정보 (수리 · 칩 · 행성 · 분해)
+  const partsView = (body) => {
+    const prof = P(), top = h('div', 'bn-top'), kinds = h('div', 'kinds');
+    for (const [k, nm, ic] of KINDS) { const b = h('button', 'kb' + (benchKind === k ? ' on' : ''), `${ico(ic)}<span>${nm}</span>`); b.onclick = () => { benchKind = k; render(); }; kinds.appendChild(b); }
+    top.appendChild(kinds);
+    const needRep = prof.parts.filter(p => p.dur < p.max), cost = needRep.reduce((n, p) => n + repairCost(p), 0);
+    const all = h('button', 'btn small' + (needRep.length ? '' : ' dis'), needRep.length ? `전부 수리 ₵${cost}` : '수리할 것 없음');
+    tip(all, '수리하면 내구도가 가득 차지만 최대 내구도가 3씩 준다');
+    all.onclick = () => { if (!needRep.length) return; if (prof.credits < cost) { toast('크레딧이 부족하다.', '#ffb3b3'); SA.Audio.sfx('deny'); return; } prof.credits -= cost; needRep.forEach(repair); SA.Audio.sfx('repair'); save(); render(); };
+    top.appendChild(all);
+    body.appendChild(top);
+    const wrap = h('div', 'bn-wrap'); body.appendChild(wrap);
+    benchParts(wrap);
   };
   const benchParts = (wrap) => {
     const prof = P(), left = h('div', 'bn-grid'), right = h('div', 'bn-info');
@@ -515,69 +605,6 @@ SA.Hangar = (() => {
       right.appendChild(acts);
     }
     wrap.append(left, right);
-  };
-  const benchCraft = (wrap) => {
-    const prof = P(), list = h('div', 'bn-list'), have = (k) => SA.Grid.count(prof.stash, k);
-    const rows = [];
-    // 부품 (아는 설계도)
-    if (!['item', 'mat'].includes(benchKind)) for (const rid of prof.recipes) {
-      const r = SA.RECIPES[rid], d = SA.PARTS[rid]; if (!r || !d || (benchKind !== 'all' && d.slot !== benchKind)) continue;
-      const fromOk = !r.from || prof.parts.some(p => p.id === r.from), lock = !SA.Bench.canTier(d.tier);
-      const ok = !lock && fromOk && Object.keys(r.mats).every(k => have(k) >= r.mats[k]);
-      rows.push({ ok, lock, id: rid, tier: d.tier, isNew: (prof.newRecipes || []).includes(rid), html: `${d.img ? `<img class="pimg" src="${d.img}">` : ico(KIND_IC[d.slot], 'pimg')}<span class="nm" style="color:${SA.TIER_COL[d.tier]}">${d.name}</span><span class="mats">${r.from ? `<span class="mat ${fromOk ? 'ok' : 'bad'}">${SA.PARTS[r.from].name}</span>` : ''}${matIcons(r.mats, have)}</span>`, tip: `<b>${d.name}</b> <span class="dim">${d.tier}</span><br><span class="desc">${SA.partDesc(rid, 0)}</span>${lock ? '<br><span class="bad">작업대 2단계(테오의 의뢰)부터 만들 수 있다</span>' : ''}`, fn: () => craft(rid) });
-    }
-    // 동력원·소모품·상위 재료
-    if (['all', 'item', 'mat'].includes(benchKind)) for (const id in SA.CRAFT) {
-      const k = SA.ITEMS[id].kind; if (benchKind === 'mat' && k !== 'umat') continue; if (benchKind === 'item' && k === 'umat') continue;
-      const r = SA.CRAFT[id], d = SA.ITEMS[id], ok = Object.keys(r.mats).every(m => have(m) >= r.mats[m]);
-      rows.push({ ok, id, tier: tierOf(id), html: `<img class="pimg" src="${SA.Render.iconSrc(id)}"><span class="nm">${SA.itemNameHtml(id)} <span class="dim small">${have(id)}개</span></span><span class="mats">${matIcons(r.mats, have)}</span>`, tip: `<b style="color:${SA.itemCol(id)}">${d.name}</b> <span class="dim">${SA.itemTier(id)}</span><br><span class="desc">${d.desc}</span>`, fn: () => craftItem(id) });
-    }
-    rows.sort((a, b) => (b.id === prof.pin) - (a.id === prof.pin) || (!!b.isNew - !!a.isNew) || (b.ok - a.ok) || TIERS.indexOf(a.tier) - TIERS.indexOf(b.tier));
-    const shown = benchOnlyOk ? rows.filter(r => r.ok) : rows;
-    if (!shown.length) list.appendChild(h('div', 'dim small pad', benchOnlyOk ? '지금 재료로 만들 수 있는 것이 없다. 「만들 수 있는 것만」을 끄면 전부 보인다.' : '만들 수 있는 것이 없다. 설계도는 필드에서 줍거나 작업대를 키우면 받는다.'));
-    for (const r of shown) {
-      const pinned = prof.pin === r.id;
-      const row = h('div', 'crow2' + (r.ok ? '' : ' no') + (r.lock ? ' lock' : '') + (r.isNew ? ' isnew' : '') + (pinned ? ' pinned' : ''), (r.isNew ? '<span class="newtag">NEW</span>' : '') + r.html + (r.lock ? ico('ic_lock', 'lk') : ''));
-      tip(row, r.tip);
-      const pb = h('button', 'btn tiny pin' + (pinned ? ' on' : ''), pinned ? '고정 중' : '고정');
-      tip(pb, '제작 목표로 고정 — 필요한 재료가 창고·화물칸·필드에서 표시되고 목표 줄에 뜬다');
-      pb.onclick = (e) => { e.stopPropagation(); prof.pin = pinned ? null : r.id; SA.Audio.sfx('click'); save(); render(); hud(); };
-      row.appendChild(pb);
-      const b = h('button', 'btn small' + (r.ok ? '' : ' dis'), '제작'); b.onclick = r.fn; row.appendChild(b);
-      list.appendChild(row);
-    }
-    wrap.appendChild(list);
-  };
-  // [행성] 올릴 수 있는 부품 목록 · 행성 설계도 현황
-  const benchUp = (wrap) => {
-    const prof = P(), list = h('div', 'bn-list'), have = (k) => SA.Grid.count(prof.stash, k);
-    const equipped = new Set(); for (const s in prof.loadouts) SA.loUids(prof.loadouts[s]).forEach(u => equipped.add(u));
-    const nKnow = (prof.planetBp || []).length, nAll = Object.keys(SA.PLANET).length;
-    list.appendChild(h('div', 'small pad dim', `행성으로 올리기: 작업대 2단계 ${SA.Bench.canUp(1) ? '<span class="ok">✓</span>' : '(잠김)'} · 행성 설계도 ${nKnow}/${nAll} · 주 스탯 +30% + 부품마다 정해진 전용 개조`));
-    const ps = prof.parts.filter(p => SA.canUp(p.id) && !p.lv && (benchKind === 'all' || SA.PARTS[p.id].slot === benchKind));
-    const rk = (p) => planetCheck(p)[0] ? 0 : SA.Bench.knowsPlanet(p.id) ? 1 : 2;
-    ps.sort((a, b) => rk(a) - rk(b) || equipped.has(b.uid) - equipped.has(a.uid));
-    if (!ps.length) list.appendChild(h('div', 'dim small pad', '행성으로 올릴 부품이 없다.'));
-    for (const p of ps) {
-      const [ok, why, c] = planetCheck(p), know = SA.Bench.knowsPlanet(p.id), nw = (prof.newRecipes || []).includes('pl:' + p.id), pm = SA.MODS[SA.planetMod(p.id)];
-      const row = h('div', 'crow2' + (know && SA.Bench.canUp(1) ? '' : ' lock') + (nw ? ' isnew' : ''), `${nw ? '<span class="newtag">NEW</span>' : ''}${partIcon(p)}<span class="nm">${SA.partHtml(p)}${equipped.has(p.uid) ? ' <span class="dim small">장착</span>' : ''}<br><span class="small">→ <span style="color:${SA.TIER_COL['행성']}">${SA.PLANET[p.id][0]}</span></span></span><span class="mats">${know ? costHtml(c, have) : `<span class="small ${SA.Bench.canUp(1) ? 'bad' : 'dim'}">${why}</span>`}</span>`);
-      row.onmouseenter = (e) => SA.UI.showTipHtml(e, `${partTipHtml(p)}<br><span style="color:${SA.TIER_COL['행성']}">→ ${SA.PLANET[p.id][0]}</span>: 주 스탯 +30% · 전용 「${pm.name}」 ${pm.desc}`); row.onmouseleave = SA.UI.hideTip;
-      const b = h('button', 'btn small up' + (ok ? '' : ' dis'), '행성으로'); b.onclick = (e) => upMenu(e, p); row.appendChild(b);
-      list.appendChild(row);
-    }
-    // 은하 제작: 행성 부품 + 특수 재료 (작업대 3단계)
-    const L3 = SA.Bench.lv() >= 3;
-    list.appendChild(h('div', 'small pad dim gal-hd', `<b class="g-awk">은하 제작</b> · 작업대 3단계 ${L3 ? '<span class="ok">✓</span>' : '(잠김)'} · 바탕 행성 부품을 써서 만든다 (칩은 옮겨진다)`));
-    for (const gid in SA.GALAXY) {
-      const g = SA.GALAXY[gid], b = SA.PARTS[g.base];
-      if (benchKind !== 'all' && b.slot !== benchKind) continue;
-      const src = galSrc(gid), c = SA.galCost(gid), okM = prof.credits >= c.cr && Object.keys(c.mats).every(k => have(k) >= c.mats[k]), ok = L3 && src && okM;
-      const row = h('div', 'crow2' + (L3 ? '' : ' lock') + (ok ? '' : ' no'), `${b.img ? `<img class="pimg" src="${b.img}">` : ico(KIND_IC[b.slot], 'pimg')}<span class="nm"><span style="color:${SA.TIER_COL['은하']}">${g.name}</span><br><span class="small ${src ? 'ok' : 'bad'}">${SA.PLANET[g.base][0]} ${src ? '있음' : '필요'}</span></span><span class="mats">${costHtml(c, have)}</span>`);
-      tip(row, `<b style="color:${SA.TIER_COL['은하']}">${g.name}</b> ← ${SA.PLANET[g.base][0]}<br><span class="desc">${g.fx}</span><br><span class="dim">주 스탯 ×${SA.GAL_MUL} · 최대 내구도 ${SA.GAL_MAX} · 전용 「${SA.MODS[SA.planetMod(g.base)].name}」 유지</span>`);
-      const bb = h('button', 'btn small up' + (ok ? '' : ' dis'), '은하 제작'); bb.onclick = () => galCraft(gid); row.appendChild(bb);
-      list.appendChild(row);
-    }
-    wrap.appendChild(list);
   };
   const galSrc = (gid) => P().parts.filter(p => p.id === SA.GALAXY[gid].base && p.lv === 1).sort((a, b) => b.dur - a.dur)[0] || null;
   const galCraft = (gid) => {
@@ -736,7 +763,7 @@ SA.Hangar = (() => {
       };
       r.appendChild(b); c.appendChild(r);
     }
-    c.appendChild(h('h4', '', `개조 칩 <span class="dim small">· 작업대 → 부품에서 끼운다</span>`));
+    c.appendChild(h('h4', '', `개조 칩 <span class="dim small">· 출격 준비 → 보유 부품에서 끼운다</span>`));
     for (const k of SA.CHIPS) {
       const id = 'mc_' + k, d = SA.ITEMS[id], price = SA.SHOP.chips, M = SA.MODS[k];
       const r = h('div', 'srow', `<img src="${SA.Render.iconSrc(id)}"><span class="nm"><span style="color:${SA.itemCol(id)}">${M.name}</span> <span class="dim small">${SA.SLOT_NAME[M.slot]}</span> <span class="tier" style="color:${SA.itemCol(id)};border-color:${SA.itemCol(id)}66">${SA.itemTier(id)}</span></span><span class="dim small">창고 ${SA.Grid.count(prof.stash, id)}</span>`);
@@ -797,7 +824,7 @@ SA.Hangar = (() => {
         if (!st.n) return;
         if (prof.credits < price) { toast('크레딧이 부족하다.', '#ffb3b3'); SA.Audio.sfx('deny'); return; }
         if (st.kind === 'ebp') { if (prof.recipes.includes(d.recipe)) { st.n = 0; save(); render(); return; } prof.recipes.push(d.recipe); (prof.newRecipes = prof.newRecipes || []).push(d.recipe); prof.bpMiss = 0; toast(`설계도 등록: ${SA.PARTS[d.recipe].name} — 작업대에서 제작 가능`, SA.itemCol(st.id)); }
-        else if (st.kind === 'pbp') { if (!SA.Bench.grantPlanet(d.part)) { st.n = 0; save(); render(); return; } toast(`행성 설계도 등록: ${SA.PLANET[d.part][0]} — 작업대 → 행성`, SA.TIER_COL['행성']); }
+        else if (st.kind === 'pbp') { if (!SA.Bench.grantPlanet(d.part)) { st.n = 0; save(); render(); return; } toast(`행성 설계도 등록: ${SA.PLANET[d.part][0]} — 작업대 → 제작 → 행성`, SA.TIER_COL['행성']); }
         else if (st.kind === 'part') { prof.parts.push(SA.Save.newPart(d.part)); toast(`부품함에 들어왔다: ${d.name}`, SA.itemCol(st.id)); }
         else if (!SA.Grid.add(prof.stash, st.id)) { toast('창고가 가득 찼다.', '#ffb3b3'); return; }
         prof.credits -= price; st.n--; SA.Audio.sfx('buy'); save(); render();

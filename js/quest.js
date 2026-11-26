@@ -99,7 +99,7 @@ SA.Rescue = (() => {
     if (id === 'teo') {
       p.rescued.teo = true;
       for (const id of ['alloy', 'alloy', 'qcircuit']) if (!SA.Grid.add(p.stash, id)) p.credits += SA.ITEMS[id].val;   // 테오의 선물: 펄스건 행성 강화(2연장 등)에 딱 맞는 재료
-      msg += ' — 테오가 합류했다. 작업대 강화 의뢰가 열렸다 (작업대 → 작업대 단계). 선물: 강화 합금 2 · 양자 회로 1'; SA.Contracts.sync();
+      msg += ' — 테오가 합류했다. 작업대 강화 의뢰가 열렸다 (작업대 → 작업대 단계 탭). 선물: 강화 합금 2 · 양자 회로 1'; SA.Contracts.sync();
       SA.Quest.event('rescue');
     } else if (id === 'deliv') { p.rescued.deliv = true; msg += ' — 상점 탭에서 재료 배달이 열렸다'; }
     else { p.pilots[id] = { injury: 0 }; msg += ' — 파일럿으로 고를 수 있다'; }
