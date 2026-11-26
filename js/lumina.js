@@ -4,7 +4,7 @@
 // v0.92 리듬 리워크: 모든 탄을 보스곡 박자(136BPM)에 맞춰 쏜다. 8마디 한 바퀴(7마디 + 쉬며 자리 이동 1마디), 바퀴마다 단계가 오른다.
 // 탄 간격 원칙 (사양서 0장): 탄 사이 통과 폭 ≥ 기체 판정 + 탄 판정 ×2 + 여유 6px. 느린 큰 구슬은 피할 길이 항상 남게.
 SA.Lumina = (() => {
-  const U = SA.U, C = () => SA.Combat;
+  const U = SA.U, C = () => SA.Combat, CL = () => SA.RIFT.col;   // 탄 색은 SA.RIFT.col (역할별 3색 + 날개무늬 나선 2색)
   const PH = [
     { name: '인분 「인광의 비」' },
     { name: '날개무늬 「두 개의 눈」' },
@@ -87,13 +87,13 @@ SA.Lumina = (() => {
           const n = lv >= 3 && beat % 4 === 0 ? 9 : 7;              // 3단계: 마디 첫 박은 9갈래
           for (const side of sides) {
             const wx = e.x + side * 38, wy = e.y + 6;
-            fan(R, wx, wy, U.ang(wx, wy, P.x, P.y) + side * sw, n, n === 9 ? 1.15 : 0.95, 92, { r: 3, col: side < 0 ? '#ffd98a' : '#ffb3e6' });
+            fan(R, wx, wy, U.ang(wx, wy, P.x, P.y) + side * sw, n, n === 9 ? 1.15 : 0.95, 92, { r: 3, col: CL().main });
           }
           SA.Audio.sfx('enemyShot');
         }
         if (lv >= 1 ? on8 : onBeat) {                            // 가르치기 단계는 가루를 박마다 (적게)
           const k = lv >= 3 ? 2 : 1;
-          for (let i = 0; i < k; i++) eb(R, U.rnd(8, W - 8), -4, Math.PI / 2 + U.rnd(-0.15, 0.15), U.rnd(40, 62), { r: 2.5, col: '#fff3c4', turn: U.rnd(-0.25, 0.25), life: 9 });
+          for (let i = 0; i < k; i++) eb(R, U.rnd(8, W - 8), -4, Math.PI / 2 + U.rnd(-0.15, 0.15), U.rnd(40, 62), { r: 2.5, col: CL().main, turn: U.rnd(-0.25, 0.25), life: 9 });
         }
         break;
       }
@@ -103,15 +103,15 @@ SA.Lumina = (() => {
             e.sa += 0.2;
             const lx = e.x - 34, rx = e.x + 34, y = e.y + 12;
             for (let arm = 0; arm < 2; arm++) {
-              eb(R, lx, y, e.sa + arm * Math.PI, 72, { r: 3.2, col: '#8fe9ff' });
-              if (lv >= 1) eb(R, rx, y, Math.PI - e.sa + arm * Math.PI, 72, { r: 3.2, col: '#ff9de2' });
+              eb(R, lx, y, e.sa + arm * Math.PI, 72, { r: 3.2, col: CL().sky });
+              if (lv >= 1) eb(R, rx, y, Math.PI - e.sa + arm * Math.PI, 72, { r: 3.2, col: CL().pink });
             }
           }
         } else if (onBeat) {
           const every2 = lv <= 1;                                   // 0~1단계: 2마디마다, 2단계부터 마디마다
           if (!every2 || beat % 8 === 7) {
             const n = lv === 2 ? 12 : 16;
-            e.n++; ring(R, e.x, e.y + 8, n, 48, (e.n % 2) * Math.PI / n + e.n * 0.07, { r: 6, col: '#ffe9a8' });
+            e.n++; ring(R, e.x, e.y + 8, n, 48, (e.n % 2) * Math.PI / n + e.n * 0.07, { r: 6, col: CL().big });
             SA.Audio.sfx('enemyShot');
           }
         }
@@ -121,20 +121,20 @@ SA.Lumina = (() => {
         e.k3 += 0.25 * BEAT / 8;
         if (beat % 2 === 0 && sub < 6) {
           const k = lv === 0 ? 4 : 6;
-          for (let i = 0; i < k; i++) eb(R, e.x, e.y + 8, e.k3 + i * Math.PI * 2 / k, 80, { r: 2.8, col: '#e8eefc', turn: i % 2 ? 0.55 : -0.55 });
+          for (let i = 0; i < k; i++) eb(R, e.x, e.y + 8, e.k3 + i * Math.PI * 2 / k, 80, { r: 2.8, col: CL().main, turn: i % 2 ? 0.55 : -0.55 });
         }
         if (onBeat && cb % 6 === 0) {                               // 바퀴 안 0·6·12·18·24박
           e.n++;
           const aP = U.ang(e.x, e.y, P.x, P.y);   // 3발 고정 (홀짝 교대는 2막 보스용으로 아껴 둔다)
-          fan(R, e.x, e.y + 10, aP, 3, 0.9, 38, { r: 9, col: '#c9d6ff', dmg: 14 });
+          fan(R, e.x, e.y + 10, aP, 3, 0.9, 38, { r: 9, col: CL().big, dmg: 14 });
           SA.Audio.sfx('enemyShot');
         }
         if (lv >= 2 && onBeat && cb % 6 === 4) {                    // 2단계부터: 2박 뒤 아래 벽에서 구슬 하나가 올라온다. 지금 예고 원
           const wx = Math.max(20, Math.min(W - 20, P.x));
           e.warn.push({ x: wx, at: q + 16 });
-          R.rings.push({ x: wx, y: H - 6, r: 4, max: 22, life: 2 * BEAT, col: '#c9d6ff' });
+          R.rings.push({ x: wx, y: H - 6, r: 4, max: 22, life: 2 * BEAT, col: CL().big });
         }
-        for (const w of e.warn) if (w.at === q) eb(R, w.x, H + 4, -Math.PI / 2, 38, { r: 9, col: '#c9d6ff', dmg: 14 });
+        for (const w of e.warn) if (w.at === q) eb(R, w.x, H + 4, -Math.PI / 2, 38, { r: 9, col: CL().big, dmg: 14 });
         e.warn = e.warn.filter(w => w.at > q);
         break;
       }
@@ -144,11 +144,11 @@ SA.Lumina = (() => {
           e.sa += 0.19 + 0.03 * s;
           for (let k = 0; k < 3; k++) {
             const a = e.sa + k * Math.PI * 2 / 3;
-            eb(R, e.x, e.y + 10, a, 70 + 25 * s, { r: 3, col: '#ffb347' });
-            eb(R, e.x, e.y + 10, Math.PI - a, 70 + 25 * s, { r: 3, col: '#ff8a3d' });
+            eb(R, e.x, e.y + 10, a, 70 + 25 * s, { r: 3, col: CL().last });
+            eb(R, e.x, e.y + 10, Math.PI - a, 70 + 25 * s, { r: 3, col: CL().last });
           }
         }
-        if (on8) { const k = SA.RIFT.lastT - e.pt < 10 ? 2 : 1; for (let i = 0; i < k; i++) eb(R, U.rnd(8, W - 8), -4, Math.PI / 2 + U.rnd(-0.1, 0.1), U.rnd(55, 90), { r: 2.6, col: '#ff8a3d', turn: U.rnd(-0.3, 0.3), life: 9 }); }
+        if (on8) { const k = SA.RIFT.lastT - e.pt < 10 ? 2 : 1; for (let i = 0; i < k; i++) eb(R, U.rnd(8, W - 8), -4, Math.PI / 2 + U.rnd(-0.1, 0.1), U.rnd(55, 90), { r: 2.6, col: CL().last, turn: U.rnd(-0.3, 0.3), life: 9 }); }
         if (onBeat && beat % 4 === 0) R.rings.push({ x: e.x, y: e.y, r: 20, max: 70, life: 0.35, col: '#ffb347' });   // 마디 첫 박: 빛 고리 (탄 아님)
         break;
       }
@@ -254,5 +254,5 @@ SA.Lumina = (() => {
     ctx.restore();
   };
 
-  return { init, update, draw, left, PH };
+  return { init, update, draw, left, PH, clock, BEAT };
 })();

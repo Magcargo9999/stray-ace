@@ -25,6 +25,7 @@ SA.Render = (() => {
       if (d.anim) for (let k = 1; k < d.anim.n; k++) list.push(['en_' + id + '_' + k, d.img.replace(/_0\.png$/, '_' + k + '.png')]); }   // 애니메이션 프레임 xxx_0..n-1.png
     for (const id in SA.ITEMS) if (SA.ITEMS[id].img) list.push(['it_' + id, SA.ITEMS[id].img]);
     list.push(['collector', 'assets/collector.png']);   // 수집가 함선 (사용자 도트)
+    list.push(['arena_bg', 'assets/arena_bg.png']);   // 균열 아레나 뒷배경 (사용자 그림, 좌우만 잘랐다)
     for (const k of LUMINA_FRAMES) list.push([k, 'assets/' + k + '.png']);   // 루미나 (사용자 도트): 평소 날개 3프레임 + 마지막 발악 불꽃 3프레임
     for (const id in SA.SPEAKERS) list.push(['pt_' + id, 'assets/portrait_' + id + '.png']);   // 초상화 (없으면 실루엣)
     let left = list.length; total = list.length; loaded = 0;
@@ -44,6 +45,12 @@ SA.Render = (() => {
     // 필드 오브젝트 도트 (월드 크기 x ZOOM)
     const fit = (k, w, h) => { if (IMG[k]) pre[k] = shrink(IMG[k], w * Z, h * Z); };
     for (const k of LUMINA_FRAMES) if (IMG[k]) pre[k] = shrink(IMG[k], SA.RIFT.spr.w * 3, SA.RIFT.spr.h * 3);   // 아레나 확대 배율이 2보다 커도 선명하도록 월드 크기의 3배로 줄여 둔다
+    if (IMG.arena_bg) {   // 균열 아레나 뒷배경: 월드 3배로 줄이고, 위아래·좌우로 뒤집은 판을 이어 붙여 이음매 없이 흘린다 (색은 그대로)
+      const RF = SA.RIFT, w = RF.w * 3, h = RF.h * 3, b = shrink(IMG.arena_bg, w, h);
+      const mk = (fx) => { const c = document.createElement('canvas'); c.width = w; c.height = h * 2; const x = c.getContext('2d');
+        x.save(); if (fx) { x.translate(w, 0); x.scale(-1, 1); } x.drawImage(b, 0, 0); x.translate(0, h * 2); x.scale(1, -1); x.drawImage(b, 0, 0); x.restore(); return c; };
+      pre.arenaT = mk(false); pre.arenaTF = mk(true);
+    }
     fit('box_crate', 25, 14); fit('box_locked', 18, 25); fit('sub_drone', 11, 11); fit('poi_wreck', 72, 28); fit('i_pod', 13, 17); fit('poi_distress', 16, 18); fit('beacon', 40, 39); fit('collector', SA.COLLECTOR.w, SA.COLLECTOR.h);
     // 엄폐물: 크기 단계별로 미리 축소 (작은 원본은 그대로 확대)
     for (const k of ['rock', 'shard']) if (IMG['ast_' + k]) {
@@ -131,6 +138,78 @@ SA.Render = (() => {
     });
   };
 
+  // ── 균열 아레나 (v0.95, 보스전_비주얼_사양_v1.md, 수치는 SA.RIFT · 임시) ──
+  const toneC = {};
+  const tones = (col) => {   // 탄 색 → 외곽선(어둡게)·안쪽(밝게)
+    if (toneC[col]) return toneC[col];
+    const n = parseInt(col.slice(1), 16), r = n >> 16, g = (n >> 8) & 255, b = n & 255;
+    const f = (k, t) => `rgb(${Math.round(r * k + 255 * t)},${Math.round(g * k + 255 * t)},${Math.round(b * k + 255 * t)})`;
+    return (toneC[col] = { d: f(0.22, 0), l: f(0.45, 0.55) });
+  };
+  const RIFT_J = [0, 0.35, -0.25, 0.5, -0.4, 0.3, -0.2, 0.45, 0];   // 틈 아래 가장자리 들쭉날쭉 (고정)
+  const dust = Array.from({ length: 70 }, () => ({ x: Math.random() * 600 - 150, y: Math.random() * 340, v: 8 + Math.random() * 10, s: Math.random() < 0.3 ? 1.4 : 0.9, a: 0.15 + Math.random() * 0.3 }));
+  // 현재 페이즈 (등장 중 = 0, 이긴 뒤 = 마지막 값 유지)
+  const arenaPh = (R) => { const b = R.boss; return b && b.type === 'lumina' && b.ph >= 0 ? b.ph : null; };
+  const drawArenaBg = (ctx, R) => {
+    const A = R.arena, RF = SA.RIFT, W = R.map.w, H = R.map.h;
+    const dt = Math.min(0.1, Math.max(0, R.t - (A.rt == null ? R.t : A.rt))); A.rt = R.t;
+    const k = 1 - Math.exp(-dt * 2.2);
+    if (A.flash > 0) A.flash -= dt;
+    // 페이즈 색조·틈 폭: 부드럽게 따라간다
+    const ph = arenaPh(R); if (ph !== null) A.ph = ph;
+    const pi = A.ph == null ? 0 : A.ph, tg = RF.tint[pi];
+    if (!A.tint) A.tint = tg.slice();
+    for (let i = 0; i < 4; i++) A.tint[i] += (tg[i] - A.tint[i]) * k;
+    const rwT = A.won ? 0 : RF.riftW[pi];
+    if (A.rw == null) A.rw = 0;
+    A.rw += (rwT - A.rw) * (1 - Math.exp(-dt * (A.won ? 2.6 : 2.4)));
+    const hc = RF.hud[pi];
+    A.hcol = hc;
+    // 마디 첫 박 맥동 (곡 시계, 곡이 없으면 아레나 시간)
+    let pu = 0;
+    if (ph !== null && !A.won && SA.Lumina.clock) { const M = SA.Lumina.BEAT * 4, s = ((SA.Lumina.clock(R) % M) + M) % M; pu = s < 0.03 ? s / 0.03 : Math.max(0, 1 - (s - 0.03) / 0.25); }
+    // 뒷배경 그림: 아래로 흐른다. 좌우로도 이어 붙여 아레나 바깥까지 채운다
+    const T0 = pre.arenaT, T1 = pre.arenaTF;
+    if (T0) {
+      const off = (A.t * RF.flow) % (H * 2);
+      for (let c = -1; c <= 1; c++) for (let r = -1; r <= 0; r++) ctx.drawImage(c === 0 ? T0 : T1, c * W, off + r * H * 2, W, H * 2);
+    } else { ctx.fillStyle = '#0d0a1c'; ctx.fillRect(-W, 0, W * 3, H); }
+    // 흐르는 가루
+    ctx.fillStyle = '#cdb8ff';
+    for (const d of dust) { const y = (d.y + A.t * d.v) % H; ctx.globalAlpha = d.a; ctx.fillRect(d.x, y, d.s, d.s); }
+    ctx.globalAlpha = 1;
+    // 페이즈 색조 + 맥동 (아레나 안만)
+    const [tr, tgc, tb, ta] = A.tint;
+    ctx.fillStyle = `rgba(${tr | 0},${tgc | 0},${tb | 0},${ta})`; ctx.fillRect(0, 0, W, H);
+    if (pu > 0) { ctx.fillStyle = `rgba(200,180,255,${RF.pulse * pu})`; ctx.fillRect(0, 0, W, H); }
+    // 위쪽 틈 (코드): 페이즈마다 벌어진다
+    const rw = A.rw;
+    if (rw > 0.5) {
+      const cx = W / 2, dep = Math.min(45, 8 + rw * 0.26), n = RIFT_J.length - 1, gl = 1 + 0.08 * pu;
+      const n2 = parseInt(hc.slice(1), 16), cr = n2 >> 16, cg = (n2 >> 8) & 255, cb = n2 & 255;
+      ctx.save(); ctx.globalCompositeOperation = 'lighter';
+      const g = ctx.createRadialGradient(cx, 0, 0, cx, 0, rw * 0.9 + 20);
+      g.addColorStop(0, `rgba(${cr},${cg},${cb},${0.32 * gl})`); g.addColorStop(1, `rgba(${cr},${cg},${cb},0)`);
+      ctx.fillStyle = g; ctx.fillRect(cx - rw - 30, 0, rw * 2 + 60, dep + 40);
+      ctx.restore();
+      ctx.beginPath(); ctx.moveTo(cx - rw / 2, 0);
+      for (let i = 1; i < n; i++) { const u = i / n, x = cx - rw / 2 + rw * u, y = dep * Math.sin(u * Math.PI) * (0.75 + 0.25 * RIFT_J[i]) + RIFT_J[i] * 3; ctx.lineTo(x, Math.max(1, y)); }
+      ctx.lineTo(cx + rw / 2, 0); ctx.closePath();
+      const g2 = ctx.createLinearGradient(0, 0, 0, dep);
+      g2.addColorStop(0, `rgba(255,250,255,${Math.min(1, 0.95 * gl)})`); g2.addColorStop(0.55, `rgba(${cr},${cg},${cb},0.85)`); g2.addColorStop(1, `rgba(${cr},${cg},${cb},0.35)`);
+      ctx.fillStyle = g2; ctx.fill();
+      ctx.strokeStyle = 'rgba(185,140,255,0.55)'; ctx.lineWidth = 1; ctx.stroke();
+    }
+    // 아레나 바깥: 같은 배경을 어둡게 (바깥으로 갈수록 더 어둡다)
+    const sideL = ctx.createLinearGradient(0, 0, -150, 0); sideL.addColorStop(0, 'rgba(4,3,10,0.45)'); sideL.addColorStop(1, 'rgba(4,3,10,0.85)');
+    ctx.fillStyle = sideL; ctx.fillRect(-W, -400, W, H + 800);
+    const sideR = ctx.createLinearGradient(W, 0, W + 150, 0); sideR.addColorStop(0, 'rgba(4,3,10,0.45)'); sideR.addColorStop(1, 'rgba(4,3,10,0.85)');
+    ctx.fillStyle = sideR; ctx.fillRect(W, -400, W, H + 800);
+    ctx.fillStyle = 'rgba(4,3,10,0.85)'; ctx.fillRect(-W, -400, W * 3, 400); ctx.fillRect(-W, H, W * 3, 400);
+    // 플레이 경계: 아주 옅은 선 (임시)
+    ctx.strokeStyle = 'rgba(185,140,255,0.25)'; ctx.lineWidth = 1; ctx.strokeRect(-0.5, -0.5, W + 1, H + 1);
+  };
+
   // ── 월드 ──
   const draw = (ctx, R) => {
     const P = R.player, cv = ctx.canvas;
@@ -172,14 +251,8 @@ SA.Render = (() => {
       }
       ctx.fillStyle = 'rgba(255,209,102,0.25)'; for (let x = 0; x < R.map.w; x += 32) { ctx.fillRect(x, 300, 16, 4); }   // 사격선
       ctx.strokeStyle = '#3a4558'; ctx.lineWidth = 8; ctx.strokeRect(-4, -4, R.map.w + 8, R.map.h + 8);
-    } else if (R.arena) {   // 균열 아레나: 보랏빛 바닥 + 빛나는 테두리, 바깥은 어둡게
-      ctx.fillStyle = 'rgba(40,18,70,0.35)'; ctx.fillRect(0, 0, R.map.w, R.map.h);
-      ctx.fillStyle = 'rgba(3,3,8,0.88)';
-      ctx.fillRect(-800, -400, R.map.w + 1600, 400); ctx.fillRect(-800, R.map.h, R.map.w + 1600, 400);
-      ctx.fillRect(-800, 0, 800, R.map.h); ctx.fillRect(R.map.w, 0, 800, R.map.h);
-      const pu = 0.55 + 0.25 * Math.sin(R.t * 2);
-      ctx.strokeStyle = `rgba(185,140,255,${pu})`; ctx.lineWidth = 2; ctx.strokeRect(-1, -1, R.map.w + 2, R.map.h + 2);
-      ctx.strokeStyle = 'rgba(255,233,168,0.25)'; ctx.lineWidth = 1; ctx.strokeRect(-5, -5, R.map.w + 10, R.map.h + 10);
+    } else if (R.arena) {   // 균열 아레나 (v0.95): 사용자 뒷배경 그림 + 코드 효과 (흐름·색조·틈·맥동·바깥 어둡게)
+      drawArenaBg(ctx, R);
     } else {
     // 맵 경계 (붉은 선)
     ctx.strokeStyle = 'rgba(255,60,80,0.55)'; ctx.lineWidth = 1.5; ctx.setLineDash([8, 6]);
@@ -268,7 +341,16 @@ SA.Render = (() => {
     // 적 탄 (맨 위: 가장 잘 보여야 한다)
     for (const b of R.eb) {
       if (!vis(b.x, b.y, 8)) continue;
-      ctx.fillStyle = b.frz > 0 ? '#cfe3ff' : b.col; ctx.beginPath(); ctx.arc(b.x, b.y, b.r, 0, 6.29); ctx.fill();
+      const col = b.frz > 0 ? '#cfe3ff' : b.col;
+      if (R.arena) {   // 보스 탄 (v0.95 구슬형): 어두운 외곽선 + 색 몸통 + 밝은 안쪽 + 흰 점. 외곽선은 보이는 크기 안쪽이라 판정(반지름 ×0.72)과 어긋나지 않는다
+        const t = tones(col);
+        ctx.fillStyle = t.d; ctx.beginPath(); ctx.arc(b.x, b.y, b.r, 0, 6.29); ctx.fill();
+        ctx.fillStyle = col; ctx.beginPath(); ctx.arc(b.x, b.y, b.r * 0.8, 0, 6.29); ctx.fill();
+        ctx.fillStyle = t.l; ctx.beginPath(); ctx.arc(b.x, b.y, b.r * 0.52, 0, 6.29); ctx.fill();
+        ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.arc(b.x, b.y, b.r * 0.24, 0, 6.29); ctx.fill();
+        continue;
+      }
+      ctx.fillStyle = col; ctx.beginPath(); ctx.arc(b.x, b.y, b.r, 0, 6.29); ctx.fill();
       ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.arc(b.x, b.y, b.r * 0.5, 0, 6.29); ctx.fill();
     }
     // 번개·광선 (EMP 부채꼴, 충전 캐논)
@@ -635,28 +717,40 @@ SA.Render = (() => {
     return (vigC[k] = c);
   };
   // 루미나 보스 HUD: 이름 · 페이즈 칸(남은 페이즈) · 체력 · 남은 시간 · 패턴 이름 카드
-  const drawLuminaHUD = (ctx, R, W, H) => {
+  const drawLuminaHUD = (ctx, R, W, H) => {   // v0.95: 코드로만 다듬었다 (어두운 띠 · 마름모 페이즈 칸 · 광택 체력바 · 페이즈 색 포인트)
     const b = R.boss, L = SA.Lumina, A = R.arena, bw = 520, bx = W / 2 - bw / 2, by = 28;
+    const pc = SA.RIFT.hud[Math.max(0, b.ph)] || '#ffe9a8';
+    ctx.fillStyle = 'rgba(10,7,22,0.55)'; ctx.fillRect(bx - 12, by - 24, bw + 24, 38);
+    ctx.strokeStyle = 'rgba(120,90,190,0.45)'; ctx.lineWidth = 1; ctx.strokeRect(bx - 11.5, by - 23.5, bw + 23, 37);
     T(ctx, SA.ENEMIES.lumina.name, bx, by - 6, '#ffe9a8', 13, 'left');
-    for (let i = 0; i < L.PH.length; i++) { ctx.fillStyle = i < b.ph ? '#3a3350' : i === b.ph ? '#ffe9a8' : '#b98cff'; ctx.fillRect(bx + 150 + i * 14, by - 15, 10, 10); }   // 페이즈 칸
+    for (let i = 0; i < L.PH.length; i++) {   // 페이즈 칸: 결정 모양 마름모 (지난 것 어둡게 · 지금 페이즈 색 · 남은 것 보라)
+      const cx = bx + 156 + i * 16, cy = by - 10, r = i === b.ph ? 6 : 5;
+      ctx.fillStyle = i < b.ph ? '#2c2540' : i === b.ph ? pc : '#6b58a8';
+      ctx.beginPath(); ctx.moveTo(cx, cy - r); ctx.lineTo(cx + r * 0.75, cy); ctx.lineTo(cx, cy + r); ctx.lineTo(cx - r * 0.75, cy); ctx.closePath(); ctx.fill();
+      if (i === b.ph) { ctx.strokeStyle = 'rgba(255,255,255,0.6)'; ctx.stroke(); }
+    }
     const lt = L.left(b);
     if (lt !== null) T(ctx, lt.toFixed(1), bx + bw, by - 6, lt < 10 ? '#ff8fa3' : '#cfe3ff', 13, 'right');
     const last = b.ph >= 0 && L.PH[b.ph].last;
-    bar(ctx, bx, by, bw, 6, last ? (L.left(b) / SA.RIFT.lastT) : b.ph < 0 ? 0 : b.hp / b.maxHp, last ? '#ff7a3d' : '#ffe9a8');
-    if (A.card) {   // 패턴 이름: 가운데 크게 떴다가 오른쪽 위로 작게 남는다
+    const v = U.clamp(last ? (L.left(b) / SA.RIFT.lastT) : b.ph < 0 ? 0 : b.hp / b.maxHp, 0, 1);
+    ctx.fillStyle = '#0c0818'; ctx.fillRect(bx - 1, by - 1, bw + 2, 8);
+    ctx.fillStyle = pc; ctx.fillRect(bx, by, bw * v, 6);
+    ctx.fillStyle = 'rgba(255,255,255,0.35)'; ctx.fillRect(bx, by, bw * v, 2);   // 광택
+    if (A.card) {   // 패턴 이름: 가운데 크게 떴다가 오른쪽 위로 작게 남는다 (연출은 그대로, 색만 페이즈 색)
       const c = A.card, k = Math.min(1, c.t / 0.3), fade = c.t < 2.2 ? 1 : Math.max(0, 1 - (c.t - 2.2) / 0.5);
       if (fade > 0) {
         ctx.globalAlpha = k * fade;
         ctx.fillStyle = 'rgba(8,6,18,0.7)'; ctx.fillRect(W / 2 - 230, H * 0.36 - 26, 460, 44);
-        T(ctx, c.name, W / 2, H * 0.36 + 4, c.last ? '#ffb347' : '#ffe9a8', 22, 'center');
+        T(ctx, c.name, W / 2, H * 0.36 + 4, pc, 22, 'center');
         if (c.last) T(ctx, '버텨라', W / 2, H * 0.36 + 34, '#ff8f3d', 13, 'center');
         ctx.globalAlpha = 1;
       }
-      T(ctx, c.name, bx + bw, by + 22, c.last ? '#ffb347' : '#d9b8ff', 12, 'right');
+      T(ctx, c.name, bx + bw, by + 22, pc, 12, 'right');
     }
   };
   const drawHUD = (ctx, R, camX, camY) => {
     const P = R.player, W = ctx.canvas.width, H = ctx.canvas.height, Zw = R.zoom || Z;
+    if (R.arena && R.arena.flash > 0) { ctx.fillStyle = `rgba(255,248,255,${0.85 * Math.min(1, R.arena.flash / 0.8)})`; ctx.fillRect(0, 0, W, H); }   // 균열 진입: 흰빛으로 번졌다가 걷힌다
     // 비네트: 침식·피격·저체력
     if (R.stage >= 1) { ctx.globalAlpha = [0, 0.18, 0.32, 0.5][R.stage]; ctx.drawImage(vig('st', W, H), 0, 0); ctx.globalAlpha = 1; }
     if (R.hurtFlash > 0 || P.hp / P.maxHp < 0.3) {

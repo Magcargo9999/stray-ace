@@ -892,10 +892,10 @@ SA.Raid = (() => {
     R.map = { w: RF.w, h: RF.h, name: '균열' };
     R.asteroids = []; R.astGrid = new Map(); R.pois = []; R.extracts = []; R.enemies = []; R.eb = []; R.pb = []; R.items = [];
     R.allies = []; R.bolts = []; R.beams = []; R.strikes = []; R.wells = []; R.zones = [];
-    R.nebulas = [{ x: RF.w / 2, y: RF.h * 0.25, r: 260, hue: 280 }, { x: RF.w * 0.2, y: RF.h * 0.8, r: 200, hue: 320 }];
+    R.nebulas = [];   // v0.95: 뒷배경 그림이 대신한다
     P.x = RF.w / 2; P.y = RF.h - 40; P.vx = P.vy = 0; P.invuln = 2;
     R.zoom = R.zoomTarget = RF.zoom; R.nearRift = null; R.nearCol = false; R.bigMap = false;
-    R.arena = { t: 0, hits: 0, bonus: 0 }; R.msgs = [];
+    R.arena = { t: 0, hits: 0, bonus: 0, flash: 0.8 }; R.msgs = [];   // flash: 진입 흰빛 (v0.95)
     const lu = SA.profile.lumina = SA.profile.lumina || { wins: 0, tries: 0 }; lu.tries++;
     const e = C().spawnEnemy(R, 'lumina', RF.w / 2, -70, { awake: true });
     R.boss = e; SA.Lumina.init(R, e);
