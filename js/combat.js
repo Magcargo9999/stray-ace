@@ -427,11 +427,12 @@ SA.Combat = (() => {
     for (const e of R.enemies) {
       if (e.dead) continue;
       const dx = e.x - P.x, dy = e.y - P.y, t = dx * ca + dy * sa;
+      if (e.hb) { const q = lineZone(e, P.x, P.y, ca, sa, end, 3); if (q) hits.push([q.t, e, q.z === 2]); continue; }
       if (t > 0 && t < end + e.r && Math.abs(-dx * sa + dy * ca) < e.r + 3) hits.push([t, e]);
     }
     hits.sort((p, q) => p[0] - q[0]);
     const hs = hits.slice(0, n);
-    for (const [, e] of hs) { hitEnemy(R, e, dmg, { main: true }); if (d.stunCh && Math.random() < d.stunCh) stun(R, e, 0.6); }
+    for (const [, e, wk] of hs) { hitEnemy(R, e, dmg, { main: true, weak: !!wk }); if (d.stunCh && Math.random() < d.stunCh) stun(R, e, 0.6); }
     const L = hs.length >= n ? hs[hs.length - 1][0] : end;
     if (d.beamN) R.eb = R.eb.filter(b => { const dx = b.x - P.x, dy = b.y - P.y, t = dx * ca + dy * sa; return !(t > 0 && t < L && Math.abs(-dx * sa + dy * ca) < 7); });
     R.beams.push({ x: P.x, y: P.y, a: ang, len: L, w: d.beamN ? 5 : 3, life: 0.08, max: 0.08, col: bcol });
@@ -441,7 +442,11 @@ SA.Combat = (() => {
   const fireCannon = (R, P, c, k = 1) => {
     const len = 720, w = 6 + c * 10, dmg = (40 + c * 80) * k, ca = Math.cos(P.aim), sa = Math.sin(P.aim);
     const onLine = (x, y, pad) => { const dx = x - P.x, dy = y - P.y, t = dx * ca + dy * sa; return t > 0 && t < len && Math.abs(-dx * sa + dy * ca) < w / 2 + pad; };
-    for (const e of R.enemies) if (!e.dead && !e.crate && onLine(e.x, e.y, e.r)) hitEnemy(R, e, dmg);
+    for (const e of R.enemies) {
+      if (e.dead || e.crate) continue;
+      if (e.hb) { const q = lineZone(e, P.x, P.y, ca, sa, len, w / 2); if (q) hitEnemy(R, e, dmg, { weak: q.z === 2 }); }
+      else if (onLine(e.x, e.y, e.r)) hitEnemy(R, e, dmg);
+    }
     R.eb = R.eb.filter(b => !onLine(b.x, b.y, b.r));
     R.beams.push({ x: P.x, y: P.y, a: P.aim, len, w, life: 0.35, max: 0.35, col: '#9ff' });
     R.shake = Math.max(R.shake, 4 + c * 4); SA.Audio.sfx('bigboom');
@@ -464,6 +469,28 @@ SA.Combat = (() => {
     t *= (1 + pv(P, 'shockplate', 1)) * (e.boss ? 0.4 : 1);
     e.stun = Math.max(e.stun || 0, t);
   };
+  // ── 몸 판정 (v0.94) ──
+  // 기본은 원(e.r). 적에게 hb(타원)가 있으면 날개까지 몸 전체가 맞는다. weak(원)가 있으면 그 안은 약점이라 피해 배율이 붙는다.
+  // 반환: 0 빗나감 · 1 몸 · 2 약점
+  const hitZone = (e, x, y, pad = 0) => {
+    const H = e.hb, W = e.weak;
+    if (!H) { const rr = e.r + pad; return U.d2(x, y, e.x, e.y) < rr * rr ? 1 : 0; }
+    if (W) { const wx = x - e.x - W.x, wy = y - e.y - W.y, rr = W.r + pad; if (wx * wx + wy * wy < rr * rr) return 2; }
+    const dx = x - e.x - H.cx, dy = y - e.y - H.cy, ax = H.rx + pad, ay = H.ry + pad;
+    return (dx * dx) / (ax * ax) + (dy * dy) / (ay * ay) < 1 ? 1 : 0;
+  };
+  // 선(광선·캐논)이 몸에 닿는지: hb가 있는 적만 쓴다. 반환 { z: 1|2, t: 닿은 거리 } 또는 null
+  const lineZone = (e, ox, oy, ca, sa, end, pad) => {
+    const test = (cx, cy, rx, ry) => {
+      const dx = (cx - ox) / rx, dy = (cy - oy) / ry, ux = ca / rx, uy = sa / ry, L2 = ux * ux + uy * uy;
+      const t = (dx * ux + dy * uy) / L2, m = dx * dx + dy * dy - (dx * ux + dy * uy) ** 2 / L2;
+      return m < 1 && t > 0 && t < end + Math.max(rx, ry) ? t : -1;
+    };
+    const H = e.hb, W = e.weak;
+    if (W) { const t = test(e.x + W.x, e.y + W.y, W.r + pad, W.r + pad); if (t >= 0) return { z: 2, t }; }
+    const t = test(e.x + H.cx, e.y + H.cy, H.rx + pad, H.ry + pad);
+    return t >= 0 ? { z: 1, t } : null;
+  };
   // 플레이어가 주는 피해: 패시브 배율을 여기서 한 번에
   const hitEnemy = (R, e, dmg, b) => {
     const P = R.player, d = Math.sqrt(U.d2(e.x, e.y, P.x, P.y));
@@ -476,6 +503,7 @@ SA.Combat = (() => {
     if (b && b.close) { if (d < 70 + e.r) m *= 2; if (e.stun > 0) m *= 1.5; }
     if (pm(P, 'p_crush') && d < 70 + e.r) m *= 2;                                         // 행성 충격 장갑
     if (b && b.main && pm(P, 'p_crit') && Math.random() < 0.1) { m *= 2; text(R, e.x, e.y - 12, '약점', '#ffd166'); }   // 행성 조준 센서
+    if (b && b.weak && e.weak) m *= e.weak.mul;                                           // 약점을 맞췄다 (v0.94)
     damageEnemy(R, e, dmg * m);
   };
 
@@ -557,7 +585,7 @@ SA.Combat = (() => {
   const spawnEnemy = (R, type, x, y, o = {}) => {
     const d = SA.ENEMIES[type] || o.def;
     const e = Object.assign({ type, x, y, vx: 0, vy: 0, hp: d.hp, maxHp: d.hp, r: d.r, t: U.rnd(0, 2), t2: 0, flash: 0,
-      dir: Math.random() < 0.5 ? 1 : -1, homeX: x, homeY: y, awake: false, a: 0, phase: 1, dead: false, boss: !!d.boss }, o);   // boss: 격추 처리·기절 감소에 쓴다
+      dir: Math.random() < 0.5 ? 1 : -1, homeX: x, homeY: y, awake: false, a: 0, phase: 1, dead: false, boss: !!d.boss, hb: d.hb, weak: d.weak }, o);   // boss: 격추 처리·기절 감소에 쓴다 · hb: 몸 전체 판정(타원, 날개까지) · weak: 약점(원, 피해 배율)
     R.enemies.push(e);
     return e;
   };
@@ -991,7 +1019,9 @@ SA.Combat = (() => {
       for (const e of R.enemies) {
         if (e.dead) continue;
         if (b.hit && b.hit.has(e)) continue;
-        if (U.d2(b.x, b.y, e.x, e.y) < (e.r + 2) ** 2) {
+        const zone = hitZone(e, b.x, b.y, 2);
+        if (zone) {
+          b.weak = zone === 2;
           hitEnemy(R, e, b.dmg, b);
           if (b.stunCh && Math.random() < b.stunCh) stun(R, e, 0.6);
           if (b.burn && !e.crate) { e.burnT = 3; e.burnD = b.burn; }
@@ -1001,7 +1031,8 @@ SA.Combat = (() => {
           if (b.fireZ) zone(R, b.x, b.y, 34, b.fireZ, 12, '#ff7a3d');                                               // 소이 미사일
           if (b.abyss && e.dead) { boom(R, { x: e.x, y: e.y, aoe: 60, dmg: b.dmg * 0.5 }); P.freeFull = true; text(R, e.x, e.y - 14, '심연', '#c08bff'); }   // 심연 저격총
           SA.Audio.sfx('hitEnemy');
-          fx(R, b.x, b.y, 2, '#e6f7ff', 50, 0.15, 1);
+          fx(R, b.x, b.y, 2, b.weak ? '#ffd166' : '#e6f7ff', 50, 0.15, 1);
+          if (b.weak) fx(R, b.x, b.y, 3, '#fff3c4', 70, 0.2, 1.5);
           if (b.pierce && b.hit.size < b.pierce) { b.hit.add(e); continue; }
           gone = true; break;
         }
@@ -1193,5 +1224,5 @@ SA.Combat = (() => {
     for (const b of R.beams) b.life -= dt; R.beams = R.beams.filter(b => b.life > 0);
   };
 
-  return { pm, corrResist, corrMul, startReload, energyOf, updateAllies, hurtAlly, updateExtra, stun, hitEnemy, eff, wear, eb, ring, fan, fx, text, updatePlayer, updateEnemies, updateBullets, spawnEnemy, hurtPlayer, damageEnemy, insideAsteroid, hasPas, pw, pv, mainDef, actCd, actReady };
+  return { pm, corrResist, corrMul, startReload, energyOf, updateAllies, hurtAlly, updateExtra, stun, hitEnemy, hitZone, lineZone, eff, wear, eb, ring, fan, fx, text, updatePlayer, updateEnemies, updateBullets, spawnEnemy, hurtPlayer, damageEnemy, insideAsteroid, hasPas, pw, pv, mainDef, actCd, actReady };
 })();

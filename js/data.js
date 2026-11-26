@@ -540,7 +540,9 @@ SA.ENEMIES = {
   convoy_ship: { name: '호위 화물선', ai: 'none', img: 'assets/convoy.png', size: [27, 75], hp: 1, r: 18 },
   hunter:  { name: '심연의 사냥꾼', ai: 'hunter', img: 'assets/hunter_0.png', anim: { n: 6, fps: 8 }, size: [64, 81], hp: 1400, r: 28, speed: 90, color: '#8a5cff', boss: true, drops: [['crystal', 1], ['crystal', 1], ['crystal', .5], ['ace', 1], ['ace', .4], ['abyss', 1], ['bb_hunter', 1], ['qcircuit', .6], ['part:행성', .35], ['goldchip', 1], ['goldchip', .5]] },
   raven:   { name: '네임드 용병 레이븐', ai: 'raven', img: 'assets/raven_hull.png', size: [30, 27], pivot: [0.5, 0.5], hp: 1500, r: 12, speed: 150, color: '#ff4d6d', boss: true, drops: [['chip', 1], ['bp_raven', .5], ['bp_sensor', .3], ['ace', 1], ['ace', .4], ['bp:강화', .8], ['goldchip', 1], ['goldchip', .6], ['bb_raven', 1], ['engine', .5], ['key_box2', .3]] },
-  lumina:  { name: '성운 나방 루미나', ai: 'lumina', size: [130, 103], hp: 1, r: 26, speed: 0, color: '#ffe9a8', boss: true, drops: [] },   // 1막 최종 보스 (균열 아레나). 체력은 페이즈마다 SA.RIFT.hp
+  lumina:  { name: '성운 나방 루미나', ai: 'lumina', size: [130, 103], hp: 1, r: 26, speed: 0, color: '#ffe9a8', boss: true, drops: [],
+    hb: { cx: 0, cy: 4, rx: 60, ry: 34 },              // 몸 전체 판정(타원): 날개까지 맞는다 (v0.94, 임시)
+    weak: { x: 0, y: 32, r: 10, mul: 1.3 } },          // 약점 = 아래쪽 구슬. 맞추면 피해 ×1.3 (임시)   // 1막 최종 보스 (균열 아레나). 체력은 페이즈마다 SA.RIFT.hp
   mimic:   { name: '제국 실험 무인기', ai: 'raven', img: 'assets/raven_hull.png', size: [30, 27], pivot: [0.5, 0.5], hp: 900, r: 12, speed: 150, color: '#c08bff', boss: true, drops: [['chip', 1], ['bb_mimic', 1], ['goldchip', 1], ['prec', 1], ['bp:강화', .5], ['bp_sensor', .3], ['qcircuit', .3], ['ace', .3]] },
 };
 

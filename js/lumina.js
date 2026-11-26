@@ -202,6 +202,23 @@ SA.Lumina = (() => {
     ctx.save(); ctx.translate(e.x, e.y + bob);
     ctx.imageSmoothingEnabled = true;
     ctx.drawImage(fl ? SA.Render.flashOf(spr) : spr, -S.w / 2, -S.h * S.py, S.w, S.h);
+    drawWeak(ctx, R, e);
+    ctx.restore();
+  };
+
+  // 약점 표시 (v0.94): 도트 위에 코드로 얹는 표식이라 도트 원본은 그대로. 몸 가운데 아래 구슬 자리에 맞춘다.
+  // 맞출 수 있는 동안(무적이 아닐 때)은 또렷하게, 무적일 때(발악·페이즈 사이)는 흐리게 보여 준다.
+  const drawWeak = (ctx, R, e) => {
+    const W = SA.ENEMIES.lumina.weak;
+    if (!W || e.ph < 0) return;
+    const k = 0.5 + 0.5 * Math.sin(R.t * 5), r = W.r + 1 + k * 1.5;
+    ctx.save(); ctx.translate(W.x, W.y);
+    ctx.globalAlpha = e.noHit ? 0.22 : 0.6 + 0.35 * k;
+    ctx.strokeStyle = '#ffd166'; ctx.lineWidth = 1.2;
+    ctx.beginPath(); ctx.arc(0, 0, r, 0, 6.29); ctx.stroke();
+    ctx.beginPath();                                          // 바깥으로 뻗은 눈금 네 개
+    for (let i = 0; i < 4; i++) { const a = i * Math.PI / 2 + Math.PI / 4; ctx.moveTo(Math.cos(a) * (r + 1), Math.sin(a) * (r + 1)); ctx.lineTo(Math.cos(a) * (r + 4), Math.sin(a) * (r + 4)); }
+    ctx.stroke();
     ctx.restore();
   };
 
