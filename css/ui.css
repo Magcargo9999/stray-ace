@@ -435,3 +435,9 @@ h3 { margin: 6px 0 8px; font-size: 15px; color: #cfe3ff; } h4 { margin: 10px 0 6
 .p-sortie.sx-parts #hg-body { display: flex; flex-direction: column; }
 
 .hg-goal.guide-hi { border-color: #ffd166; box-shadow: 0 0 0 2px rgba(255,209,102,.5), 0 0 18px rgba(255,209,102,.45); z-index: 50; }
+
+/* 메인 브리핑 띠 (v0.112): 격납고 위 가운데. 뒤의 창·장면은 클릭이 막힌다 */
+#brief-ov { position: fixed; inset: 0; z-index: 40; background: rgba(5,7,13,.38); cursor: pointer; }
+#brief-strip { position: fixed; left: 50%; top: 84px; transform: translateX(-50%); z-index: 41; cursor: pointer; border-color: #ffd166; }
+#brief-strip .bhint { margin-top: 6px; font-size: 11px; color: #8f9bb8; }
+.dc-tabs { display: flex; gap: 6px; margin-bottom: 8px; } .dc-tabs .btn.on { border-color: #ffd166; color: #ffd166; }

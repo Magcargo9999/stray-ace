@@ -14,6 +14,9 @@ SA.Quest = (() => {
     if (q.actEnd) { const r = SA.profile.route || SA.Contracts.lean(); return `${q.text} · 2막 루트: ${r ? SA.Contracts.FAC[r] : '미정 (진영 의뢰를 완료하면 정해진다)'}`; }
     return q.ev ? `${q.text} (${Math.min(q.have ? Math.max(st.p, q.have(SA.profile)) : st.p, q.need)}/${q.need})` : q.text;
   };
+  // 의뢰인 (목표 줄 맨 앞에 색을 입혀 붙인다)
+  const who = () => { const { q } = cur(); const sp = q && q.giver && SA.SPEAKERS[q.giver]; return sp ? { name: sp.name, color: sp.color } : null; };
+  const whoHtml = () => { const w = who(); return w ? `<span style="color:${w.color}">${w.name}</span> · ` : ''; };
   const event = (ev, n = 1) => {
     const { q, st } = cur();
     if (!q || q.ev !== ev || n <= 0) return;
@@ -37,9 +40,9 @@ SA.Quest = (() => {
     SA.Save.store(prof);
     const T = (m, c, d) => setTimeout(() => SA.Hangar.toast(m, c), d);
     T(`메인 목표 완료: ${q.text}${q.reward ? ' — ₵' + q.reward : ''}`, '#5dffb0', 0);
-    if (q.line) T(q.line, '#cfe3ff', 600);
-    if (q.line2) T(q.line2, '#cfe3ff', 1800);
-    if (bpMsg) T(bpMsg, '#ffd166', q.line2 ? 3000 : 1200);
+    if (bpMsg) T(bpMsg, '#ffd166', 600);   // 보상·설계도 알림은 토스트, 이야기(완료 대사 → 다음 브리핑)는 격납고 띠로 (v0.112)
+    (prof.pendDone = prof.pendDone || []).push(q.id); SA.Save.store(prof);
+    setTimeout(() => SA.Brief && SA.Brief.pump(), 900);
   };
   // 미리 해 둔 목표(레이븐 포획·테오 구조)는 차례가 오면 바로 완료. 1막 끝에서 2막 루트를 정한다.
   const sync = () => {
@@ -73,7 +76,7 @@ SA.Quest = (() => {
       return k < i ? `<span class="dim">✓ ${k + 1}. ${nm}</span>` : k === i ? `<span style="color:#ffd166">▶ ${k + 1}. ${nm}</span>` : `<span style="color:#8f9bb8">· ${k + 1}. ${nm}</span>`;
     }).join('<br>');
   };
-  return { event, label, rewardText, cur, sync, ravenCaught, prog, tag, listHtml };
+  return { event, label, who, whoHtml, rewardText, cur, sync, ravenCaught, prog, tag, listHtml };
 })();
 
 // 조난 구조: 한 판 최대 1개의 신호. 누구를 구할지는 여기서 정한다.

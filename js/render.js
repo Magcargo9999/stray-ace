@@ -26,7 +26,7 @@ SA.Render = (() => {
     for (const id in SA.ITEMS) if (SA.ITEMS[id].img) list.push(['it_' + id, SA.ITEMS[id].img]);
     list.push(['collector', 'assets/collector.png']);   // 수집가 함선 (사용자 도트)
     for (const k of LUMINA_FRAMES) list.push([k, 'assets/' + k + '.png']);   // 루미나 (사용자 도트): 평소 날개 3프레임 + 마지막 발악 불꽃 3프레임
-    for (const id in SA.SPEAKERS) list.push(['pt_' + id, 'assets/portrait_' + id + '.png']);   // 초상화 (없으면 실루엣)
+    for (const id in SA.SPEAKERS) if (!SA.SPEAKERS[id].noPortrait) list.push(['pt_' + id, SA.SPEAKERS[id].portrait || 'assets/portrait_' + id + '.png']);   // 초상화 (없으면 실루엣)
     let left = list.length; total = list.length; loaded = 0;
     for (const [k, src] of list) {
       const im = new Image();
@@ -824,6 +824,7 @@ SA.Render = (() => {
         ctx.fillStyle = 'rgba(8,6,18,0.7)'; ctx.fillRect(W / 2 - 230, H * 0.36 - 26, 460, 44);
         T(ctx, c.name, W / 2, H * 0.36 + 4, pc, 22, 'center');
         if (c.last) T(ctx, '버텨라', W / 2, H * 0.36 + 34, '#ff8f3d', 13, 'center');
+        if (c.line) T(ctx, c.line, W / 2, H * 0.36 + (c.last ? 56 : 34), '#e4d6ff', 14, 'center');   // 루미나의 파편 대사 (재도전, v0.112)
         ctx.globalAlpha = 1;
       }
       T(ctx, c.name, bx + bw, by + 22, pc, 12, 'right');
@@ -922,11 +923,12 @@ SA.Render = (() => {
 
     // 메인 목표 한 줄 (좌상단)
     const ql = R.arena ? '' : SA.Quest.label().split(' — ')[0];   // 출격 중엔 설명(— 뒤)을 빼고 짧게   // 아레나에선 목표 줄을 숨긴다 (보스 체력바 자리)
-    if (ql) { ctx.fillStyle = 'rgba(8,10,18,0.6)'; ctx.font = 'bold 13px "Galmuri11", "Malgun Gothic", sans-serif'; const qt = SA.Quest.tag(), tw = ctx.measureText(qt + '  ').width, qw = ctx.measureText(qt + '  ' + ql).width; ctx.fillRect(14, 14, qw + 20, 26); T(ctx, qt, 24, 32, '#8f9bb8', 13); T(ctx, ql, 24 + tw, 32, '#ffd166', 13); }
+    if (ql) { ctx.fillStyle = 'rgba(8,10,18,0.6)'; ctx.font = 'bold 13px "Galmuri11", "Malgun Gothic", sans-serif'; const qt = SA.Quest.tag(), wh = SA.Quest.who(), gp = wh ? wh.name + ' · ' : '', tw = ctx.measureText(qt + '  ').width, gw = ctx.measureText(gp).width, qw = ctx.measureText(qt + '  ' + gp + ql).width; ctx.fillRect(14, 14, qw + 20, 26); T(ctx, qt, 24, 32, '#8f9bb8', 13); if (wh) T(ctx, gp, 24 + tw, 32, wh.color, 13); T(ctx, ql, 24 + tw + gw, 32, '#ffd166', 13); }   // 의뢰인 · 목표 (v0.112)
     const pl = pinL;
     if (pl) { const t = `${pl[0]} — ${pl[2] ? '재료 다 모았다' : pl[1]}`; ctx.font = '12px "Galmuri11", "Malgun Gothic", sans-serif'; const pw = ctx.measureText('제작  ' + t).width; ctx.fillStyle = 'rgba(8,10,18,0.6)'; ctx.fillRect(14, 42, pw + 20, 20); T(ctx, '제작', 24, 56, '#8f9bb8', 12); T(ctx, t, 56, 56, pl[2] ? '#5dffb0' : '#ffd166', 12); }
     }
     // 보스 체력
+    if (R.freeze) T(ctx, 'Space: 계속', W / 2 + 292, H - 214 + 68, '#cfe3ff', 12, 'right');   // 첫 도전 페이즈 대사 (v0.112)
     if (R.arena && R.boss && R.boss.type === 'lumina' && !R.boss.dead) drawLuminaHUD(ctx, R, W, H);
     else if (R.arena && R.arena.won) {   // 격추 뒤에는 R.boss가 비므로 따로 그린다 (1막 엔딩 통신 안내 포함)
       T(ctx, '성운 나방 루미나 격추', W / 2, H * 0.36, '#ffe9a8', 24, 'center');

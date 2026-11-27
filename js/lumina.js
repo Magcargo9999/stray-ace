@@ -40,6 +40,7 @@ SA.Lumina = (() => {
     e.hp = e.maxHp = ph.last ? 1 : RF.hp[i];
     e.hits0 = R.arena.hits;
     R.arena.card = { name: ph.name, t: 0, last: !!ph.last };
+    phaseLine(R, i);
     SA.Audio.sfx('stage');
   };
 
@@ -48,6 +49,14 @@ SA.Lumina = (() => {
     let n = 0;
     for (const b of R.eb) if (n++ < 160) C().fx(R, b.x, b.y, 1, '#fff3c4', 30, 0.5, 1);
     R.eb = [];
+  };
+  // 루미나의 파편 대사 (v0.112): 첫 도전은 멈추고 Space로 계속, 두 번째 도전부터 첫 격추 전까지는 패턴 이름 아래에 잠깐, 첫 격추 뒤·연습장은 무언
+  const LP = ['…빛을 따라왔다.', '이름을… 불러 줬는데.', '아래가 가까워. 더 위로.', '꿈이… 아니었구나.'];
+  const phaseLine = (R, i) => {
+    if (R.range || !LP[i]) return;
+    const lu = SA.profile.lumina || {}; if ((lu.wins || 0) > 0) return;
+    if ((lu.tries || 0) <= 1) { R.freeze = { i }; R.dialog = [{ who: 'lumfrag', text: LP[i], life: 1e9, hold: true, t: 0 }]; }
+    else R.arena.card.line = LP[i];
   };
   const end = (R, e, byDmg) => {
     const ok = byDmg && R.arena.hits === e.hits0;

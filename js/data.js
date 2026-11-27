@@ -496,6 +496,10 @@ SA.SPEAKERS = {
   volk:   { name: '볼크', title: '제국 돌격 에이스', color: '#ff7a6b' },
   mina:   { name: '미나', title: '정비병', color: '#ffd166' },
   lumina: { name: '루미나', title: '성운 나방', color: '#c9b8ff' },   // 초상화 임시 (portrait_lumina.png, 원화 오면 교체). 페이즈 전환 대사용
+  os:     { name: '오스', title: '중개인', color: '#b9c4e0' },
+  teo:    { name: '테오', title: '정비사', color: '#c98f7a', portrait: 'assets/npc_teo.png' },
+  sig:    { name: '???', title: '조난 신호', color: '#ff8f8f', noPortrait: true },
+  lumfrag: { name: '루미나의 파편', title: '', color: '#c9b8ff', noPortrait: true },   // 보스전 페이즈 대사 화자 (초상 없음, 블랙박스 l1·l2의 [???]와 같은 목소리)
   dan:    { name: '단장', title: '', color: '#8f9bb8' },   // 튜토리얼 뒤의 단장 (통신)
 };
 SA.DIALOG = { min: 4, max: 9, perChar: 0.07, queue: 3 };

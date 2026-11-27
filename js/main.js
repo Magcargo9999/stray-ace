@@ -206,7 +206,7 @@ SA.Main = (() => {
     if (scene === 'raid' && SA.R) {
       const R = SA.R;
       if (I.hit('Escape')) { if (R.tabOpen) SA.UI.tabClose(); else if (!R.paused) openSettings(true); }
-      if (I.hit('Tab') && !R.paused) { if (R.tabOpen) SA.UI.tabClose(); else SA.UI.tabOpen(); }
+      if (I.hit('Tab') && !R.paused && !R.freeze) { if (R.tabOpen) SA.UI.tabClose(); else SA.UI.tabOpen(); }
       // 마우스 → 월드 좌표
       const zw = R.zoom || SA.CFG.ZOOM;   // 시야 배율 반영
       R.mouseWorld.x = R.cam.x + (I.mouse.x - cv.width / 2) / zw;

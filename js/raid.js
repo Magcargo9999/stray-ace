@@ -362,11 +362,27 @@ SA.Raid = (() => {
     }
   };
 
+  // 메인 목표 의뢰인의 출격 통신: 첫 출격은 1번 줄, 그 뒤는 2·3번을 번갈아 (v0.112)
+  const mainComm = (R) => {
+    const prof = SA.profile, q = SA.Quest.cur().q; if (!q || !q.comm || !q.comm.length) return;
+    const cn = prof.commN = prof.commN || {}, n = cn[q.id] || 0, L = q.comm;
+    const line = n === 0 || L.length === 1 ? L[0] : L[1 + ((n - 1) % (L.length - 1))];
+    cn[q.id] = n + 1; SA.Save.store(prof);
+    say(q.commWho || q.giver, line);
+  };
+
   // ── 매 프레임 ──
   const update = (rdt) => {
     const R = SA.R; if (!R || R.paused) return;
+    // 루미나 첫 도전 페이즈 대사 (v0.112): 탄·적·기체 시간이 멈추고 Space로만 계속한다. 그 Space는 대사가 먹는다
+    if (R.freeze) {
+      const d = R.dialog && R.dialog.find(x => x.hold); if (d) d.t = (d.t || 0) + rdt;
+      if (!SA.Input.hit('Space')) return;
+      SA.Input.consume('Space'); R.freeze = null; R.dialog = (R.dialog || []).filter(x => !x.hold); SA.Audio.sfx('click');
+    }
     const dt = rdt * R.timeScale;
     R.t += dt;
+    if (!R.commOk && R.t >= 2 && R.state === 'play' && !R.range && !R.tut && !R.arena) { R.commOk = true; mainComm(R); }   // 출격 시작 통신 (v0.112)
     const P = R.player, S = C();
 
     if (R.state === 'dying') {
@@ -415,7 +431,7 @@ SA.Raid = (() => {
     R.rings = R.rings.filter(r => r.life > 0);
     for (const a of R.after) a.life -= dt;
     R.after = R.after.filter(a => a.life > 0);
-    if (R.dialog && R.dialog.length) { R.dialog[0].life -= rdt; R.dialog[0].t = (R.dialog[0].t || 0) + rdt; if (R.dialog[0].life <= 0) R.dialog.shift(); }   // 대사창은 하나씩 차례로
+    if (R.dialog && R.dialog.length) { if (!R.dialog[0].hold) R.dialog[0].life -= rdt; R.dialog[0].t = (R.dialog[0].t || 0) + rdt; if (R.dialog[0].life <= 0) R.dialog.shift(); }   // 대사창은 하나씩 차례로
     for (const m of R.msgs) m.life -= rdt;
     R.msgs = R.msgs.filter(m => m.life > 0);
     for (const l of R.pickLog) l.life -= rdt;
@@ -910,8 +926,7 @@ SA.Raid = (() => {
     if (po.ph) e.startPh = po.ph;
     if (po.again != null) e.again = !!po.again;
     C().fx(R, P.x, P.y, 40, '#d9b8ff', 160, 0.6, 2); R.shake = 10;
-    SA.Audio.sfx('warp'); SA.Audio.play('lumina');
-    msg('…빛을 따라왔다.', '#ffe9a8', 4);
+    SA.Audio.sfx('warp'); SA.Audio.play('lumina');   // 진입 대사 「…빛을 따라왔다.」는 이제 루미나의 파편 대사 lp1 (lumina.js)
   };
   const arenaClamp = (R) => {
     const P = R.player, m = 8;

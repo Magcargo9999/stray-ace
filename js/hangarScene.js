@@ -421,6 +421,7 @@ SA.HangarScene = (() => {
     return true;
   };
   const hideBubble = () => { if (bubble) { bubble.el.remove(); bubble = null; } };
+  const hush = () => { hideBubble(); chatT = 12; };   // 브리핑 띠가 뜰 때 혼잣말을 치운다 (v0.112)
   const findNpc = (id) => {
     if (SA.PILOTS[id]) return pilotObjs().find(o => o.pid === id) || null;
     const o = OBJ.find(x => x.npc === id); return o && visible(o) ? o : null;
@@ -459,7 +460,7 @@ SA.HangarScene = (() => {
     if (!r.ok) { who = mech() || 'os'; line = L.crash[who]; }
     else if ((r.decoded || (r.rescued || []).length || r.brought.some(it => SA.Decode.srcOf(it.id) || it.id === 'bb_reward')) && L.found[r.pilot] && findNpc(r.pilot)) { who = r.pilot; line = L.found[r.pilot]; }
     else { who = 'os'; line = r.value >= 1500 ? L.rich : r.value < 150 ? L.empty : L.back; }
-    setTimeout(() => { if (on && !panelOpen()) say(who, line); }, anim ? 1300 : 500);
+    setTimeout(() => { if (on && !panelOpen() && !SA.Brief.active() && !SA.Brief.hasPending()) say(who, line); }, anim ? 1300 : 500);
   };
 
   const pickHover = () => { let f = null; for (const o of hitList()) if (hit(o)) { f = o; break; } setHover(f); };
@@ -479,7 +480,7 @@ SA.HangarScene = (() => {
     }
     if (bubble) { bubble.t -= dt; if (bubble.t <= 0 || panelOpen()) hideBubble(); }
     // 가끔 혼잣말 (창이 열려 있으면 조용히)
-    if (!bubble && !panelOpen() && !anim && !guide) {
+    if (!bubble && !panelOpen() && !anim && !guide && !SA.Brief.active()) {
       chatT -= dt;
       if (chatT <= 0) {
         const pool = ['os', mech(), findNpc('dori') && 'dori', ...pilotsHere().slice(0, 2)].filter(Boolean);
@@ -495,7 +496,7 @@ SA.HangarScene = (() => {
   const showGuideLine = () => { const ge = document.getElementById('hg-goal'); if (ge) ge.classList.toggle('guide-hi', guide.target === 'goal'); say('os', SA.HG_LINES.guide[guide.i], [], 60000); if (bubble) bubble.el.classList.add('guide'); };
   const guideNext = () => {
     guide.i++;
-    if (guide.i >= GUIDE.length) { const ge = document.getElementById('hg-goal'); if (ge) ge.classList.remove('guide-hi'); guide = null; hideBubble(); P().hgGuide = true; SA.Save.store(P()); return; }
+    if (guide.i >= GUIDE.length) { const ge = document.getElementById('hg-goal'); if (ge) ge.classList.remove('guide-hi'); guide = null; hideBubble(); P().hgGuide = true; SA.Save.store(P()); setTimeout(() => SA.Brief.pump(), 500); return; }
     guide.target = GUIDE[guide.i]; showGuideLine();
   };
   const drawGuide = () => {
@@ -512,5 +513,5 @@ SA.HangarScene = (() => {
   const setBarHi = (pid) => { barHi = pid; };
   const alerts = () => { const b = badges(), out = {}; if (b.board) out.contracts = 1; if (b.decoder) out.decoder = 1; if (b.workbench) out.bench = 1; return out; };
   const step = (dt) => { if (!on) return; T += dt; update(dt); draw(); };   // 자동 촬영용 한 프레임
-  return { step, init, load, start, stop, play, react, say, startGuide, fit, IMG, sprite, bench, setBarHi, alerts, sortieState: () => shipState(), isAnim: () => !!anim, guideOn: () => !!guide };
+  return { step, init, load, start, stop, play, react, say, hush, startGuide, fit, IMG, sprite, bench, setBarHi, alerts, sortieState: () => shipState(), isAnim: () => !!anim, guideOn: () => !!guide };
 })();

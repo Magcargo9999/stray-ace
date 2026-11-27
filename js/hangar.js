@@ -69,6 +69,7 @@ SA.Hangar = (() => {
       const r = lastResult; lastResult = null;
       if (r) { S().play(r.ok ? 'land' : 'crash'); S().react(r); }
       else if (P().tutDone && !P().hgGuide && P().deathModeSet) setTimeout(() => S().startGuide(), 400);
+      setTimeout(() => SA.Brief.pump(), r ? 1800 : 900);   // 브리핑: 완료 대사 → 새 목표 (v0.112)
     });
   };
   const close = () => { closePanel(); S().stop(); $('#hangar').style.display = 'none'; SA.UI.hideTip(); };
@@ -79,9 +80,9 @@ SA.Hangar = (() => {
     SA.Contracts.sync(); credits();
     const g = goalParts();
     const pl = SA.Need.pinLine();
-    $('#hg-goal').innerHTML = `<span class="k">${SA.Quest.tag()}</span>${g[0]}${g[1] ? `<div class="hint">${g[1]}</div>` : ''}${pl ? `<div class="pinl${pl[2] ? ' ok' : ''}"><span class="k">제작</span>${pl[0]} — ${pl[2] ? '재료 다 모았다, 작업대에서 제작' : pl[1]}</div>` : ''}`;
+    $('#hg-goal').innerHTML = `<span class="k">${SA.Quest.tag()}</span>${SA.Quest.whoHtml()}${g[0]}${g[1] ? `<div class="hint">${g[1]}</div>` : ''}${pl ? `<div class="pinl${pl[2] ? ' ok' : ''}"><span class="k">제작</span>${pl[0]} — ${pl[2] ? '재료 다 모았다, 작업대에서 제작' : pl[1]}</div>` : ''}`;
     document.querySelectorAll('#hg-bar .hb').forEach(b => b.classList.toggle('alert', !!(SA.HGUI.barAlerts && S().alerts()[b.dataset.p])));
-    tip($('#hg-goal'), () => `${SA.Quest.label()}${SA.Quest.rewardText()}<br><br>${SA.Quest.listHtml()}<br><span class="dim">누르면 의뢰 게시판</span>`);
+    tip($('#hg-goal'), () => `${SA.Quest.whoHtml()}${SA.Quest.label()}${SA.Quest.rewardText()}<br><br>${SA.Quest.listHtml()}<br><span class="dim">누르면 의뢰 게시판</span>`);
     document.querySelectorAll('#hg-bar .hb').forEach(b => { b.classList.toggle('lock', locked(b.dataset.p)); b.classList.toggle('on', b.dataset.p === panel); });
   };
   // 목표: 괄호 속 힌트(진행 숫자 말고)와 ' — ' 뒤 설명은 흐린 보조 줄로
@@ -113,7 +114,7 @@ SA.Hangar = (() => {
     $('#hg-panel').style.display = 'flex';
     render();
   };
-  const closePanel = () => { if (panel === 'bench' && (P().newRecipes || []).length) { P().newRecipes = []; save(); } panel = null; $('#hg-panel').style.display = 'none'; document.querySelectorAll('.ctx').forEach(x => x.remove()); SA.UI.hideTip(); if (ready) hud(); };
+  const closePanel = () => { if (panel === 'bench' && (P().newRecipes || []).length) { P().newRecipes = []; save(); } panel = null; $('#hg-panel').style.display = 'none'; setTimeout(() => SA.Brief.pump(), 350); document.querySelectorAll('.ctx').forEach(x => x.remove()); SA.UI.hideTip(); if (ready) hud(); };
   const render = () => {
     hud();
     if (!panel) return;
@@ -905,8 +906,21 @@ SA.Hangar = (() => {
   };
 
   // ── 해독기: 해독 칸 3 · 창고의 블랙박스 · 출처별 기록 · 구석에 전적 ──
+  let decTab = 'rec';
+  // 작전 일지 (v0.112): 끝낸 목표와 지금 목표. 누르면 그 브리핑과 완료 대사를 띠에서 다시 본다
+  const opsLog = (body) => {
+    const M = SA.STORY.main, i = Math.min((P().mq || {}).i || 0, M.length - 1);
+    body.appendChild(h('div', 'small dim', '끝낸 목표와 지금 목표. 누르면 그때의 브리핑과 완료 대사를 다시 본다.'));
+    M.slice(0, i + 1).forEach((q, k) => {
+      const sp = q.giver && SA.SPEAKERS[q.giver], now = k === i;
+      const r = h('div', 'srow', `<span class="nm"><span class="${now ? '' : 'dim'}">${now ? '▶' : '✓'} ${k + 1}.</span> ${sp ? `<span style="color:${sp.color}">${sp.name}</span> · ` : ''}${q.text.split(' — ')[0].replace(/\s*\([^)]*\)/g, '')}</span>`);
+      if (q.brief) { const b = h('button', 'btn small', '다시 보기'); b.onclick = () => SA.Brief.replay(q.id); r.appendChild(b); }
+      body.appendChild(r);
+    });
+  };
   const decoder = (body) => {
     const prof = P(), ST = SA.STORY, top = h('div', 'dc-top'), dec = prof.decoding || [];
+    { const tabs = h('div', 'dc-tabs'); for (const [id, lab] of [['rec', '기록'], ['ops', '작전 일지']]) { const b = h('button', 'btn small' + (decTab === id ? ' on' : ''), lab); b.onclick = () => { decTab = id; render(); }; tabs.appendChild(b); } body.appendChild(tabs); if (decTab === 'ops') return opsLog(body); }
     const slots = h('div', 'dslots');
     for (let i = 0; i < SA.DECODE.slots; i++) { const d = dec[i]; slots.appendChild(h('div', 'dslot' + (d ? ' busy' : ''), d ? `<img src="${SA.Render.iconSrc(d.id)}"><span class="small">다음 출격 뒤</span>` : '<span class="dim small">빈 칸</span>')); }
     top.appendChild(slots);
