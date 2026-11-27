@@ -211,11 +211,6 @@ SA.partDesc = (id, lv = 0) => {
 };
 // 행성 개조: 칸마다 공용 4개 + 계열 전용 (only). 수치 임시
 SA.MODS = {
-  // 주무기 공용
-  m_rapid: { slot: 'main', name: '속사', desc: '연사 +25%, 한 발 피해 -10%.' },
-  m_eco:   { slot: 'main', name: '절전', desc: '에너지 소모 -35%.' },
-  m_long:  { slot: 'main', name: '장거리', desc: '탄속·사거리 +35%.' },
-  m_stun:  { slot: 'main', name: '충격탄', desc: '맞은 적이 10% 확률로 0.6초 기절.' },
   // 주무기 전용
   m_twin:   { slot: 'main', only: ['pulse'], name: '2연장', desc: '두 줄로 쏜다. 한 발 피해 ×0.6 (합 ×1.2).' },
   m_frag:   { slot: 'main', only: ['scatter'], name: '파편', desc: '맞은 탄이 파편 3개로 터진다 (파편 피해 25%). 몰려 있는 적에게 강하다.' },
@@ -227,11 +222,6 @@ SA.MODS = {
   m_tough:  { slot: 'main', only: ['glass'], name: '강화 유리', desc: '맞을 때 장착 부품 내구도 손상이 절반.' },
   m_thick:  { slot: 'main', only: ['beam'], name: '굵은 광선', desc: '광선이 적 3기까지 관통하고, 닿는 적 탄을 지운다.' },
   m_more:   { slot: 'main', only: ['swarm'], name: '+2발', desc: '한 번에 6발을 쏜다. 한 발 피해 ×0.8 (합 ×1.2).' },
-  // 서브웨폰 공용
-  s_range: { slot: 'sub', name: '사거리', desc: '사거리 +40%.' },
-  s_rate:  { slot: 'sub', name: '연사', desc: '연사 +30%.' },
-  s_stun:  { slot: 'sub', name: '충격', desc: '맞은 적이 10% 확률로 0.6초 기절.' },
-  s_dur:   { slot: 'sub', name: '내구', desc: '내구도 소모 절반.' },
   // 서브 전용
   s_graze: { slot: 'sub', only: ['mg'], name: '스침 연동', desc: '스칠 때마다 1.5초간 연사 2.5배.' },
   s_big:   { slot: 'sub', only: ['mine'], name: '대형 지뢰', desc: '폭발 범위 2배.' },
@@ -241,11 +231,6 @@ SA.MODS = {
   s_ret:   { slot: 'sub', only: ['intercept'], name: '반격', desc: '떨어뜨린 탄의 절반을 가까운 적에게 되쏜다.' },
   s_dbl:   { slot: 'sub', only: ['hturret'], name: '2연발', desc: '유도탄을 2발씩 쏜다.' },
   s_jump:  { slot: 'sub', only: ['chain'], name: '연쇄', desc: '번개가 튀는 수 +2.' },
-  // 액티브 공용
-  a_cd:    { slot: 'act', name: '쿨타임', desc: '쿨타임 -20%.' },
-  a_two:   { slot: 'act', name: '2회 충전', desc: '2번까지 모아 둔다 (쿨타임 1.5배).' },
-  a_inv:   { slot: 'act', name: '회피', desc: '사용하면 0.5초 무적.' },
-  a_gz:    { slot: 'act', name: '스침 점화', desc: '사용하면 스침 스택 +10.' },
   // 액티브 전용 (부품마다 1개)
   a_m10:   { slot: 'act', only: ['missile'], name: '10발', desc: '미사일 10발.' },
   a_conv:  { slot: 'act', only: ['purge'], name: '변환', desc: '지운 탄 10개마다 고철 1개 (최대 4), 40개 이상이면 금빛 회로.' },
@@ -298,14 +283,26 @@ SA.PLANET = {
 };
 for (const id in SA.PARTS) if (!SA.PLANET[id]) SA.PARTS[id].noUp = true;   // 행성 표가 없는 부품은 올리지 않는다
 SA.planetMod = (id) => (SA.PLANET[id] || [])[1] || null;
-// 개조 칩: 공용 개조 (부품당 1칸, 빼면 돌려받는다)
-SA.CHIPS = Object.keys(SA.MODS).filter(k => !SA.MODS[k].only);
-SA.chipsFor = (id) => { const d = SA.PARTS[id]; return d ? SA.CHIPS.filter(k => SA.MODS[k].slot === d.slot) : []; };
-SA.randChip = (id) => { const l = SA.chipsFor(id); return l.length ? l[Math.floor(Math.random() * l.length)] : null; };
+// 개조 칩 (v0.117 개편): 주무기·서브·액티브 공통 3종 × 등급 4단계. 부품당 1칸, 빼면 돌려받는다
+//  일반은 오스 단말에서 사고, 강화·행성·은하는 적 기체에서 낮은 확률로 떨어진다 (수치·확률 임시)
+SA.CHIP_TIERS = ['일반', '강화', '행성', '은하'];
+SA.CHIP_V = [0.15, 0.3, 0.6, 1];   // 등급별 효과 크기
+SA.CHIP_KIND = {
+  spd: { name: '속도', slots: ['main', 'sub', 'act'], desc: (v) => `주무기·서브 연사 +${Math.round(v * 100)}%, 액티브 쿨타임 -${Math.round((1 - 1 / (1 + v)) * 100)}%.` },
+  pow: { name: '위력', slots: ['main', 'sub'], desc: (v) => `주무기·서브 피해 +${Math.round(v * 100)}%. (액티브에는 못 끼운다)` },
+  dur: { name: '내구', slots: ['main', 'sub', 'act'], desc: (v) => (v >= 1 ? '내구도가 닳지 않는다.' : `내구도 소모 -${Math.round(v * 100)}%.`) + ` 주무기는 에너지 소모도 -${Math.round(v * 50)}%.` },
+};
+SA.CHIPS = [];
+for (const c in SA.CHIP_KIND) SA.CHIP_TIERS.forEach((t, i) => { const K = SA.CHIP_KIND[c], k = `c_${c}${i + 1}`; SA.MODS[k] = { chip: c, lv: i, slots: K.slots, name: `${K.name} (${t})`, desc: K.desc(SA.CHIP_V[i]) }; SA.CHIPS.push(k); });
+SA.chipsFor = (id) => { const d = SA.PARTS[id]; return d ? SA.CHIPS.filter(k => SA.MODS[k].slots.includes(d.slot)) : []; };
+SA.randChip = (id, lv = 0) => { const l = SA.chipsFor(id).filter(k => SA.MODS[k].lv === lv); return l.length ? l[Math.floor(Math.random() * l.length)] : null; };
+SA.chipV = (p, c) => { const m = p && p.mod && SA.MODS[p.mod]; return m && m.chip === c ? SA.CHIP_V[m.lv] : 0; };
+SA.CHIP_DROP = { normal: [0.01, 0.002, 0.0003], elite: [0.1, 0.02, 0.003] };   // 적 격추 시 강화·행성·은하 칩 확률 (정예·보스는 10배)
+SA.CHIP_OLD = { m_rapid: 'c_spd1', s_rate: 'c_spd1', a_cd: 'c_spd1', a_two: 'c_spd1', a_inv: 'c_spd1', a_gz: 'c_spd1', m_eco: 'c_dur1', s_dur: 'c_dur1', m_long: 'c_pow1', m_stun: 'c_pow1', s_range: 'c_pow1', s_stun: 'c_pow1' };   // 옛 칩 → 새 일반 칩
 // 부품에 붙은 개조 전부: 칩 + (행성이면) 전용
 SA.modsOf = (p) => { if (!p) return []; const o = []; if (p.mod) o.push(p.mod); const d = SA.PARTS[p.id]; if (d && d.gal) o.push(SA.planetMod(d.base)); else if (p.lv && SA.planetMod(p.id)) o.push(SA.planetMod(p.id)); return o; };
 SA.SLOT_NAME = { main: '주무기', sub: '서브', act: '액티브', pas: '패시브', obs: '관측' };
-for (const k of SA.CHIPS) { const m = SA.MODS[k]; SA.ITEMS['mc_' + k] = { name: '개조 칩: ' + m.name, w: 1, h: 1, val: 80, kind: 'mchip', mod: k, color: '#7fd1ff', desc: `${SA.SLOT_NAME[m.slot]} 부품에 끼운다 (작업대 → 부품). ${m.desc}` }; }
+for (const k of SA.CHIPS) { const m = SA.MODS[k], t = SA.CHIP_TIERS[m.lv]; SA.ITEMS['mc_' + k] = { name: '개조 칩: ' + m.name, w: 1, h: 1, val: [80, 300, 1200, 5000][m.lv], kind: 'mchip', mod: k, tier: t, color: SA.TIER_COL ? SA.TIER_COL[t] : '#7fd1ff', desc: `${m.slots.map(x => SA.SLOT_NAME[x]).join('·')} 부품에 끼운다 (작업대 → 부품). ${m.desc}` }; }
 // 은하 각성: 넣은 보스 재료에 따라 하나. 2·3막 보스는 규칙만 여기에 추가
 SA.AWAKEN = {
   raven:  { name: '레이븐 각성', mat: 'chip', desc: '스칠 때마다 이 부품 위력 +3% (최대 +30%, 맞으면 초기화).' },
@@ -637,7 +634,7 @@ SA.galCost = (gid) => { const g = SA.GALAXY[gid], b = SA.PARTS[g.base]; return {
 // ── 등급 색 단일 기준 (v0.70) ──
 // 재료·소모품·칩·설계도·부품 전부 등급이 있고, 색은 SA.TIER_COL 하나에서만 정한다. (이야기 아이템인 블랙박스·고용권·구조 캡슐은 등급 없이 자기 색)
 for (const id of ['scrap', 'wire', 'core', 'engine', 'debris', 'canister', 'repairkit', 'accel']) SA.ITEMS[id].tier = '일반';
-for (const k of SA.CHIPS) SA.ITEMS['mc_' + k].tier = '일반';
+for (const k of SA.CHIPS) { const t = SA.CHIP_TIERS[SA.MODS[k].lv]; SA.ITEMS['mc_' + k].tier = t; SA.ITEMS['mc_' + k].color = SA.TIER_COL[t]; }
 SA.TIER_SHORT = { 일반: '일', 강화: '강', 행성: '행', 은하: '은' };
 SA.itemTier = (id, it) => {
   const d = SA.ITEMS[id]; if (!d) return null;

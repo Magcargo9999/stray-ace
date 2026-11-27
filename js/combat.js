@@ -16,7 +16,7 @@ SA.Combat = (() => {
     const d = part.dur / part.max;
     return d >= 0.5 ? 1 : d <= 0 ? 0 : 0.5 + d;
   };
-  const wear = (part, amt) => { if (part && !(SA.R && SA.R.range)) part.dur = Math.max(0, part.dur - amt); };   // 연습장에서는 닳지 않는다
+  const wear = (part, amt) => { if (part && !(SA.R && SA.R.range)) part.dur = Math.max(0, part.dur - amt * (1 - SA.chipV(part, 'dur'))); };   // 내구 칩: 소모 감소 (은하는 0)   // 연습장에서는 닳지 않는다
   const zone = (R, x, y, r, t, dps, col) => { R.zones = R.zones || []; if (R.zones.length > 40) R.zones.shift(); R.zones.push({ x, y, r, t, max: t, dps, col }); };
   const pm = (P, k) => !!(P && P.pm && P.pm.has(k));   // 장착 부품에 이 개조(칩·행성 전용)가 있나
   const hasPas = (P, id) => P.pas.some(p => p && p.id === id && eff(p) > 0);
@@ -35,8 +35,7 @@ SA.Combat = (() => {
   const mainDef = (P, p) => {
     const b = SA.PARTS[p.id], d = Object.assign({}, b), m = SA.modsOf(p);
     d.dmg = b.dmg * pw(P, p); d.life = b.life || 1.1;
-    if (m.includes('m_rapid')) { d.rate *= 1.25; d.dmg *= 0.9; }
-    if (m.includes('m_long')) { d.spd *= 1.35; d.life *= 1.35; if (d.beam) d.beam *= 1.35; }
+    d.rate *= 1 + SA.chipV(p, 'spd'); d.dmg *= 1 + SA.chipV(p, 'pow');   // 개조 칩: 속도·위력
     if (m.includes('m_twin')) { d.shots = 2; d.dmg *= 0.6; d.twin = true; }
     if (m.includes('m_frag')) d.frag = 3;
     if (m.includes('m_crush')) d.close = true;
@@ -45,14 +44,14 @@ SA.Combat = (() => {
     if (m.includes('m_spierce')) d.pierce = 99;
     if (m.includes('m_more')) { d.shots = 6; d.dmg *= 0.8; }
     if (m.includes('m_thick')) d.beamN = 3;
-    d.stunCh = m.includes('m_stun') ? 0.1 : 0;
-    d.eps = (SA.ENERGY.eps[SA.baseOf(p.id)] || 1) * (m.includes('m_eco') ? 0.65 : 1);
+    d.stunCh = 0;
+    d.eps = (SA.ENERGY.eps[SA.baseOf(p.id)] || 1) * (1 - SA.chipV(p, 'dur') * 0.5);   // 내구 칩: 에너지 소모도 절반만큼 감소
     d.gal = b.gal ? p.id : null;                                                   // 은하 효과
     if (p.id === 'g_lance') { d.pierce = 99; d.life *= 2; d.erase = true; }        // 태양창
     return d;
   };
-  // 액티브 쿨타임: 기본 ÷ 위력, 개조 '쿨타임' ×0.8, '2회 충전' ×1.5
-  const actCd = (P, a) => SA.PARTS[a.part.id].cd / pw(P, a.part) * (SA.modsOf(a.part).includes('a_cd') ? 0.8 : 1) * (SA.modsOf(a.part).includes('a_two') ? 1.5 : 1);
+  // 액티브 쿨타임: 기본 ÷ 위력 ÷ (1 + 속도 칩)
+  const actCd = (P, a) => SA.PARTS[a.part.id].cd / pw(P, a.part) / (1 + SA.chipV(a.part, 'spd'));
   const spendAct = (P, a) => { if (SA.modsOf(a.part).includes('a_two')) { a.ch = Math.max(0, (a.ch === undefined ? 2 : a.ch) - 1); if (a.cd <= 0) a.cd = actCd(P, a); } else a.cd = actCd(P, a); };
   const actReady = (a) => SA.modsOf(a.part).includes('a_two') ? (a.ch === undefined ? 2 : a.ch) > 0 : a.cd <= 0;
   // 차폐 장갑: 침식 디버프 감소 비율 (일반 30%, 행성 39%, 은하 48%)
@@ -253,7 +252,7 @@ SA.Combat = (() => {
     for (const s of P.subs) {
       const e = eff(s.part); if (!e) continue;
       const id = s.part.id, d = SA.PARTS[id], m = SA.modsOf(s.part), k = pw(P, s.part);
-      const range = d.range * (m.includes('s_range') ? 1.4 : 1), dmg = d.dmg * k, wk = m.includes('s_dur') ? 0.5 : 1, so = m.includes('s_stun') ? 0.1 : 0;
+      const range = d.range, dmg = d.dmg * k * (1 + SA.chipV(s.part, 'pow')), wk = 1, so = 0, csp = 1 + SA.chipV(s.part, 'spd');   // 개조 칩: 위력·속도
       if (id === 'drone') {                // 추적 드론: 적에게 날아가 주위를 돌며 쏜다 (기체에서 leash 이내)
         s.orb += dt * 2.2;
         if (s.x === 0 && s.y === 0) { s.x = P.x; s.y = P.y; }
@@ -274,7 +273,7 @@ SA.Combat = (() => {
       else { s.x = P.x + s.ox; s.y = P.y + s.oy; }
       if (R.tabOpen) continue;   // 화물칸(Tab)을 여는 동안 서브웨폰은 멈춘다
       s.cd -= dt; s.boost = Math.max(0, (s.boost || 0) - dt);
-      const rate = d.rate * corrMul(P, st.fire) * e * (s.boost > 0 ? 2.5 : 1) * (m.includes('s_rate') ? 1.3 : 1);
+      const rate = d.rate * corrMul(P, st.fire) * e * (s.boost > 0 ? 2.5 : 1) * csp;
       if (id === 'mine') {                 // 지나간 자리에 지뢰
         if (s.cd <= 0 && Math.hypot(P.vx, P.vy) > 30) { s.cd = 1 / rate; pb(R, s.x, s.y, 0, 0, dmg, { mine: 20, aoe: 46 * (m.includes('s_big') ? 2 : 1), life: 9, col: '#ffcf6b', stunCh: so }); wear(s.part, 0.02 * wk); }
         continue;
@@ -287,7 +286,7 @@ SA.Combat = (() => {
         }
         const t = nearestEnemy(R, s.x, s.y, range);
         if (t) s.ang = U.ang(s.x, s.y, t.x, t.y);
-        if (t && s.cd <= 0) { s.cd = 0.8 / (m.includes('s_rate') ? 1.3 : 1); pb(R, s.x, s.y, s.ang, 420, dmg, { col: '#8ff0ff', w: 1, life: 0.6, stunCh: so }); }
+        if (t && s.cd <= 0) { s.cd = 0.8 / csp; pb(R, s.x, s.y, s.ang, 420, dmg, { col: '#8ff0ff', w: 1, life: 0.6, stunCh: so }); }
         continue;
       }
       if (id === 'intercept') {            // 가까운 적 탄 격추 (위력은 연사로)
@@ -348,8 +347,6 @@ SA.Combat = (() => {
     const gid = a.part.id, id = SA.baseOf(gid), m = SA.modsOf(a.part), X = SA.PARTS[gid].gal ? SA.GAL_RANGE : SA.LV_RANGE[a.part.lv || 0] || 1;   // X: 행성·은하 액티브 범위·지속 배율
     if (id !== 'cannon') spendAct(P, a);
     wear(a.part, 1.5);
-    if (m.includes('a_inv')) P.invuln = Math.max(P.invuln, 0.5);           // 개조: 사용 시 0.5초 무적
-    if (m.includes('a_gz')) R.graze += 10;                                  // 개조: 스침 스택 +10
     if (id === 'missile') {
       const n = m.includes('a_m10') ? 10 : 6;
       for (let i = 0; i < n; i++) pb(R, P.x, P.y, P.aim + (i - (n - 1) / 2) * (2.1 / n), 150, 24, { homing: 7, life: 2.4, missile: true, col: gid === 'g_missile' ? '#ff7a3d' : '#ffb347', w: 2, fireZ: gid === 'g_missile' ? 3 : 0 });

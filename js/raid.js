@@ -297,7 +297,7 @@ SA.Raid = (() => {
   };
   const resolve = (id) => {
     if (id === 'pbp') { const k = pickPlanetBp(); return k ? 'pbp_' + k : U.pick(SA.BENCH.fallback); }
-    if (id === 'mchip') return 'mc_' + U.pick(SA.CHIPS);
+    if (id === 'mchip') return 'mc_' + U.pick(SA.CHIPS.filter(k => SA.MODS[k].lv === 0));   // 상자·표의 칩은 일반만
     if (id.startsWith('part:')) { const pool = SA.BP_POOL[id.slice(5)] || SA.BP_POOL['일반']; return 'pt_' + U.pick(pool); }
     if (!id.startsWith('bp:')) return SA.Decode.dropId(SA.profile, id);   // 다 모은 출처의 스토리 블랙박스 → 신호 블랙박스
     const tier = id.slice(3), known = (r) => SA.profile.recipes.includes(r);
@@ -332,6 +332,11 @@ SA.Raid = (() => {
         const first = e.type === 'raven' ? !SA.profile.recipes.includes('raven') : true;
         if (Math.random() < (first ? ND.first : ND.later)) spawnItem(R, ND.part, e.x, e.y);
       }
+    }
+    // 등급 칩 (강화·행성·은하): 적 기체에서 낮은 확률. 정예(프리깃·네임드)·보스는 10배 (임시)
+    if (!e.crate && !e.noDrop && !R.range && D.ai !== 'none') {
+      const cr = (e.boss || D.ai === 'frigate' || SA.NAMED_DROP[e.type]) ? SA.CHIP_DROP.elite : SA.CHIP_DROP.normal;
+      for (let lv = 3; lv >= 1; lv--) if (Math.random() < cr[lv - 1] * (1 + b)) { spawnItem(R, 'mc_' + U.pick(SA.CHIPS.filter(k => SA.MODS[k].lv === lv)), e.x, e.y); break; }
     }
     // 부품 완성품 드랍 (적 격추)
     if (!e.crate && !e.noDrop) {

@@ -74,6 +74,12 @@ SA.Save = (() => {
   // 예전 세이브 정리: 사라진 아이템(연료 전지 등)은 판매가로 환불, 모르는 부품·제작법은 뺀다
   const LEGACY = { fuel: 60 };
   const migrate = (p) => {
+    // 개조 칩 개편 (v0.117): 옛 공용 칩 12종 → 새 일반 칩 (끼운 칩·창고·화물 전부)
+    const walk = (o, d = 0) => { if (!o || typeof o !== 'object' || d > 8) return; if (Array.isArray(o)) { o.forEach(x => walk(x, d + 1)); return; }
+      if (typeof o.mod === 'string' && SA.CHIP_OLD[o.mod]) o.mod = SA.CHIP_OLD[o.mod];
+      if (typeof o.id === 'string' && o.id.startsWith('mc_') && SA.CHIP_OLD[o.id.slice(3)]) o.id = 'mc_' + SA.CHIP_OLD[o.id.slice(3)];
+      for (const k in o) if (o[k] && typeof o[k] === 'object') walk(o[k], d + 1); };
+    walk(p);
     // 블랙박스 개편 (v0.42): 기록 번호 → id, 신호 1개 → 여러 개, 맡기기 1개 → 목록
     if (p.logs.some(x => typeof x === 'number')) p.logs = [...new Set(p.logs.map(x => typeof x === 'number' ? ['k1', 'r1', 'k2'][x] : x).filter(Boolean))];
     if (p.signal !== undefined) { if (p.signal !== null) p.signals = (p.signals || []).concat([p.signal]); delete p.signal; }

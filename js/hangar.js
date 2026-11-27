@@ -705,13 +705,13 @@ SA.Hangar = (() => {
   };
   // 개조 칩: 창고의 칩을 끼운다 (원래 칩은 창고로) · 빼면 창고로
   const chipMenu = (e, p) => {
-    const prof = P(), opts = SA.chipsFor(p.id).filter(k => SA.Grid.count(prof.stash, 'mc_' + k) > 0);
+    const prof = P(), opts = SA.chipsFor(p.id).filter(k => SA.Grid.count(prof.stash, 'mc_' + k) > 0).sort((a, b) => SA.MODS[b].lv - SA.MODS[a].lv);
     const m = h('div', 'ctx wide'), closeM = () => document.querySelectorAll('.ctx').forEach(x => x.remove());
     m.appendChild(h('div', 'pad small', `${SA.partHtml(p)} — 개조 칩 (지금: ${p.mod ? SA.MODS[p.mod].name : '없음'})`));
     if (!opts.length) m.appendChild(h('div', 'pad small dim', `창고에 ${SA.SLOT_NAME[SA.PARTS[p.id].slot]}용 칩이 없다. 오스의 단말에서 사거나 필드에서 줍는다.`));
     for (const k of opts) {
       if (k === p.mod) continue;
-      const b = h('button', '', `<b>${SA.MODS[k].name}</b> <span class="dim small">×${SA.Grid.count(prof.stash, 'mc_' + k)}</span><div class="small dim">${SA.MODS[k].desc}</div>`);
+      const b = h('button', '', `<b style="color:${SA.itemCol('mc_' + k)}">${SA.MODS[k].name}</b> <span class="dim small">×${SA.Grid.count(prof.stash, 'mc_' + k)}</span><div class="small dim">${SA.MODS[k].desc}</div>`);
       b.onclick = () => {
         const it = prof.stash.items.find(x => x.id === 'mc_' + k); if (!it) return;
         SA.Grid.remove(prof.stash, it.uid);
@@ -765,9 +765,9 @@ SA.Hangar = (() => {
       r.appendChild(b); c.appendChild(r);
     }
     c.appendChild(h('h4', '', `개조 칩 <span class="dim small">· 출격 준비 → 보유 부품에서 끼운다</span>`));
-    for (const k of SA.CHIPS) {
+    for (const k of SA.CHIPS.filter(k => SA.MODS[k].lv === 0)) {   // 일반 칩만 판다. 강화 이상은 적 기체에서만
       const id = 'mc_' + k, d = SA.ITEMS[id], price = SA.SHOP.chips, M = SA.MODS[k];
-      const r = h('div', 'srow', `<img src="${SA.Render.iconSrc(id)}"><span class="nm"><span style="color:${SA.itemCol(id)}">${M.name}</span> <span class="dim small">${SA.SLOT_NAME[M.slot]}</span> <span class="tier" style="color:${SA.itemCol(id)};border-color:${SA.itemCol(id)}66">${SA.itemTier(id)}</span></span><span class="dim small">창고 ${SA.Grid.count(prof.stash, id)}</span>`);
+      const r = h('div', 'srow', `<img src="${SA.Render.iconSrc(id)}"><span class="nm"><span style="color:${SA.itemCol(id)}">${M.name}</span> <span class="dim small">${M.slots.map(x => SA.SLOT_NAME[x]).join('·')}</span> <span class="tier" style="color:${SA.itemCol(id)};border-color:${SA.itemCol(id)}66">${SA.itemTier(id)}</span></span><span class="dim small">창고 ${SA.Grid.count(prof.stash, id)}</span>`);
       tip(r, `<b style="color:${SA.itemCol(id)}">${d.name}</b> <span class="dim">${SA.itemTier(id)}</span><br><span class="desc">${d.desc}</span>`);
       const b = h('button', 'btn small', `₵${price}`);
       b.onclick = () => {
