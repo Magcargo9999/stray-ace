@@ -413,12 +413,14 @@ SA.BENCH = {
 SA.ITEMS.bp_sensor.img = 'assets/bp_sensor.png';   // 도트 설계도 카드
 SA.PARTS.scatter.img = 'assets/p_scatter.png';   // 산탄 포탑 도트
 SA.PARTS.missile.img = 'assets/p_missile.png';   // 미사일 포드 도트
+for (const k of ['pulse', 'lance', 'sniper', 'glass']) SA.PARTS[k].img = `assets/p_${k}_v.png`;   // 정사각 칸용: 총구가 위를 향한 세로판. 창고 3×1 칸용 가로판은 아래 부품 완성품 아이템에서 덮어쓴다 (p_<id>.png)   // 주무기 4종 도트 (장비창·창고용, v0.105). 기체에는 달지 않는다(히트박스 가독성)
 SA.ITEMS.chip.img = 'assets/i_chip.png';   // 비행 기록 칩 도트
 // 부품 완성품 아이템 (필드 드랍용). 탈출하면 부품함으로 들어간다
 for (const id in SA.PARTS) {
   const d = SA.PARTS[id], sz = SA.PART_DROP.size[d.slot];
   SA.ITEMS['pt_' + id] = { name: d.name, w: sz[0], h: sz[1], val: Math.round(d.val * 0.6), kind: 'part', tier: d.tier, part: id, img: d.img, color: SA.TIER_COL[d.tier], desc: `[부품] ${SA.partDesc(id, 0)} 탈출하면 부품함으로 들어간다.` };
 }
+for (const k of ['pulse', 'lance', 'sniper', 'glass']) SA.ITEMS['pt_' + k].img = `assets/p_${k}.png`;   // 창고·화물칸 3×1 칸: 가로판
 // 아이템 분류 이름
 // 레이드 소모품 단축키: 상단 숫자 1·2·3 = 숫자패드 1·2·3 (화물칸에서 알아서 찾아 쓴다)
 SA.QUICK = [{ n: 1, id: 'repairkit' }, { n: 2, id: 'canister' }, { n: 3, id: 'stardata' }, { n: 4, id: 'accel' }];

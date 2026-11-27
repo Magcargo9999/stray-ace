@@ -20,7 +20,7 @@ SA.Render = (() => {
   let total = 1, loaded = 0;
   const loadProgress = () => loaded / total;
   const load = (done) => {
-    const list = [['poi_distress', 'assets/poi_distress.png'], ['hex', 'assets/hex_hull.png'], ['beacon', 'assets/beacon.png'], ['hexTurret', 'assets/hex_turret.png'], ['swift', 'assets/swift_hull.png'], ['ace', SA.SHIPS.ace.img], ['bastion', 'assets/bastion_hull.png'], ['arsenal', 'assets/arsenal_hull.png'], ['flame', 'assets/engine_flame.png'], ['ast_rock', 'assets/m_rock.png'], ['ast_planet', 'assets/m_planetoid.png'], ['ast_shard', 'assets/m_shard.png'], ['box_crate', 'assets/box_crate.png'], ['box_locked', 'assets/box_locked.png'], ['sub_drone', 'assets/sub_drone.png'], ['poi_wreck', 'assets/poi_wreck.png'], ['i_pod', 'assets/i_pod.png']];
+    const list = [['poi_distress', 'assets/poi_distress.png'], ['hex', 'assets/hex_hull.png'], ['beacon', 'assets/beacon.png'], ['hexTurret', 'assets/hex_turret.png'], ['swift', 'assets/swift_hull.png'], ['ace', SA.SHIPS.ace.img], ['bastion', 'assets/bastion_hull.png'], ['arsenal', 'assets/arsenal_hull.png'], ['flame', 'assets/engine_flame.png'], ['ast_rock', 'assets/m_rock.png'], ['ast_planet', 'assets/m_planetoid.png'], ['ast_shard', 'assets/m_shard.png'], ['box_crate', 'assets/box_crate.png'], ['box_locked', 'assets/box_locked.png'], ['sub_drone', 'assets/sub_drone.png'], ['poi_wreck', 'assets/poi_wreck.png'], ['poi_pod', 'assets/poi_pod.png'], ['i_pod', 'assets/i_pod.png']];
     for (const id in SA.ENEMIES) { const d = SA.ENEMIES[id]; if (!d.img) continue; list.push(['en_' + id, d.img]);
       if (d.anim) for (let k = 1; k < d.anim.n; k++) list.push(['en_' + id + '_' + k, d.img.replace(/_0\.png$/, '_' + k + '.png')]); }   // 애니메이션 프레임 xxx_0..n-1.png
     for (const id in SA.ITEMS) if (SA.ITEMS[id].img) list.push(['it_' + id, SA.ITEMS[id].img]);
@@ -44,7 +44,7 @@ SA.Render = (() => {
     // 필드 오브젝트 도트 (월드 크기 x ZOOM)
     const fit = (k, w, h) => { if (IMG[k]) pre[k] = shrink(IMG[k], w * Z, h * Z); };
     for (const k of LUMINA_FRAMES) if (IMG[k]) pre[k] = shrink(IMG[k], SA.RIFT.spr.w * 3, SA.RIFT.spr.h * 3);   // 아레나 확대 배율이 2보다 커도 선명하도록 월드 크기의 3배로 줄여 둔다
-    fit('box_crate', 25, 14); fit('box_locked', 18, 25); fit('sub_drone', 11, 11); fit('poi_wreck', 72, 28); fit('i_pod', 13, 17); fit('poi_distress', 16, 18); fit('beacon', 40, 39); fit('collector', SA.COLLECTOR.w, SA.COLLECTOR.h);
+    fit('box_crate', 25, 14); fit('box_locked', 18, 25); fit('sub_drone', 11, 11); fit('poi_wreck', 72, 28); fit('poi_pod', 66, 32); fit('i_pod', 13, 17); fit('poi_distress', 16, 18); fit('beacon', 40, 39); fit('collector', SA.COLLECTOR.w, SA.COLLECTOR.h);
     // 엄폐물: 크기 단계별로 미리 축소 (작은 원본은 그대로 확대)
     for (const k of ['rock', 'shard']) if (IMG['ast_' + k]) {
       const im = IMG['ast_' + k]; pre['ast_' + k] = [24, 48, 96].map(d => { const s = d * Z / Math.max(im.width, im.height); return shrink(im, im.width * s, im.height * s); });
@@ -494,6 +494,13 @@ SA.Render = (() => {
       if (pre.collector) { ctx.imageSmoothingEnabled = true; ctx.drawImage(pre.collector, p.x - CO.w / 2, p.y - CO.h / 2 + bob, CO.w, CO.h); }
       else { ctx.fillStyle = '#2f3f6a'; ctx.fillRect(p.x - 30, p.y - 20, 60, 40); }
       label(ctx, '수집가', p.x, p.y - CO.h / 2 - 6 + bob, '#ff9fd8', 9);
+      return;
+    }
+    if (p.type === 'wreck' && p.lumina) {   // 추락한 기록 포드 (메인 목표): 전용 도트 + 금빛 신호
+      if (!p.done) { const pulse = (t * 1.2) % 1; ctx.strokeStyle = `rgba(255,233,168,${0.8 * (1 - pulse)})`; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.arc(p.x, p.y, 20 + pulse * 70, 0, 6.29); ctx.stroke(); }
+      ctx.save(); ctx.translate(p.x, p.y); ctx.rotate(-0.25); ctx.imageSmoothingEnabled = true; if (p.done) ctx.globalAlpha = 0.6;
+      if (pre.poi_pod) ctx.drawImage(pre.poi_pod, -33, -16, 66, 32); ctx.restore(); ctx.globalAlpha = 1;
+      label(ctx, p.done ? '기록 포드 (수색 완료)' : '추락한 기록 포드', p.x, p.y - 26, '#ffe9a8', 8);
       return;
     }
     if (p.type === 'wreck') {
@@ -1051,6 +1058,17 @@ SA.Render = (() => {
     }
 
     if (!R.arena) drawMinimap(ctx, R, W, H);
+    // 메인 목표: 화면 밖의 기록 포드 방향 화살표 (찾기 쉽게)
+    if (!R.arena && !R.tabOpen) for (const p of R.pois) if (p.lumina && !p.done) {
+      const Zw = R.zoom || Z, sx = (p.x - R.cam.x) * Zw + W / 2, sy = (p.y - R.cam.y) * Zw + H / 2, m = 46;
+      if (sx > m && sx < W - m && sy > m && sy < H - m) continue;
+      const ang = Math.atan2(p.y - R.player.y, p.x - R.player.x), cx = W / 2, cy = H / 2;
+      const k2 = Math.min((W / 2 - m) / Math.max(1e-3, Math.abs(Math.cos(ang))), (H / 2 - m) / Math.max(1e-3, Math.abs(Math.sin(ang))));
+      const ax = cx + Math.cos(ang) * k2, ay = Math.max(92, Math.min(H - 140, cy + Math.sin(ang) * k2)), dist = Math.round(Math.hypot(p.x - R.player.x, p.y - R.player.y) / 10);
+      ctx.save(); ctx.translate(ax, ay); ctx.rotate(ang); ctx.globalAlpha = 0.65 + 0.3 * Math.sin(R.t * 5);
+      ctx.fillStyle = '#ffe9a8'; ctx.beginPath(); ctx.moveTo(14, 0); ctx.lineTo(-8, -9); ctx.lineTo(-3, 0); ctx.lineTo(-8, 9); ctx.closePath(); ctx.fill(); ctx.restore();
+      T(ctx, `기록 포드 ${dist}m`, ax - Math.cos(ang) * 6, ay - Math.sin(ang) * 6 + (Math.sin(ang) > 0 ? -18 : 22), '#ffe9a8', 12, 'center');
+    }
 
     // 조준선
     if (!R.tabOpen && !R.paused) {
@@ -1088,6 +1106,11 @@ SA.Render = (() => {
       const px = mx + p.x * k, py = my + p.y * k;
       if (p.type === 'zone') { ctx.strokeStyle = p.open ? 'rgba(143,182,255,0.4)' : '#8fb6ff'; ctx.lineWidth = 1; ctx.beginPath(); ctx.arc(px, py, p.r * k, 0, 6.29); ctx.stroke(); continue; }
       ctx.fillStyle = p.type === 'collector' ? '#ff9fd8' : p.type === 'rift' ? (p.closed ? '#4a3a66' : Math.sin(R.t * 4) > 0 ? '#d9b8ff' : '#7a4ab8') : p.done ? '#555' : { wreck: '#ffd166', container: '#ffd166', turrets: '#ff6b7a', patrol: '#ff6b7a', nest: '#ff4d6d', distress: Math.sin(R.t * 6) > 0 ? '#ffd166' : '#7a5a12', rescue: Math.sin(R.t * 6) > 0 ? '#6ee7ff' : '#1d5a66', duel: '#ff4d6d', lost: Math.sin(R.t * 5) > 0 ? '#5dffb0' : '#1d6a4a', locked: ['#9fb3c8', '#5dffb0', '#ffd166'][(p.grade || 1) - 1], secure: '#8fb6ff', signal: Math.sin(R.t * 5) > 0 ? '#ffb347' : '#7a4a12' }[p.type] || '#cfe3ff';
+      if (p.lumina && !p.done) {   // 기록 포드: 점멸하는 금빛 표시 (다른 난파선과 구분)
+        const on = Math.sin(R.t * 5) > -0.2; ctx.fillStyle = on ? '#ffe9a8' : '#8a7a40'; ctx.fillRect(px - ps - 1, py - ps - 1, ps * 2 + 2, ps * 2 + 2);
+        ctx.strokeStyle = '#ffe9a8'; ctx.lineWidth = 1; ctx.beginPath(); ctx.arc(px, py, ps + 4 + (R.t * 6) % 5, 0, 6.29); ctx.stroke();
+        if (!big) { ctx.font = '10px "Galmuri11", sans-serif'; ctx.textAlign = 'right'; ctx.fillStyle = '#ffe9a8'; ctx.fillText('기록 포드', px - ps - 6, py + 4); }
+      } else
       ctx.fillRect(px - ps, py - ps, ps * 2, ps * 2);
       if (big && !p.done && p.label) { ctx.font = '11px "Galmuri11", sans-serif'; ctx.textAlign = 'left'; ctx.fillStyle = '#9aa7bd'; ctx.fillText(p.label, px + 7, py + 4); }
     }

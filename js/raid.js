@@ -180,7 +180,7 @@ SA.Raid = (() => {
     if ((SA.STORY.main[(SA.profile.mq || {}).i || 0] || {}).id === 'mB') {
       const w = addPoi('wreck', place(0.5, 0.82, 650), { label: '추락한 기록 포드', lumina: true, seen: true, seed: Math.random() });
       for (let k = 0; k < 2; k++) S.spawnEnemy(R, 'corrode', w.x + U.rnd(-110, 110), w.y + U.rnd(-110, 110));
-      msg('왕국 군용 식별 신호 — 추락한 기록 포드 (미니맵 표시)', '#ffe9a8', 6);
+      msg('왕국 군용 식별 신호 — 추락한 기록 포드 (미니맵 금빛 표시 · 화면 가장자리 화살표 · 가까이 머물러 수색)', '#ffe9a8', 8);
     }
     for (let i = 0; i < 2; i++) {
       const c = addPoi('container', place(0.55, 0.8), { label: '보급 컨테이너' });
