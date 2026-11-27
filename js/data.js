@@ -418,6 +418,8 @@ SA.PARTS.mine.img = 'assets/p_mine.png';   // 지뢰 투하기 도트
 SA.PARTS.flamer.img = 'assets/p_flamer.png';   // 화염 방사 포탑 도트 (노즐이 오른쪽 = 조준 방향)
 SA.PARTS.sdrone.img = 'assets/p_sdrone.png';   // 방패 드론 도트 (볼록한 방패 면이 오른쪽)
 SA.PARTS.intercept.img = 'assets/p_intercept.png';   // 요격 레이저 포탑 도트 (포신이 오른쪽 = 조준 방향)
+SA.PARTS.hturret.img = 'assets/p_hturret.png';   // 유도탄 포탑 도트 (발사 방향이 위)
+SA.PARTS.chain.img = 'assets/p_chain.png';   // 전기 사슬 도트 (집게가 오른쪽 = 조준 방향)
 for (const k of ['pulse', 'lance', 'sniper', 'glass', 'swarm']) SA.PARTS[k].img = `assets/p_${k}_v.png`;   // 정사각 칸용: 총구가 위를 향한 세로판. 창고 3×1 칸용 가로판은 아래 부품 완성품 아이템에서 덮어쓴다 (p_<id>.png)   // 주무기 4종 도트 (장비창·창고용, v0.105). 기체에는 달지 않는다(히트박스 가독성)
 SA.ITEMS.chip.img = 'assets/i_chip.png';   // 비행 기록 칩 도트
 // 부품 완성품 아이템 (필드 드랍용). 탈출하면 부품함으로 들어간다
