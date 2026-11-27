@@ -25,7 +25,6 @@ SA.Render = (() => {
       if (d.anim) for (let k = 1; k < d.anim.n; k++) list.push(['en_' + id + '_' + k, d.img.replace(/_0\.png$/, '_' + k + '.png')]); }   // 애니메이션 프레임 xxx_0..n-1.png
     for (const id in SA.ITEMS) if (SA.ITEMS[id].img) list.push(['it_' + id, SA.ITEMS[id].img]);
     list.push(['collector', 'assets/collector.png']);   // 수집가 함선 (사용자 도트)
-    list.push(['arena_bg', 'assets/arena_bg.png']);   // 균열 아레나 뒷배경 (사용자 그림, 좌우만 잘랐다)
     for (const k of LUMINA_FRAMES) list.push([k, 'assets/' + k + '.png']);   // 루미나 (사용자 도트): 평소 날개 3프레임 + 마지막 발악 불꽃 3프레임
     for (const id in SA.SPEAKERS) list.push(['pt_' + id, 'assets/portrait_' + id + '.png']);   // 초상화 (없으면 실루엣)
     let left = list.length; total = list.length; loaded = 0;
@@ -45,12 +44,6 @@ SA.Render = (() => {
     // 필드 오브젝트 도트 (월드 크기 x ZOOM)
     const fit = (k, w, h) => { if (IMG[k]) pre[k] = shrink(IMG[k], w * Z, h * Z); };
     for (const k of LUMINA_FRAMES) if (IMG[k]) pre[k] = shrink(IMG[k], SA.RIFT.spr.w * 3, SA.RIFT.spr.h * 3);   // 아레나 확대 배율이 2보다 커도 선명하도록 월드 크기의 3배로 줄여 둔다
-    if (IMG.arena_bg) {   // 균열 아레나 뒷배경: 월드 3배로 줄이고, 위아래·좌우로 뒤집은 판을 이어 붙여 이음매 없이 흘린다 (색은 그대로)
-      const RF = SA.RIFT, w = RF.w * 3, h = RF.h * 3, b = shrink(IMG.arena_bg, w, h);
-      const mk = (fx) => { const c = document.createElement('canvas'); c.width = w; c.height = h * 2; const x = c.getContext('2d');
-        x.save(); if (fx) { x.translate(w, 0); x.scale(-1, 1); } x.drawImage(b, 0, 0); x.translate(0, h * 2); x.scale(1, -1); x.drawImage(b, 0, 0); x.restore(); return c; };
-      pre.arenaT = mk(false); pre.arenaTF = mk(true);
-    }
     fit('box_crate', 25, 14); fit('box_locked', 18, 25); fit('sub_drone', 11, 11); fit('poi_wreck', 72, 28); fit('i_pod', 13, 17); fit('poi_distress', 16, 18); fit('beacon', 40, 39); fit('collector', SA.COLLECTOR.w, SA.COLLECTOR.h);
     // 엄폐물: 크기 단계별로 미리 축소 (작은 원본은 그대로 확대)
     for (const k of ['rock', 'shard']) if (IMG['ast_' + k]) {
@@ -151,62 +144,138 @@ SA.Render = (() => {
   const dust = Array.from({ length: 70 }, () => ({ x: Math.random() * 600 - 150, y: Math.random() * 340, v: 8 + Math.random() * 10, s: Math.random() < 0.3 ? 1.4 : 0.9, a: 0.15 + Math.random() * 0.3 }));
   // 현재 페이즈 (등장 중 = 0, 이긴 뒤 = 마지막 값 유지)
   const arenaPh = (R) => { const b = R.boss; return b && b.type === 'lumina' && b.ph >= 0 ? b.ph : null; };
+  // ── 균열 내부 배경 (v0.104): 어두운 검은 보라 바탕 + 양옆·바깥에서 안쪽으로 갈라지는 연보라 균열 (전부 코드, 도트 블록) ──
+  // 균열은 고정 시드로 한 번 만들고, 페이즈마다 새 균열이 자라고 전체가 벌어진다. 가운데 띠(x 100~200)는 비워 둔다.
+  const CK_PX = 1.5;   // 도트 한 칸 = 월드 1.5
+  const crackSet = (() => {
+    let sd = 20261127; const rnd = () => (sd = (sd * 1664525 + 1013904223) >>> 0) / 4294967296;
+    const W = SA.RIFT.w, H = SA.RIFT.h, list = [];
+    // [시작 높이, 방향(0 왼쪽/1 오른쪽), 등장 단계, 안쪽 한계]
+    const spec = [[70, 0, 0, 62], [250, 1, 0, 238], [185, 0, 1, 70], [120, 1, 1, 232], [300, 0, 1, 52], [40, 1, 2, 226], [230, 0, 2, 78], [160, 1, 2, 246], [320, 1, 3, 250], [215, 1, 3, 222]];
+    for (const [sy, side, g, lim] of spec) {
+      const dir = side ? -1 : 1, sx = side ? W + 170 : -170, pts = [];
+      let x = sx, y = sy, ang = (side ? Math.PI : 0) + (rnd() - 0.5) * 0.5, d = 0;
+      const main = [{ x, y, d: 0 }];
+      for (let i = 0; i < 40; i++) {
+        const st = 10 + rnd() * 9; ang += (rnd() - 0.5) * 1.2; ang = (side ? Math.PI : 0) + Math.max(-0.7, Math.min(0.7, ang - (side ? Math.PI : 0)));
+        x += Math.cos(ang) * st; y += Math.sin(ang) * st; d += st; y = Math.max(-5, Math.min(H + 5, y));
+        main.push({ x, y, d });
+        if ((dir > 0 && x >= lim) || (dir < 0 && x <= lim)) break;
+      }
+      const L = d, branches = [];
+      for (let i = 3; i < main.length - 1; i++) if (rnd() < 0.1) {   // 가지: 위나 아래로 짧게
+        let bx = main[i].x, by = main[i].y, bd = main[i].d, ba = (side ? Math.PI : 0) + (rnd() < 0.5 ? -1 : 1) * (0.6 + rnd() * 0.5);
+        const bp = [{ x: bx, y: by, d: bd }], n = 2 + Math.floor(rnd() * 2);
+        for (let k = 0; k < n; k++) { const st = 9 + rnd() * 8; ba += (rnd() - 0.5) * 0.6; bx += Math.cos(ba) * st; by += Math.sin(ba) * st; bd += st; if ((dir > 0 && bx > lim + 14) || (dir < 0 && bx < lim - 14)) break; bp.push({ x: bx, y: by, d: bd }); }
+        if (bp.length > 1) branches.push(bp);
+      }
+      list.push({ g, L, paths: [main].concat(branches) });
+    }
+    return list;
+  })();
+  const hex3 = (h) => { const n = parseInt(h.slice(1), 16); return [n >> 16, (n >> 8) & 255, n & 255]; };
+  const mixc = (a, b, t) => { const A = hex3(a), B = hex3(b); return `rgb(${A.map((v, i) => Math.round(v + (B[i] - v) * t)).join(',')})`; };
+  const CK_EDGE = ['#8f78e6', '#a28cf0', '#b49cf6', '#c9a0ea'], CK_IN = ['#d9ccff', '#e6dcff', '#f1eaff', '#ffdff0'], CK_W = [3.2, 5.6, 9, 14];
+  const ckCan = { o: null, t: null, key: null };
+  // 균열을 도트 캔버스에 그린다 (cg: 0~4, 자라는 정도). 선마다 알파를 2단계로 잘라 도트 느낌을 낸다
+  const drawCracks = (cg) => {
+    const W = SA.RIFT.w, H = SA.RIFT.h, cw = Math.ceil(W * 3 / CK_PX), ch = Math.ceil(H / CK_PX);
+    if (!ckCan.o) { for (const k of ['o', 't']) { const c = document.createElement('canvas'); c.width = cw; c.height = ch; ckCan[k] = c; } }
+    const O = ckCan.o.getContext('2d'), T = ckCan.t.getContext('2d', { willReadFrequently: true });
+    O.clearRect(0, 0, cw, ch);
+    const pi = Math.max(0, Math.min(3, cg - 1)), i0 = Math.floor(pi), i1 = Math.min(3, i0 + 1), fr = pi - i0;
+    const wBase = CK_W[i0] + (CK_W[i1] - CK_W[i0]) * fr;
+    const edge = mixc(CK_EDGE[i0], CK_EDGE[i1], fr), inn = mixc(CK_IN[i0], CK_IN[i1], fr);
+    const mapx = (x) => (x + W) / CK_PX, mapy = (y) => y / CK_PX;
+    // 한 겹 그리기: 흰색으로 그려 알파를 0/255로 잘라 색을 입힌 뒤 합친다
+    const layer = (color, alpha, extra, kmul) => {
+      T.clearRect(0, 0, cw, ch); T.strokeStyle = '#fff'; T.lineCap = 'round'; T.lineJoin = 'round';
+      for (const c of crackSet) {
+        const f = Math.max(0, Math.min(1, cg - c.g)); if (f <= 0) continue;
+        const cut = f * c.L;
+        for (const path of c.paths) for (let i = 1; i < path.length; i++) {
+          const a = path[i - 1], b = path[i]; if (a.d >= cut) break;
+          let bx = b.x, by = b.y; if (b.d > cut) { const t = (cut - a.d) / (b.d - a.d); bx = a.x + (b.x - a.x) * t; by = a.y + (b.y - a.y) * t; }
+          const u = Math.min(1, ((a.d + b.d) / 2) / c.L), br = path === c.paths[0] ? 1 : 0.55;
+          const w = Math.max(0.6, wBase * br * Math.max(0.3, 1 - u * 0.55) * kmul + extra) / CK_PX;
+          T.lineWidth = w; T.beginPath(); T.moveTo(mapx(a.x), mapy(a.y)); T.lineTo(mapx(bx), mapy(by)); T.stroke();
+        }
+      }
+      const im = T.getImageData(0, 0, cw, ch), d = im.data;
+      for (let i = 3; i < d.length; i += 4) d[i] = d[i] >= 110 ? 255 : 0;
+      T.putImageData(im, 0, 0);
+      T.globalCompositeOperation = 'source-in'; T.fillStyle = color; T.fillRect(0, 0, cw, ch); T.globalCompositeOperation = 'source-over';
+      O.globalAlpha = alpha; O.drawImage(ckCan.t, 0, 0); O.globalAlpha = 1;
+    };
+    layer('rgb(110,80,200)', 0.10, 11, 1);    // 바깥 번짐
+    layer('rgb(140,110,235)', 0.16, 5.5, 1);  // 안쪽 번짐
+    layer(edge, 0.9, 2.2, 1);                 // 균열 가장자리
+    layer(inn, 0.92, 0, 0.7);                 // 틈 속에서 새는 연보라 빛
+    layer('rgb(248,242,255)', 0.9, 0, 0.22);  // 가장 깊은 곳의 흰빛
+  };
+  // 어두운 안개: 작은 캔버스에 그려 단계로 잘라 두고(도트), 천천히 숨 쉬게 한다
+  let fogC = null;
+  const makeFog = () => {
+    const W = SA.RIFT.w, H = SA.RIFT.h, px = 3, cw = Math.ceil(W * 3 / px), ch = Math.ceil(H / px);
+    const c = document.createElement('canvas'); c.width = cw; c.height = ch; const x = c.getContext('2d', { willReadFrequently: true });
+    x.fillStyle = '#07040f'; x.fillRect(0, 0, cw, ch);
+    const blob = (bx, by, r, col, a) => { const gx = (bx + W) / px, gy = by / px, gr = r / px, g = x.createRadialGradient(gx, gy, 0, gx, gy, gr); g.addColorStop(0, `rgba(${col},${a})`); g.addColorStop(1, `rgba(${col},0)`); x.fillStyle = g; x.fillRect(0, 0, cw, ch); };
+    // 안개는 양옆과 바깥에 몰려 있고 가운데 띠는 가장 어둡다
+    for (const [bx, by, r, a] of [[-90, 60, 190, .55], [-60, 260, 200, .5], [20, 160, 130, .30], [390, 80, 200, .5], [370, 270, 190, .55], [290, 190, 120, .28], [150, -20, 150, .20], [150, 360, 150, .20]]) blob(bx, by, r, '58,30,112', a);
+    for (const [bx, by, r, a] of [[-70, 150, 120, .30], [370, 150, 120, .30]]) blob(bx, by, r, '120,80,200', a);
+    const im = x.getImageData(0, 0, cw, ch), d = im.data;   // 색을 몇 단계로 자른다
+    for (let i = 0; i < d.length; i += 4) { d[i] = Math.round(d[i] / 9) * 9; d[i + 1] = Math.round(d[i + 1] / 9) * 9; d[i + 2] = Math.round(d[i + 2] / 11) * 11; }
+    x.putImageData(im, 0, 0); return c;
+  };
   const drawArenaBg = (ctx, R) => {
     const A = R.arena, RF = SA.RIFT, W = R.map.w, H = R.map.h;
     const dt = Math.min(0.1, Math.max(0, R.t - (A.rt == null ? R.t : A.rt))); A.rt = R.t;
-    const k = 1 - Math.exp(-dt * 2.2);
     if (A.flash > 0) A.flash -= dt;
-    // 페이즈 색조·틈 폭: 부드럽게 따라간다
+    // 페이즈 색조: 부드럽게 따라간다 (연보라 유지, 발악만 붉은 기운)
     const ph = arenaPh(R); if (ph !== null) A.ph = ph;
-    const pi = A.ph == null ? 0 : A.ph, tg = RF.tint[pi];
+    const pi = A.ph == null ? 0 : A.ph, tg = RF.tint[pi], k = 1 - Math.exp(-dt * 2.2);
     if (!A.tint) A.tint = tg.slice();
     for (let i = 0; i < 4; i++) A.tint[i] += (tg[i] - A.tint[i]) * k;
-    const rwT = A.won ? 0 : RF.riftW[pi];
-    if (A.rw == null) A.rw = 0;
-    A.rw += (rwT - A.rw) * (1 - Math.exp(-dt * (A.won ? 2.6 : 2.4)));
-    const hc = RF.hud[pi];
-    A.hcol = hc;
+    A.hcol = RF.hud[pi];
+    // 균열이 자라는 정도: 입장 때 처음 벌어지고, 페이즈마다 새 균열이 자란다. 이기면 닫힌다
+    const cgT = A.won ? 0 : pi + 1;
+    if (A.cg == null) A.cg = 0;
+    A.cg += (cgT - A.cg) * (1 - Math.exp(-dt * (A.won ? 2.6 : 1.5)));
+    if (Math.abs(cgT - A.cg) < 0.004) A.cg = cgT;
     // 마디 첫 박 맥동 (곡 시계, 곡이 없으면 아레나 시간)
     let pu = 0;
     if (ph !== null && !A.won && SA.Lumina.clock) { const M = SA.Lumina.BEAT * 4, s = ((SA.Lumina.clock(R) % M) + M) % M; pu = s < 0.03 ? s / 0.03 : Math.max(0, 1 - (s - 0.03) / 0.25); }
-    // 뒷배경 그림: 아래로 흐른다. 좌우로도 이어 붙여 아레나 바깥까지 채운다
-    const T0 = pre.arenaT, T1 = pre.arenaTF;
-    if (T0) {
-      const off = (A.t * RF.flow) % (H * 2);
-      for (let c = -1; c <= 1; c++) for (let r = -1; r <= 0; r++) ctx.drawImage(c === 0 ? T0 : T1, c * W, off + r * H * 2, W, H * 2);
-    } else { ctx.fillStyle = '#0d0a1c'; ctx.fillRect(-W, 0, W * 3, H); }
+    // 바탕: 아주 어두운 검은 보라 + 안개 (아래로 아주 느리게 흐르듯 숨 쉰다)
+    if (!fogC) fogC = makeFog();
+    ctx.fillStyle = '#07040f'; ctx.fillRect(-W, -400, W * 3, H + 800);
+    ctx.imageSmoothingEnabled = false;
+    const br = Math.sin(A.t * 0.35) * 5;
+    ctx.drawImage(fogC, -W, br, W * 3, H);
     // 흐르는 가루
     ctx.fillStyle = '#cdb8ff';
-    for (const d of dust) { const y = (d.y + A.t * d.v) % H; ctx.globalAlpha = d.a; ctx.fillRect(d.x, y, d.s, d.s); }
+    for (const d of dust) { const y = (d.y + A.t * d.v) % H; ctx.globalAlpha = d.a * 0.8; ctx.fillRect(d.x, y, d.s, d.s); }
     ctx.globalAlpha = 1;
-    // 페이즈 색조 + 맥동 (아레나 안만)
+    // 페이즈 색 덮개 + 맥동
     const [tr, tgc, tb, ta] = A.tint;
-    ctx.fillStyle = `rgba(${tr | 0},${tgc | 0},${tb | 0},${ta})`; ctx.fillRect(0, 0, W, H);
-    if (pu > 0) { ctx.fillStyle = `rgba(200,180,255,${RF.pulse * pu})`; ctx.fillRect(0, 0, W, H); }
-    // 위쪽 틈 (코드): 페이즈마다 벌어진다
-    const rw = A.rw;
-    if (rw > 0.5) {
-      const cx = W / 2, dep = Math.min(45, 8 + rw * 0.26), n = RIFT_J.length - 1, gl = 1 + 0.08 * pu;
-      const n2 = parseInt(hc.slice(1), 16), cr = n2 >> 16, cg = (n2 >> 8) & 255, cb = n2 & 255;
-      ctx.save(); ctx.globalCompositeOperation = 'lighter';
-      const g = ctx.createRadialGradient(cx, 0, 0, cx, 0, rw * 0.9 + 20);
-      g.addColorStop(0, `rgba(${cr},${cg},${cb},${0.32 * gl})`); g.addColorStop(1, `rgba(${cr},${cg},${cb},0)`);
-      ctx.fillStyle = g; ctx.fillRect(cx - rw - 30, 0, rw * 2 + 60, dep + 40);
-      ctx.restore();
-      ctx.beginPath(); ctx.moveTo(cx - rw / 2, 0);
-      for (let i = 1; i < n; i++) { const u = i / n, x = cx - rw / 2 + rw * u, y = dep * Math.sin(u * Math.PI) * (0.75 + 0.25 * RIFT_J[i]) + RIFT_J[i] * 3; ctx.lineTo(x, Math.max(1, y)); }
-      ctx.lineTo(cx + rw / 2, 0); ctx.closePath();
-      const g2 = ctx.createLinearGradient(0, 0, 0, dep);
-      g2.addColorStop(0, `rgba(255,250,255,${Math.min(1, 0.95 * gl)})`); g2.addColorStop(0.55, `rgba(${cr},${cg},${cb},0.85)`); g2.addColorStop(1, `rgba(${cr},${cg},${cb},0.35)`);
-      ctx.fillStyle = g2; ctx.fill();
-      ctx.strokeStyle = 'rgba(185,140,255,0.55)'; ctx.lineWidth = 1; ctx.stroke();
+    ctx.fillStyle = `rgba(${tr | 0},${tgc | 0},${tb | 0},${ta})`; ctx.fillRect(-W, 0, W * 3, H);
+    // 균열: 바뀔 때만 다시 그린다 (1/30 단위). 아레나 안은 흐리게 해서 배경인 걸 확실히 한다
+    const key = Math.round(A.cg * 30);
+    if (key > 0) {
+      if (ckCan.key !== key) { drawCracks(key / 30); ckCan.key = key; }
+      const cw = ckCan.o.width, ch = ckCan.o.height;
+      const draw = (al) => { ctx.globalAlpha = al; ctx.drawImage(ckCan.o, -W, 0, W * 3, H); };
+      ctx.save(); ctx.beginPath(); ctx.rect(-W, 0, W, H); ctx.rect(W, 0, W, H); ctx.clip(); draw(0.95 + 0.05 * pu); ctx.restore();
+      ctx.save(); ctx.beginPath(); ctx.rect(0, 0, W, H); ctx.clip(); draw(0.5 + 0.12 * pu); ctx.restore();
+      ctx.globalAlpha = 1;
+      if (pu > 0.02) { ctx.save(); ctx.globalCompositeOperation = 'lighter'; ctx.globalAlpha = 0.28 * pu; ctx.drawImage(ckCan.o, -W, 0, W * 3, H); ctx.restore(); }
     }
-    // 아레나 바깥: 같은 배경을 어둡게 (바깥으로 갈수록 더 어둡다)
-    const sideL = ctx.createLinearGradient(0, 0, -150, 0); sideL.addColorStop(0, 'rgba(4,3,10,0.45)'); sideL.addColorStop(1, 'rgba(4,3,10,0.85)');
+    ctx.imageSmoothingEnabled = true;
+    // 아레나 바깥: 아주 살짝만 어둡게 (균열은 바깥에서 더 잘 보인다)
+    const sideL = ctx.createLinearGradient(0, 0, -150, 0); sideL.addColorStop(0, 'rgba(4,3,10,0.30)'); sideL.addColorStop(1, 'rgba(4,3,10,0.55)');
     ctx.fillStyle = sideL; ctx.fillRect(-W, -400, W, H + 800);
-    const sideR = ctx.createLinearGradient(W, 0, W + 150, 0); sideR.addColorStop(0, 'rgba(4,3,10,0.45)'); sideR.addColorStop(1, 'rgba(4,3,10,0.85)');
+    const sideR = ctx.createLinearGradient(W, 0, W + 150, 0); sideR.addColorStop(0, 'rgba(4,3,10,0.30)'); sideR.addColorStop(1, 'rgba(4,3,10,0.55)');
     ctx.fillStyle = sideR; ctx.fillRect(W, -400, W, H + 800);
-    ctx.fillStyle = 'rgba(4,3,10,0.85)'; ctx.fillRect(-W, -400, W * 3, 400); ctx.fillRect(-W, H, W * 3, 400);
+    ctx.fillStyle = 'rgba(4,3,10,0.8)'; ctx.fillRect(-W, -400, W * 3, 400); ctx.fillRect(-W, H, W * 3, 400);
     // 플레이 경계: 아주 옅은 선 (임시)
     ctx.strokeStyle = 'rgba(185,140,255,0.25)'; ctx.lineWidth = 1; ctx.strokeRect(-0.5, -0.5, W + 1, H + 1);
   };
