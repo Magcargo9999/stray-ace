@@ -20,7 +20,7 @@ SA.Render = (() => {
   let total = 1, loaded = 0;
   const loadProgress = () => loaded / total;
   const load = (done) => {
-    const list = [['poi_distress', 'assets/poi_distress.png'], ['hex', 'assets/hex_hull.png'], ['beacon', 'assets/beacon.png'], ['hexTurret', 'assets/hex_turret.png'], ['swift', 'assets/swift_hull.png'], ['ace', SA.SHIPS.ace.img], ['bastion', 'assets/bastion_hull.png'], ['arsenal', 'assets/arsenal_hull.png'], ['flame', 'assets/engine_flame.png'], ['ast_rock', 'assets/m_rock.png'], ['ast_planet', 'assets/m_planetoid.png'], ['ast_shard', 'assets/m_shard.png'], ['box_crate', 'assets/box_crate.png'], ['box_locked', 'assets/box_locked.png'], ['sub_drone', 'assets/sub_drone.png'], ['poi_wreck', 'assets/poi_wreck.png'], ['poi_pod', 'assets/poi_pod.png'], ['sub_mg', 'assets/p_mg.png'], ['sub_flamer', 'assets/p_flamer.png'], ['sub_mine', 'assets/p_mine.png'], ['i_pod', 'assets/i_pod.png']];
+    const list = [['poi_distress', 'assets/poi_distress.png'], ['hex', 'assets/hex_hull.png'], ['beacon', 'assets/beacon.png'], ['hexTurret', 'assets/hex_turret.png'], ['swift', 'assets/swift_hull.png'], ['ace', SA.SHIPS.ace.img], ['bastion', 'assets/bastion_hull.png'], ['arsenal', 'assets/arsenal_hull.png'], ['flame', 'assets/engine_flame.png'], ['ast_rock', 'assets/m_rock.png'], ['ast_planet', 'assets/m_planetoid.png'], ['ast_shard', 'assets/m_shard.png'], ['box_crate', 'assets/box_crate.png'], ['box_locked', 'assets/box_locked.png'], ['sub_drone', 'assets/sub_drone.png'], ['poi_wreck', 'assets/poi_wreck.png'], ['poi_pod', 'assets/poi_pod.png'], ['sub_mg', 'assets/p_mg.png'], ['sub_flamer', 'assets/p_flamer.png'], ['sub_mine', 'assets/p_mine.png'], ['sub_sdrone', 'assets/p_sdrone.png'], ['sub_intercept', 'assets/p_intercept.png'], ['i_pod', 'assets/i_pod.png']];
     for (const id in SA.ENEMIES) { const d = SA.ENEMIES[id]; if (!d.img) continue; list.push(['en_' + id, d.img]);
       if (d.anim) for (let k = 1; k < d.anim.n; k++) list.push(['en_' + id + '_' + k, d.img.replace(/_0\.png$/, '_' + k + '.png')]); }   // 애니메이션 프레임 xxx_0..n-1.png
     for (const id in SA.ITEMS) if (SA.ITEMS[id].img) list.push(['it_' + id, SA.ITEMS[id].img]);
@@ -44,7 +44,7 @@ SA.Render = (() => {
     // 필드 오브젝트 도트 (월드 크기 x ZOOM)
     const fit = (k, w, h) => { if (IMG[k]) pre[k] = shrink(IMG[k], w * Z, h * Z); };
     for (const k of LUMINA_FRAMES) if (IMG[k]) pre[k] = shrink(IMG[k], SA.RIFT.spr.w * 3, SA.RIFT.spr.h * 3);   // 아레나 확대 배율이 2보다 커도 선명하도록 월드 크기의 3배로 줄여 둔다
-    fit('box_crate', 25, 14); fit('box_locked', 18, 25); fit('sub_drone', 11, 11); fit('poi_wreck', 72, 28); fit('poi_pod', 66, 32); fit('sub_mg', 12, 8.9); fit('sub_flamer', 12, 8.66); fit('sub_mine', 11, 6.46); fit('i_pod', 13, 17); fit('poi_distress', 16, 18); fit('beacon', 40, 39); fit('collector', SA.COLLECTOR.w, SA.COLLECTOR.h);
+    fit('box_crate', 25, 14); fit('box_locked', 18, 25); fit('sub_drone', 11, 11); fit('poi_wreck', 72, 28); fit('poi_pod', 66, 32); fit('sub_mg', 12, 8.9); fit('sub_flamer', 12, 8.66); fit('sub_mine', 11, 6.46); fit('sub_sdrone', 9.9, 12); fit('sub_intercept', 11, 10); fit('i_pod', 13, 17); fit('poi_distress', 16, 18); fit('beacon', 40, 39); fit('collector', SA.COLLECTOR.w, SA.COLLECTOR.h);
     // 엄폐물: 크기 단계별로 미리 축소 (작은 원본은 그대로 확대)
     for (const k of ['rock', 'shard']) if (IMG['ast_' + k]) {
       const im = IMG['ast_' + k]; pre['ast_' + k] = [24, 48, 96].map(d => { const s = d * Z / Math.max(im.width, im.height); return shrink(im, im.width * s, im.height * s); });
@@ -756,6 +756,8 @@ SA.Render = (() => {
     for (const sb of P.subs) {
       ctx.save(); ctx.translate(sb.x, sb.y);
       if (sb.part.id === 'drone') { if (pre.sub_drone) { ctx.rotate(sb.ang + Math.PI / 2); ctx.imageSmoothingEnabled = true; ctx.drawImage(pre.sub_drone, -5.5, -5.5, 11, 11); } else { ctx.fillStyle = '#ffe6a8'; ctx.fillRect(-2.5, -2.5, 5, 5); ctx.fillStyle = '#0d1018'; ctx.fillRect(-1, -1, 2, 2); } }
+      else if (sb.part.id === 'sdrone' && pre.sub_sdrone) { ctx.rotate(sb.orb); ctx.imageSmoothingEnabled = true; ctx.drawImage(pre.sub_sdrone, -4.95, -6, 9.9, 12); }   // 방패 드론 도트 (볼록한 방패 면이 탄이 오는 쪽 = 기체 바깥을 향한다)
+      else if (sb.part.id === 'intercept' && pre.sub_intercept) { ctx.rotate(sb.ang); const k = SA.SHIPS[P.ship].subScale || 1; if (k !== 1) ctx.scale(k, k); ctx.imageSmoothingEnabled = true; ctx.drawImage(pre.sub_intercept, -5.2, -5.3, 11, 10); }   // 요격 레이저 포탑 도트 (포신 = 조준 방향)
       else if (sb.part.id === 'sdrone') { ctx.fillStyle = '#8ff0ff'; ctx.fillRect(-3, -3, 6, 6); ctx.fillStyle = '#0d1018'; ctx.fillRect(-1.5, -1.5, 3, 3); ctx.strokeStyle = 'rgba(143,240,255,0.5)'; ctx.lineWidth = 1; ctx.strokeRect(-4.5, -4.5, 9, 9); }
       else if (sb.part.id === 'mg' && pre.sub_mg) { ctx.rotate(sb.ang); const k = SA.SHIPS[P.ship].subScale || 1; if (k !== 1) ctx.scale(k, k); ctx.imageSmoothingEnabled = true; ctx.drawImage(pre.sub_mg, -4.6, -4.45, 12, 8.9); }   // 기관포 포탑 도트 (총구가 오른쪽 = 조준 방향)
       else if (sb.part.id === 'flamer' && pre.sub_flamer) { ctx.rotate(sb.ang); const k = SA.SHIPS[P.ship].subScale || 1; if (k !== 1) ctx.scale(k, k); ctx.imageSmoothingEnabled = true; ctx.drawImage(pre.sub_flamer, -4.15, -3.13, 12, 8.66); }   // 화염 방사 포탑 도트 (노즐 = 조준 방향)
