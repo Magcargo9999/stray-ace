@@ -375,7 +375,7 @@ SA.Raid = (() => {
       if (R.deathT <= 0) finish(false);
     }
 
-    if (SA.Input.hit('KeyF') && R.state === 'play') { if (document.getElementById('colwin')) SA.UI.tabClose(); else if (!R.tabOpen) { if (R.nearCol) SA.UI.collectorOpen(); else if (R.nearRift && !R.arena) enterRift(R.nearRift); } }
+    if (SA.Input.hit('KeyF') && R.state === 'play') { if (document.getElementById('colwin')) SA.UI.tabClose(); else if (!R.tabOpen) { if (R.nearCol) SA.UI.collectorOpen(); else if (R.nearRift && !R.arena) enterRift(R.nearRift); else if (R.arena && R.arena.won && !R.range) riftExit(); } }
     if (R.qf) for (const k in R.qf) R.qf[k] = R.qf[k] > 0 ? Math.max(0, R.qf[k] - rdt) : Math.min(0, R.qf[k] + rdt);
     if (R.state === 'play' && !R.tabOpen && !R.tut && !R.range && !document.getElementById('colwin')) {
       for (const q of SA.QUICK) if (SA.Input.hit('Digit' + q.n) || SA.Input.hit('Numpad' + q.n)) quickUse(q);
@@ -922,11 +922,8 @@ SA.Raid = (() => {
     const W = R.map.w, H = R.map.h;
     R.eb = R.eb.filter(b => b.x > -6 && b.y > -10 && b.x < W + 6 && b.y < H + 6);   // 아레나 밖으로 나간 탄은 바로 지운다
     if (A.won) {
-      if (A.talk) {   // 1막 엔딩 통신: Space로 한 줄씩 넘긴다. 다 끝나면 곧 귀환
-        if (SA.Input.hit('Space') && R.dialog && R.dialog.length) R.dialog.shift();
-        if (!R.dialog || !R.dialog.length) A.winT = Math.min(A.winT, 1.2);
-      }
-      A.winT -= rdt; if (A.winT <= 0) { if (R.range) riftBack(R, '연습 끝 — 연습장으로 돌아왔다'); else finish(true); }
+      if (A.talk && SA.Input.hit('Space') && R.dialog && R.dialog.length) R.dialog.shift();   // 1막 엔딩 통신: Space로 한 줄씩 넘긴다
+      if (R.range) { A.winT -= rdt; if (A.winT <= 0) riftBack(R, '연습 끝 — 연습장으로 돌아왔다'); }   // 연습장 보스전은 잠깐 뒤 자동으로 돌아간다
     }
   };
   // 연습장 보스전에서 나온다: 바깥(연습장)을 되살린다. 손실·보상·기록 없음
@@ -964,28 +961,36 @@ SA.Raid = (() => {
     msg(`균열에서 튕겨 나왔다 — 장착 부품 내구도 -${RF.durLoss}. 균열이 닫혔다`, '#ffb3b3', 6);
     SA.Save.store(SA.profile);
   };
-  // 루미나를 쓰러뜨렸다 → 보상은 창고로 바로. 잠깐 뒤 출격 성공으로 귀환
+  // 루미나를 쓰러뜨렸다 → 보상 아이템이 루미나가 있던 자리에 떨어진다. 주워서(Tab) 화물칸에 싣고, 균열에서 나가야(F) 격납고로 돌아간다 (v0.110)
   const riftWin = (e) => {
     const R = SA.R, prof = SA.profile, RF = SA.RIFT, lu = prof.lumina = prof.lumina || { wins: 0, tries: 0 };
     const first = !lu.wins; lu.wins++;
-    const rw = first ? RF.first : RF.again2, got = [];
-    for (const [id, n] of rw.items) for (let i = 0; i < n; i++) { if (!SA.Grid.add(prof.stash, id)) prof.credits += SA.ITEMS[id].val; got.push(id); }
-    if (first) { if (!SA.Grid.add(prof.stash, 'bb_lumina')) prof.credits += SA.ITEMS.bb_lumina.val; got.push('bb_lumina'); }   // 1막 엔딩: 루미나의 마지막 기록 (L2)
-    const cr = rw.cr + (R.arena.bonus || 0); prof.credits += cr;
-    const names = {}; for (const id of got) names[id] = (names[id] || 0) + 1;
-    R.luminaRes = `성운 나방 루미나 격추${first ? ' — 1막 완료' : ''} · ` + Object.keys(names).map(id => `${SA.ITEMS[id].name}${names[id] > 1 ? ' ×' + names[id] : ''}`).join(', ') + ` · ₵${cr}${R.arena.bonus ? ` (보너스 ₵${R.arena.bonus} 포함)` : ''} — 창고로 보냈다`;
+    const rw = first ? RF.first : RF.again2, ids = [];
+    for (const [id, n] of rw.items) for (let i = 0; i < n; i++) ids.push(id);
+    if (first) ids.push('bb_lumina');   // 1막 엔딩: 루미나의 마지막 기록 (L2)
+    ids.forEach((id, i) => spawnItem(R, id, e.x + (i % 3 - 1) * 8, e.y + 10, 95));
+    const cr = rw.cr + (R.arena.bonus || 0); prof.credits += cr;   // 크레딧은 바로 들어온다
+    R.luminaRes = `성운 나방 루미나 격추${first ? ' — 1막 완료' : ''} · ₵${cr}${R.arena.bonus ? ` (보너스 ₵${R.arena.bonus})` : ''}`;
     R.arena.won = true; R.arena.winT = 2.8; R.boss = null; R.eb = [];
     R.player.invuln = 99; SA.Audio.stop();
-    msg('성운 나방 루미나 격추 — 균열이 닫힌다', '#ffe9a8', 4);
-    if (first) {   // 1막 엔딩: 보스 맵에서 통신 몇 줄을 듣고 균열 밖으로
+    msg('성운 나방 루미나 격추 — 떨어진 보상을 주워라 (Tab), 다 챙기면 F로 균열에서 나간다', '#ffe9a8', 7);
+    if (first) {   // 1막 엔딩: 보스 맵에서 통신 몇 줄 (Space로 한 줄씩)
       msg('블랙박스 회수 — 균열 속 기록', '#ffe9a8', 5);
       say('serena', '처리했나. 기록은 왕국으로 넘겨. 다른 데 흘리면 곤란해져.');
       say('mina', '…그 사람이에요. 제가 고치던 기체의.');
       say('dan', '…균열이 하나뿐이면 좋겠군.');
-      R.arena.winT = 17; R.arena.talk = true;
+      R.arena.talk = true;
     }
     C().fx(R, e.x, e.y, 120, '#ffe9a8', 260, 1.2, 2.5);
     SA.Save.store(prof);
+  };
+  // 균열에서 나가기: 바닥에 보상이 남았으면 한 번 더 확인한다. 나가면 출격 성공으로 정산된다
+  const riftExit = () => {
+    const R = SA.R, A = R && R.arena; if (!A || !A.won || R.range || R.finished) return;
+    const left = R.items.filter(it => !it.taken).length;
+    if (left && (!A.exitArm || R.t - A.exitArm > 3)) { A.exitArm = R.t; msg(`바닥에 아이템 ${left}개가 남았다 — F를 한 번 더 누르면 놓고 나간다`, '#ffd166', 3); SA.Audio.sfx('beep'); return; }
+    if (left && R.t - A.exitArm < 0.4) return;   // 같은 키 입력이 여러 프레임에 걸쳐 확인으로 넘어가지 않게
+    finish(true);
   };
 
   const playerDied = () => {

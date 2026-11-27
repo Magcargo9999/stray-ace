@@ -931,6 +931,7 @@ SA.Render = (() => {
     else if (R.arena && R.arena.won) {   // 격추 뒤에는 R.boss가 비므로 따로 그린다 (1막 엔딩 통신 안내 포함)
       T(ctx, '성운 나방 루미나 격추', W / 2, H * 0.36, '#ffe9a8', 24, 'center');
       if (R.arena.talk && R.dialog && R.dialog.length) T(ctx, 'Space: 다음', W / 2, H * 0.36 + 26, '#8f9bb8', 12, 'center');
+      else if (!R.range) T(ctx, '떨어진 보상을 주워라 (Tab) — 다 챙기면 F로 균열에서 나간다', W / 2, H * 0.36 + 26, '#cfe3ff', 12, 'center');
     }
     else if (R.boss && !R.boss.dead) {
       const b = R.boss, bw = 420, bx = W / 2 - bw / 2, by = 92;
@@ -1048,7 +1049,8 @@ SA.Render = (() => {
     ctx.globalAlpha = 1;
     if (R.nearCol && !R.tabOpen) T(ctx, '[F] 수집가와 거래', W / 2, H - 140, '#ff9fd8', 16, 'center');
     else if (R.nearRift && !R.tabOpen && !R.arena) T(ctx, '[F] 공간 균열로 들어가기', W / 2, H - 140, '#d9b8ff', 16, 'center');
-    else if (!R.tabOpen && !R.arena && SA.Raid.nearbyGround().length) T(ctx, `[Tab] 주변 바닥 아이템 ${SA.Raid.nearbyGround().length}개 줍기`, W / 2, H - 140, '#ffd166', 16, 'center');
+    else if (!R.tabOpen && (!R.arena || R.arena.won) && SA.Raid.nearbyGround().length) T(ctx, `[Tab] 주변 바닥 아이템 ${SA.Raid.nearbyGround().length}개 줍기`, W / 2, H - 140, '#ffd166', 16, 'center');
+    if (R.arena && R.arena.won && !R.range && !R.tabOpen) { const n = R.items.filter(it => !it.taken).length; T(ctx, `[F] 균열에서 나가기${n ? ` — 바닥에 ${n}개 남음` : ''}`, W / 2, H - 112, n ? '#ffd166' : '#9df07f', 14, 'center'); }
     // 비상탈출: 길게 누르는 중 / 버티는 중
     if (R.emT > 0) { T(ctx, `비상탈출 ${R.emT.toFixed(1)}초 — 버텨라`, W / 2, H / 2 + 90, '#ff8f3d', 20, 'center'); bar(ctx, W / 2 - 100, H / 2 + 100, 200, 6, 1 - R.emT / SA.EXIT.emTime, '#ff8f3d'); }
     else if (R.emHold > 0) { T(ctx, '비상탈출 준비 — 화물칸을 버린다', W / 2, H / 2 + 90, '#ff8f3d', 16, 'center'); bar(ctx, W / 2 - 100, H / 2 + 100, 200, 6, R.emHold / SA.EXIT.emHold, '#ff8f3d'); }
