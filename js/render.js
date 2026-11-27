@@ -313,7 +313,9 @@ SA.Render = (() => {
       g.addColorStop(0, `hsla(${n.hue},60%,40%,0.10)`); g.addColorStop(1, 'hsla(0,0%,0%,0)');
       ctx.fillStyle = g; ctx.beginPath(); ctx.arc(n.x, n.y, n.r, 0, 6.29); ctx.fill();
     }
-    if (R.range) {   // 연습장: 철제 격납고 바닥 (임시, 코드 도트)
+    if (R.arena) {   // 균열 아레나 (연습장 보스전 포함 — 연습장 바닥보다 먼저 가른다)
+      drawArenaBg(ctx, R);
+    } else if (R.range) {   // 연습장: 철제 격납고 바닥 (임시, 코드 도트)
       ctx.fillStyle = '#121720'; ctx.fillRect(0, 0, R.map.w, R.map.h);
       for (let x = 0; x < R.map.w; x += 64) for (let y = 0; y < R.map.h; y += 64) {
         ctx.fillStyle = (x / 64 + y / 64) % 2 ? '#161c27' : '#141a24'; ctx.fillRect(x + 1, y + 1, 62, 62);
@@ -321,8 +323,6 @@ SA.Render = (() => {
       }
       ctx.fillStyle = 'rgba(255,209,102,0.25)'; for (let x = 0; x < R.map.w; x += 32) { ctx.fillRect(x, 300, 16, 4); }   // 사격선
       ctx.strokeStyle = '#3a4558'; ctx.lineWidth = 8; ctx.strokeRect(-4, -4, R.map.w + 8, R.map.h + 8);
-    } else if (R.arena) {   // 균열 아레나 (v0.95): 사용자 뒷배경 그림 + 코드 효과 (흐름·색조·틈·맥동·바깥 어둡게)
-      drawArenaBg(ctx, R);
     } else {
     // 맵 경계 (붉은 선)
     ctx.strokeStyle = 'rgba(255,60,80,0.55)'; ctx.lineWidth = 1.5; ctx.setLineDash([8, 6]);
