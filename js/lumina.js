@@ -164,7 +164,7 @@ SA.Lumina = (() => {
     // 등장: 위에서 내려온다
     if (e.ph < 0) {
       e.x = W / 2; e.y += (70 - e.y) * Math.min(1, 2.2 * dt);
-      e.intro -= dt; if (e.intro <= 0) start(R, e, 0);
+      e.intro -= dt; if (e.intro <= 0) start(R, e, e.startPh || 0);   // startPh: 연습장에서 고른 시작 페이즈
       return;
     }
     // 정한 자리(e.tx) 둘레에서 살짝 떠다닌다 (발악 때는 가운데)

@@ -388,7 +388,11 @@ SA.Raid = (() => {
     S.updateBullets(R, dt);
     S.updateExtra(R, dt);
     updateItems(R, dt);
-    if (R.range) { P.x = U.clamp(P.x, 16, R.map.w - 16); P.y = U.clamp(P.y, 16, R.map.h - 16); if (R.rangeGod) { P.hp = P.maxHp; } R.dmgLog = R.dmgLog.filter(d => R.t - d[0] < 5); }
+    if (R.range) {
+      if (!R.arena) { P.x = U.clamp(P.x, 16, R.map.w - 16); P.y = U.clamp(P.y, 16, R.map.h - 16); }
+      if (R.rangeGod) { P.hp = P.maxHp; } R.dmgLog = R.dmgLog.filter(d => R.t - d[0] < 5);
+      if (R.arena) updateArena(R, dt, rdt);   // 연습장 보스전 (v0.106)
+    }
     else if (R.tut) { updatePois(R, dt); SA.Tutorial.update(R, dt, rdt); }
     else if (R.arena) updateArena(R, dt, rdt);   // 균열 아레나: 출격 시간·침식·비콘·탈출이 멈춘다   // 튜토리얼: 침식·비콘·리스폰 없음, 대본대로
     else {
@@ -867,6 +871,10 @@ SA.Raid = (() => {
   };
   const bossKilled = (e) => {
     const R = SA.R;
+    if (R.range && e.type === 'lumina' && R.arena) {   // 연습장 보스전: 보상 없이 잠깐 뒤 연습장으로
+      R.arena.won = true; R.arena.winT = 2.8; R.boss = null; R.eb = []; R.player.invuln = 99; SA.Audio.stop();
+      msg('연습 — 성운 나방 루미나 격추 (보상 없음)', '#ffe9a8', 4); C().fx(R, e.x, e.y, 120, '#ffe9a8', 260, 1.2, 2.5); return;
+    }
     if (R.range) { R.boss = null; msg(`${(SA.ENEMIES[e.type] || {}).name || '허수아비'} 격추`, '#ffd166', 3); return; }
     if (e.type === 'raven') {
       R.ravenKilled = true;
@@ -883,9 +891,9 @@ SA.Raid = (() => {
   // ── 균열 · 아레나 ──
   // 들어가면 바깥 맵(소행성·적·탄·아이템·POI…)을 통째로 얼려 두고, 화면 한 장 크기의 아레나로 바꾼다
   const WORLD = ['map', 'asteroids', 'astGrid', 'nebulas', 'pois', 'extracts', 'enemies', 'eb', 'pb', 'items', 'allies', 'bolts', 'beams', 'strikes', 'wells', 'zones'];
-  const enterRift = (p) => {
+  const enterRift = (p, now, po = {}) => {   // now: 연습장 보스전 (두 번 누르기 생략) · po: { ph: 시작 페이즈, again: 다시 만난 루미나 }
     const R = SA.R, P = R.player, RF = SA.RIFT;
-    if (!p.armT || R.t - p.armT > 3) { p.armT = R.t; msg('공간 균열 — F를 한 번 더 누르면 들어간다. 들어가면 쉽게 나올 수 없다', '#d9b8ff', 3); SA.Audio.sfx('beep'); return; }
+    if (!now && (!p.armT || R.t - p.armT > 3)) { p.armT = R.t; msg('공간 균열 — F를 한 번 더 누르면 들어간다. 들어가면 쉽게 나올 수 없다', '#d9b8ff', 3); SA.Audio.sfx('beep'); return; }
     const out = { px: P.x, py: P.y, zoom: R.zoom, zoomTarget: R.zoomTarget, boss: R.boss, rift: p };
     for (const k of WORLD) out[k] = R[k];
     R.outside = out;
@@ -896,9 +904,11 @@ SA.Raid = (() => {
     P.x = RF.w / 2; P.y = RF.h - 40; P.vx = P.vy = 0; P.invuln = 2;
     R.zoom = R.zoomTarget = RF.zoom; R.nearRift = null; R.nearCol = false; R.bigMap = false;
     R.arena = { t: 0, hits: 0, bonus: 0, flash: 0.8 }; R.msgs = [];   // flash: 진입 흰빛 (v0.95)
-    const lu = SA.profile.lumina = SA.profile.lumina || { wins: 0, tries: 0 }; lu.tries++;
+    if (!R.range) { const lu = SA.profile.lumina = SA.profile.lumina || { wins: 0, tries: 0 }; lu.tries++; }   // 연습장 보스전은 기록에 넣지 않는다
     const e = C().spawnEnemy(R, 'lumina', RF.w / 2, -70, { awake: true });
     R.boss = e; SA.Lumina.init(R, e);
+    if (po.ph) e.startPh = po.ph;
+    if (po.again != null) e.again = !!po.again;
     C().fx(R, P.x, P.y, 40, '#d9b8ff', 160, 0.6, 2); R.shake = 10;
     SA.Audio.sfx('warp'); SA.Audio.play('lumina');
     msg('…빛을 따라왔다.', '#ffe9a8', 4);
@@ -916,12 +926,31 @@ SA.Raid = (() => {
         if (SA.Input.hit('Space') && R.dialog && R.dialog.length) R.dialog.shift();
         if (!R.dialog || !R.dialog.length) A.winT = Math.min(A.winT, 1.2);
       }
-      A.winT -= rdt; if (A.winT <= 0) finish(true);
+      A.winT -= rdt; if (A.winT <= 0) { if (R.range) riftBack(R, '연습 끝 — 연습장으로 돌아왔다'); else finish(true); }
     }
   };
+  // 연습장 보스전에서 나온다: 바깥(연습장)을 되살린다. 손실·보상·기록 없음
+  const riftBack = (R, text) => {
+    const P = R.player, o = R.outside; if (!o) return;
+    for (const k of WORLD) R[k] = o[k];
+    R.zoom = o.zoom; R.zoomTarget = o.zoomTarget; R.boss = o.boss;
+    P.x = o.px; P.y = o.py; P.vx = P.vy = 0; P.dead = false; P.hp = P.maxHp; P.invuln = 1.5;
+    R.arena = null; R.outside = null; R.state = 'play';
+    C().fx(R, P.x, P.y, 40, '#d9b8ff', 160, 0.6, 2);
+    SA.Audio.play('hangar');
+    msg(text, '#cfe3ff', 4);
+    if (SA.Main.rangeRedraw) SA.Main.rangeRedraw();
+  };
+  const practiceRift = (po = {}) => {   // 연습장 패널: 루미나 보스전 바로 들어가기
+    const R = SA.R; if (!R || !R.range || R.arena || R.state !== 'play') return;
+    R.rangeGod = !!po.god;
+    enterRift({ type: 'rift', x: R.player.x, y: R.player.y, practice: true }, true, po);
+  };
+  const practiceExit = () => { const R = SA.R; if (R && R.range && R.arena) riftBack(R, '연습 — 균열에서 나왔다'); };
   // 격추 → 바깥 맵을 되살리고 들어간 자리로 튕겨 나온다. 장착 부품 내구도 -35, 체력 50%. 이 판 균열은 닫힌다
   const riftFail = () => {
     const R = SA.R, P = R.player, o = R.outside, RF = SA.RIFT;
+    if (R.range) { riftBack(R, '연습 — 격추됐다 (손실 없음)'); return; }
     for (const k of WORLD) R[k] = o[k];
     R.zoom = o.zoom; R.zoomTarget = o.zoomTarget; R.boss = o.boss;
     o.rift.closed = true; o.rift.done = true;
@@ -1125,5 +1154,5 @@ SA.Raid = (() => {
     return R.items.filter(it => !it.taken && U.d2(it.x, it.y, P.x, P.y) < r * r);
   };
 
-  return { LOOT, start, spawnDummy, update, msg, collectorBuy, collectorSell, say, pickGround, dropLoot, spawnItem, playerDied, bossEngaged, bossKilled, ravenGiveUp, ravenFlee, ravenFled, allyDown, convoyArrived, finish, useItem, dropToSpace, nearbyGround, grazeBonus, grazeDmg, queueRespawn, hunterWake, beaconBroken, fogged };
+  return { LOOT, start, spawnDummy, practiceRift, practiceExit, update, msg, collectorBuy, collectorSell, say, pickGround, dropLoot, spawnItem, playerDied, bossEngaged, bossKilled, ravenGiveUp, ravenFlee, ravenFled, allyDown, convoyArrived, finish, useItem, dropToSpace, nearbyGround, grazeBonus, grazeDmg, queueRespawn, hunterWake, beaconBroken, fogged };
 })();
