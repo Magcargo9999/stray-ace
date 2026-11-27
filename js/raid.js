@@ -422,6 +422,7 @@ SA.Raid = (() => {
 
     for (const f of R.fx) { f.x += f.vx * dt; f.y += f.vy * dt; f.vx *= 0.94; f.vy *= 0.94; f.life -= dt; }
     R.fx = R.fx.filter(f => f.life > 0);
+    SA.FX.update(R, dt);   // v0.114 이펙트
     for (const f of R.lostFx) { f.life -= dt; f.x += f.vx * dt; f.y += f.vy * dt; f.vx *= 0.96; f.vy *= 0.96; f.rot += f.vr * dt; }   // 격추로 흩어지는 화물
     R.lostFx = R.lostFx.filter(f => f.life > 0);
     if (R.fx.length > 900) R.fx.splice(0, R.fx.length - 900);
@@ -459,6 +460,7 @@ SA.Raid = (() => {
     const placed = SA.Grid.add(R.cargo, it.id, itemState(it));
     if (!placed) { SA.Audio.sfx('deny'); msg('화물칸에 자리가 없다', '#ffb3b3', 2); return false; }
     it.taken = true;
+    if (it.x !== undefined) SA.FX.pickup(R, it.x, it.y, it.glow || '일반');   // v0.114 줍기 반짝임
     if (C().pm(R.player, 'p_magnet')) R.graze += 1;   // 행성 자력 수집기
     SA.Audio.sfx('pickup', d.val >= 150 ? 3 : d.val >= 60 ? 2 : 1);
     R.pickLog.push({ text: `+ ${d.kind === 'part' && it.lv ? SA.partName({ id: d.part, lv: it.lv, mod: it.mod }) : d.name}`, val: SA.itemVal(it), col: SA.itemCol(it.id, it), life: 3 });
@@ -889,7 +891,7 @@ SA.Raid = (() => {
     const R = SA.R;
     if (R.range && e.type === 'lumina' && R.arena) {   // 연습장 보스전: 보상 없이 잠깐 뒤 연습장으로
       R.arena.won = true; R.arena.winT = 2.8; R.boss = null; R.eb = []; R.player.invuln = 99; SA.Audio.stop();
-      msg('연습 — 성운 나방 루미나 격추 (보상 없음)', '#ffe9a8', 4); C().fx(R, e.x, e.y, 120, '#ffe9a8', 260, 1.2, 2.5); return;
+      msg('연습 — 성운 나방 루미나 격추 (보상 없음)', '#ffe9a8', 4); return;
     }
     if (R.range) { R.boss = null; msg(`${(SA.ENEMIES[e.type] || {}).name || '허수아비'} 격추`, '#ffd166', 3); return; }
     if (e.type === 'raven') {

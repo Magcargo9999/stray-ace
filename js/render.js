@@ -352,11 +352,7 @@ SA.Render = (() => {
       if (st.t > 0) { ctx.strokeStyle = `rgba(255,120,80,${0.4 + 0.4 * Math.sin(R.t * 20)})`; ctx.lineWidth = 1; ctx.beginPath(); ctx.arc(st.x, st.y, st.r * (0.4 + 0.6 * Math.max(0, 1 - st.t)), 0, 6.29); ctx.stroke(); }
       else { ctx.fillStyle = `rgba(255,220,160,${0.6 + st.t * 3})`; ctx.fillRect(st.x - 3, st.y - 400, 6, 400); }
     }
-    for (const w of R.wells) {
-      ctx.strokeStyle = 'rgba(185,140,255,0.5)'; ctx.lineWidth = 1;
-      for (let i = 0; i < 3; i++) { const r = ((R.t * 60 + i * 50) % w.r); ctx.beginPath(); ctx.arc(w.x, w.y, w.r - r, 0, 6.29); ctx.stroke(); }
-      ctx.fillStyle = '#1a0d33'; ctx.beginPath(); ctx.arc(w.x, w.y, 8, 0, 6.29); ctx.fill(); ctx.strokeStyle = '#b98cff'; ctx.stroke();
-    }
+    for (const w of R.wells) SA.FX.well(ctx, R, w);   // v0.114: 나선팔 + 수축 고리 + 먼지 (탄보다 아래 층)
     // 떠다니는 아이템
     const NM = R.range ? {} : (R.needMap = R.needMap || SA.Need.map());
     for (const it of R.items) if (vis(it.x, it.y, 20)) {
@@ -396,6 +392,7 @@ SA.Render = (() => {
     // 플레이어 탄
     for (const b of R.pb) {
       if (!vis(b.x, b.y, 6)) continue;
+      if (b.flame) { SA.FX.flameDot(ctx, b); continue; }   // v0.114: 식으며 작아지는 불길
       if (b.mine) { ctx.fillStyle = '#0d1018'; ctx.fillRect(b.x - 3, b.y - 3, 6, 6); ctx.fillStyle = Math.sin(R.t * 12) > 0 ? '#ffcf6b' : '#7a5a1e'; ctx.fillRect(b.x - 1.5, b.y - 1.5, 3, 3); continue; }
       ctx.strokeStyle = b.col; ctx.lineWidth = b.w;
       const l = b.missile ? 0.012 : 0.018;
@@ -410,6 +407,7 @@ SA.Render = (() => {
       ctx.globalAlpha = 1;
     }
     if (!P.dead) drawPlayer(ctx, R);
+    SA.FX.draw(ctx, R);   // v0.114 이펙트 층: 기체 위, 적 탄 아래 (탄막을 가리지 않는다)
     // 적 탄 (맨 위: 가장 잘 보여야 한다)
     for (const b of R.eb) {
       if (!vis(b.x, b.y, 8)) continue;

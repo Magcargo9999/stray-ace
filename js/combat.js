@@ -355,9 +355,9 @@ SA.Combat = (() => {
       for (let i = 0; i < n; i++) pb(R, P.x, P.y, P.aim + (i - (n - 1) / 2) * (2.1 / n), 150, 24, { homing: 7, life: 2.4, missile: true, col: gid === 'g_missile' ? '#ff7a3d' : '#ffb347', w: 2, fireZ: gid === 'g_missile' ? 3 : 0 });
       SA.Audio.sfx('missile');
     } else if (id === 'purge') {
-      let n = 0;
-      R.eb = R.eb.filter(b => { if (U.d2(b.x, b.y, P.x, P.y) < (130 * X) * (130 * X)) { n++; fx(R, b.x, b.y, 1, '#7ff0e0', 30, 0.3); return false; } return true; });
-      R.rings.push({ x: P.x, y: P.y, r: 10, max: 130 * X, life: 0.35, col: m.includes('a_conv') ? '#ffd166' : '#7ff0e0' });
+      let n = 0; const cut = [];
+      R.eb = R.eb.filter(b => { if (U.d2(b.x, b.y, P.x, P.y) < (130 * X) * (130 * X)) { n++; cut.push(b); return false; } return true; });
+      SA.FX.purge(R, P.x, P.y, 130 * X, cut, m.includes('a_conv') ? '#ffd166' : '#7ff0e0');   // v0.114: 점선 고리 + 탄이 작은 점으로 흩어짐
       if (m.includes('a_conv') && !R.range) {                               // 개조 '변환': 지운 탄을 고철·금빛 회로로
         for (let i = 0; i < Math.min(4, Math.floor(n / 10)); i++) SA.Raid.spawnItem(R, 'scrap', P.x, P.y, 90);
         if (n >= 40) SA.Raid.spawnItem(R, 'goldchip', P.x, P.y, 90);
@@ -406,7 +406,7 @@ SA.Combat = (() => {
       else for (let i = 0; i < n; i++) R.strikes.push({ x: mx + U.rnd(-55 * X, 55 * X), y: my + U.rnd(-55 * X, 55 * X), t: 0.8 + i * (1.2 / n), r: 42 * X, dmg: 30 });
       SA.Audio.sfx('missile');
     } else if (id === 'reflect') { P.reflectT = 2.5 * X; P.reflHome = m.includes('a_home'); SA.Audio.sfx('shield');
-    } else if (id === 'gravity') { R.wells.push({ x: R.mouseWorld.x, y: R.mouseWorld.y, t: 3 * X, r: 150 * X, stun: m.includes('a_gstun'), hz: gid === 'g_gravity' }); SA.Audio.sfx('warp');
+    } else if (id === 'gravity') { R.wells.push({ x: R.mouseWorld.x, y: R.mouseWorld.y, t: 3 * X, max: 3 * X, r: 150 * X, stun: m.includes('a_gstun'), hz: gid === 'g_gravity' }); SA.Audio.sfx('warp');
     } else if (id === 'overdrive') { P.odT = 5; P.odMul = m.includes('a_od') ? 1.3 : 2; fx(R, P.x, P.y, 20, '#ff4d6d', 120, 0.5); SA.Audio.sfx('boost');
     } else if (id === 'discharge') {
       const n = P.gzc || 0, k = Math.min(8, 1 + Math.floor(n / 4)), dmg = 10 + Math.min(30, n / 2);
@@ -454,14 +454,15 @@ SA.Combat = (() => {
   // 번개: 지그재그 점 목록
   const bolt = (x0, y0, x1, y1) => { const pts = [[x0, y0]]; for (let i = 1; i < 5; i++) { const t = i / 5; pts.push([x0 + (x1 - x0) * t + U.rnd(-6, 6), y0 + (y1 - y0) * t + U.rnd(-6, 6)]); } pts.push([x1, y1]); return pts; };
   const zap = (R, x, y, first, dmg, jumps, jr) => {
-    let cur = first, px = x, py = y; const done = new Set();
+    let cur = first, px = x, py = y; const done = new Set(), path = [[x, y]];
     for (let j = 0; j <= jumps && cur; j++) {
-      R.bolts.push({ pts: bolt(px, py, cur.x, cur.y), life: 0.15, col: '#9fd8ff' });
+      path.push([cur.x, cur.y]);   // v0.114: 번개 선 대신 사슬 고리 이펙트 (한 번에 그린다)
       hitEnemy(R, cur, j ? dmg * 0.75 : dmg); done.add(cur); px = cur.x; py = cur.y;
       let nx = null, nd = jr * jr;
       for (const e of R.enemies) { if (e.dead || e.crate || done.has(e)) continue; const q = U.d2(e.x, e.y, px, py); if (q < nd) { nd = q; nx = e; } }
       cur = nx;
     }
+    SA.FX.chain(R, path);
   };
   const stun = (R, e, t) => {
     if (e.crate) return;
@@ -557,7 +558,7 @@ SA.Combat = (() => {
     if (P.odT > 0) dmg *= P.odMul || 2;
     if (pm(P, 'p_exit') && R.inPort > 0) dmg *= 0.5;   // 행성 탈출 가속기: 포트 안 피해 절반
     const vlt = pv(P, 'vault'); if (vlt) dmg *= 1 - Math.min(vlt, (SA.Grid.value(R.cargo) + SA.Grid.value(R.secure)) / 4000 * vlt / 0.25);
-    if (pm(P, 'p_bar') && P.barrierMax > 0 && P.barrier >= P.barrierMax - 0.5) { R.eb = R.eb.filter(b => U.d2(b.x, b.y, P.x, P.y) > 110 * 110); R.rings.push({ x: P.x, y: P.y, r: 10, max: 110, life: 0.3, col: '#8fd3ff' }); }   // 행성 베리어: 가득 찬 채 맞으면 탄 소거
+    if (pm(P, 'p_bar') && P.barrierMax > 0 && P.barrier >= P.barrierMax - 0.5) { { const cut = R.eb.filter(b => U.d2(b.x, b.y, P.x, P.y) <= 110 * 110); R.eb = R.eb.filter(b => U.d2(b.x, b.y, P.x, P.y) > 110 * 110); SA.FX.purge(R, P.x, P.y, 110, cut, '#8fd3ff'); } }   // 행성 베리어: 가득 찬 채 맞으면 탄 소거
     if (P.barrier > 0) { const b = Math.min(P.barrier, dmg); P.barrier -= b; dmg -= b; }
     P.barrierT = 0;
     P.hp -= dmg; P.invuln = SA.CFG.HIT_INVULN;
@@ -571,12 +572,12 @@ SA.Combat = (() => {
     if (P.main && P.main.id === 'glass') eq.forEach(p => wear(p, SA.modsOf(P.main).includes('m_tough') ? 2 : 4));
     if (hasPas(P, 'counter') && P.counterCd <= 0) {
       P.counterCd = 5; P.invuln += pv(P, 'counter');
-      R.eb = R.eb.filter(b => U.d2(b.x, b.y, P.x, P.y) > 90 * 90);
-      R.rings.push({ x: P.x, y: P.y, r: 10, max: 90, life: 0.3, col: '#ff8a8a' });
+      const cut = R.eb.filter(b => U.d2(b.x, b.y, P.x, P.y) <= 90 * 90); R.eb = R.eb.filter(b => U.d2(b.x, b.y, P.x, P.y) > 90 * 90);
+      SA.FX.purge(R, P.x, P.y, 90, cut, '#ff8a8a');
       if (pm(P, 'p_ctr')) for (const e of R.enemies) if (!e.dead && !e.crate && U.d2(e.x, e.y, P.x, P.y) < 110 * 110) stun(R, e, 1);   // 행성 반격 장치
     }
     SA.Audio.sfx('hurt');
-    fx(R, P.x, P.y, 14, '#ff8a8a', 120, 0.4);
+    SA.FX.playerHit(R, P);   // v0.114: 하얀 번쩍임 + 기체 도트 파편 + 작은 붉은 고리 (붉은 테두리·흔들림은 그대로)
     if (P.hp <= 0 && R.tut) { P.hp = 1; P.invuln = Math.max(P.invuln, 1.5); return; }   // 튜토리얼: 죽지 않는다
     if (P.hp <= 0) { P.hp = 0; SA.Raid.playerDied(); }
   };
@@ -620,7 +621,7 @@ SA.Combat = (() => {
     for (const e of R.enemies) {
       if (e.dead) continue;
       e.flash = Math.max(0, e.flash - dt);
-      if (e.burnT > 0) { e.burnT -= dt; if (e.burnT <= 0) e.burnN = 0; damageEnemy(R, e, e.burnD * dt); if (e.dead) continue; if (Math.random() < 0.15) fx(R, e.x + U.rnd(-6, 6), e.y + U.rnd(-6, 6), 1, '#ff7a3d', 30, 0.3, 1); }
+      if (e.burnT > 0) { e.burnT -= dt; if (e.burnT <= 0) e.burnN = 0; damageEnemy(R, e, e.burnD * dt); if (e.dead) continue; if (Math.random() < 0.27) SA.FX.ember(R, e); }
       if (e.zone && !e.zone.open) continue;   // 닫힌 보안 구역의 경비는 역장이 열릴 때까지 잠들어 있다
       if (e.skills || (SA.ENEMIES[e.type] || {}).skills) enemySkills(R, e, dt);
       if (e.dummy === 'still') { e.face = U.ang(e.x, e.y, P.x, P.y); continue; }   // 연습장 허수아비: 가만히
@@ -857,9 +858,7 @@ SA.Combat = (() => {
       R.kills++; R.killTypes = R.killTypes || {}; R.killTypes[e.type] = (R.killTypes[e.type] || 0) + 1;
       const big = e.r > 15 ? 2 : 1;
       SA.Audio.sfx(e.boss ? 'bigboom' : 'boom', big);
-      fx(R, e.x, e.y, e.boss ? 60 : 16 * big, '#ffb347', e.boss ? 200 : 110, 0.6, 2);
-      fx(R, e.x, e.y, 8 * big, '#fff3c4', 60, 0.3, 1.5);
-      R.rings.push({ x: e.x, y: e.y, r: 4, max: e.r * 2.5, life: 0.3, col: '#ffcf8a' });
+      if (!(e.type === 'lumina' && SA.FX.scatter(R, e))) SA.FX.kill(R, e);   // v0.114: 루미나는 폭발 대신 도트가 재처럼 풀려 흩날림
       R.shake = Math.max(R.shake, e.boss ? 12 : 2 * big);
       if (e.boss) SA.Raid.bossKilled(e);
       if (e.stun > 0 && pm(R.player, 'p_exec')) for (const o of R.enemies) if (!o.dead && !o.crate && o !== e && U.d2(o.x, o.y, e.x, e.y) < 100 * 100) stun(R, o, 0.6);   // 행성 처형 회로
@@ -1031,8 +1030,7 @@ SA.Combat = (() => {
           if (b.fireZ) zone(R, b.x, b.y, 34, b.fireZ, 12, '#ff7a3d');                                               // 소이 미사일
           if (b.abyss && e.dead) { boom(R, { x: e.x, y: e.y, aoe: 60, dmg: b.dmg * 0.5 }); P.freeFull = true; text(R, e.x, e.y - 14, '심연', '#c08bff'); }   // 심연 저격총
           SA.Audio.sfx('hitEnemy');
-          fx(R, b.x, b.y, 2, b.weak ? '#ffd166' : '#e6f7ff', 50, 0.15, 1);
-          if (b.weak) fx(R, b.x, b.y, 3, '#fff3c4', 70, 0.2, 1.5);
+          if (!b.flame) SA.FX.hit(R, b.x, b.y, !!b.weak);   // v0.114 (화염 방사는 연타라 피격 반짝임을 생략)
           if (b.pierce && b.hit.size < b.pierce) { b.hit.add(e); continue; }
           gone = true; break;
         }
@@ -1044,7 +1042,7 @@ SA.Combat = (() => {
 
   const boom = (R, b) => {
     for (const e of R.enemies) if (!e.dead && !e.crate && U.d2(b.x, b.y, e.x, e.y) < (b.aoe + e.r) ** 2) hitEnemy(R, e, b.dmg);
-    fx(R, b.x, b.y, 14, '#ffb347', 120, 0.4); R.rings.push({ x: b.x, y: b.y, r: 4, max: b.aoe, life: 0.3, col: '#ffcf8a' });
+    SA.FX.blast(R, b.x, b.y, b.aoe);   // v0.114
     SA.Audio.sfx('boom'); R.shake = Math.max(R.shake, 3);
   };
   // 궤도 폭격·중력 우물·번개·광선 수명
@@ -1209,7 +1207,7 @@ SA.Combat = (() => {
     }
     for (const w of R.wells) if (w.t <= 0 && w.hz) {   // 사건의 지평선: 빨아들인 적 탄을 사방으로 되쏜다
       let n = 0; R.eb = R.eb.filter(b => { if (U.d2(b.x, b.y, w.x, w.y) < w.r * w.r) { pb(R, w.x, w.y, (n++) * 2.4, 260, 9, { col: '#c08bff', w: 2, life: 1.4 }); return false; } return true; });
-      R.rings.push({ x: w.x, y: w.y, r: 10, max: w.r, life: 0.4, col: '#c08bff' }); SA.Audio.sfx('boom');
+      SA.FX.wellEnd(R, w); SA.Audio.sfx('boom');
     }
     R.wells = R.wells.filter(w => w.t > 0);
     { const P = R.player;   // 잔상 방패

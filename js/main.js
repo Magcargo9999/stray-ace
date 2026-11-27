@@ -117,12 +117,14 @@ SA.Main = (() => {
       <label>효과음 <input type="range" min="0" max="1" step="0.05" value="${s.sfx}" id="set-sfx"></label>
       <div class="small"><b>격추 시 잃는 것</b> <span class="dim">(바로 적용)</span></div><div class="modes">${modeButtons(SA.profile.deathMode || 'normal')}</div>
       <label class="chk" title="녹화를 뒤에서 계속 돌려 두었다가 F9를 누르면 방금 지나간 15초를 저장한다. 컴퓨터 부담이 조금 는다."><input type="checkbox" id="set-replay"${s.replay ? ' checked' : ''}> 리플레이 버퍼 (F9로 방금 지나간 장면 저장)</label>
+      <label class="chk" title="격파·피격·줍기 반짝임의 입자 수를 절반으로 줄이고 약한 피격 반짝임을 건너뛴다. 탄막이 답답하거나 컴퓨터가 버거울 때."><input type="checkbox" id="set-fxsoft"${s.fxSoft ? ' checked' : ''}> 이펙트 약하게 <span class="dim">(입자 수 절반)</span></label>
       ` : `
       <div class="small dim keys-help">WASD 이동 · 마우스 조준 · 좌클릭 주무기 · Q/E 액티브 · Space 파일럿 기술<br>휠 주무기 교체 · 우클릭 조준 · Shift 저속 이동 · R 동력원 교체 · X 길게 비상탈출<br>Tab 화물칸(시간 30%, 화물칸 안에서 R 회전) · F 싼 것 버리고 줍기 · Esc 일시정지<br>F10 녹화 시작/끝 · F9 방금 지나간 15초 저장 (리플레이 켰을 때)</div>
       <label class="chk" title="끄면 화면이 항상 기체를 가운데 두고 따라간다. 켜면 조준점 쪽으로 살짝 끌려간다."><input type="checkbox" id="set-camaim"${s.camAim ? ' checked' : ''}> 카메라가 조준점 쪽으로 따라가기 <span class="dim">(끄면 기체 시점 고정)</span></label>
       `}
       <div class="danger-zone">${inRaid ? (SA.R && SA.R.tut ? '' : '<button class="btn danger" id="set-abandon">출격 포기 (격추로 처리)</button>') : '<button class="btn danger" id="set-reset">저장 데이터 초기화</button>'}</div>`;
     w.querySelectorAll('[data-stab]').forEach(b => b.onclick = () => openSettings(inRaid, b.dataset.stab));
+    if ($('#set-fxsoft')) $('#set-fxsoft').onchange = (e) => { s.fxSoft = e.target.checked; SA.Save.store(SA.profile); };
     if ($('#set-camaim')) $('#set-camaim').onchange = (e) => { s.camAim = e.target.checked; SA.Save.store(SA.profile); };
     if (tab === 'gen') {
     $('#set-music').oninput = (e) => { s.music = +e.target.value; SA.Audio.setVolumes(); SA.Save.store(SA.profile); };

@@ -45,10 +45,9 @@ SA.Lumina = (() => {
   };
 
   // 페이즈 끝: 화면의 적 탄이 반짝이는 가루로 바뀌며 사라진다
-  const clearBullets = (R) => {
-    let n = 0;
-    for (const b of R.eb) if (n++ < 160) C().fx(R, b.x, b.y, 1, '#fff3c4', 30, 0.5, 1);
-    R.eb = [];
+  const clearBullets = (R, e) => {   // v0.114: 보스에서 쓸어 내리며 탄이 작은 점으로 흩어진다
+    const cut = R.eb; R.eb = [];
+    SA.FX.sweep(R, e ? e.x : SA.RIFT.w / 2, e ? e.y : 70, cut);
   };
   // 루미나의 파편 대사 (v0.112): 첫 도전은 멈추고 Space로 계속, 두 번째 도전부터 첫 격추 전까지는 패턴 이름 아래에 잠깐, 첫 격추 뒤·연습장은 무언
   const LP = ['…빛을 따라왔다.', '이름을… 불러 줬는데.', '아래가 가까워. 더 위로.', '꿈이… 아니었구나.'];
@@ -62,8 +61,7 @@ SA.Lumina = (() => {
     const ok = byDmg && R.arena.hits === e.hits0;
     if (ok) { R.arena.bonus += SA.RIFT.phaseBonus; SA.Raid.msg(`보너스 ₵${SA.RIFT.phaseBonus} — 안 맞고 깼다`, '#ffd166', 3); }
     else SA.Raid.msg(byDmg ? '페이즈 돌파 (보너스 없음 — 맞았다)' : '시간 초과 — 다음 페이즈로 (보너스 없음)', '#cfe3ff', 3);
-    clearBullets(R);
-    R.rings.push({ x: e.x, y: e.y, r: 10, max: 160, life: 0.5, col: '#ffe9a8' });
+    clearBullets(R, e);
     R.shake = Math.max(R.shake, 6);
     start(R, e, e.ph + 1);
   };
@@ -74,9 +72,19 @@ SA.Lumina = (() => {
   };
   // 마지막 발악을 버텼다 → 격추 처리 (보상은 SA.Raid.bossKilled → riftWin)
   const win = (R, e) => {
-    clearBullets(R);
+    clearBullets(R, e);
     e.noHit = false; e.onZero = null; e.inv = 0; e.hp = 1;
     C().damageEnemy(R, e, 99);
+  };
+
+  // 큰 패턴(큰 구슬 r6·r9)이 q칸 뒤에 나가는지: step()의 조건을 그대로 따라 미리 본다 (v0.114 발사 예고용, 패턴을 바꾸면 같이 고칠 것)
+  const bigAhead = (e, qf) => {
+    const beat = qf >> 3, cb = beat % CYC;
+    if ((qf & 7) !== 0 || cb >= REST) return false;
+    const lv = Math.min(LVMAX, e.again ? 1 + Math.floor(beat / LVSTEP) : beat < TEACH ? 0 : 1 + Math.floor((beat - TEACH) / LVSTEP));
+    if (e.ph === 1) return beat % 4 === 3 && (lv >= 1 || beat % 8 === 7);   // 큰 구슬 고리 (r6)
+    if (e.ph === 2) return cb % (lv >= 4 ? 4 : 6) === 0;                    // 느린 큰 구슬 3발 (r9)
+    return false;
   };
 
   // 32분음표 한 칸마다 부른다. q = 페이즈 시작부터 센 32분음표 번호
@@ -88,6 +96,7 @@ SA.Lumina = (() => {
     const cyc = Math.floor(beat / CYC), cb = beat % CYC;           // 몇 번째 바퀴, 바퀴 안 몇 번째 박
     const lv = Math.min(LVMAX, e.again ? 1 + Math.floor(beat / LVSTEP) : beat < TEACH ? 0 : 1 + Math.floor((beat - TEACH) / LVSTEP));   // 단계 0~4
     const last = PH[e.ph].last;
+    if (!last && bigAhead(e, q + 6)) SA.FX.tele(R, e.x, e.y + 9, CL().big);   // v0.114 발사 예고: 큰 구슬 패턴 약 0.33초 전 (임시)
     // 쉬는 박: 쏘지 않고 다음 자리로 옮긴다 (발악은 쉬지 않고 가운데)
     if (!last && cb >= REST) { if (cb === REST && onBeat) e.tx = SPOT[(cyc + 1) % SPOT.length]; return; }
     switch (e.ph) {
