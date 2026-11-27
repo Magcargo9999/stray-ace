@@ -43,7 +43,7 @@ SA.ITEMS = {
   // 상위 재료: 하위 재료 2~3개를 합성 (설계도 없이). 강화·행성 부품 제작에 들어간다 (임시)
   alloy:    { name: '강화 합금', w: 1, h: 1, val: 160, kind: 'umat', tier: '강화', color: '#9fd8c8', desc: '고철을 코어 열로 다시 녹여 만든 판재. 강화 부품의 뼈대.' },
   fcore:    { name: '융합 코어', w: 1, h: 2, val: 260, kind: 'umat', tier: '강화', color: '#6fb7ff', desc: '코어 둘을 엔진 냉각관으로 묶었다. 강화 액티브·서브웨폰에 들어간다.' },
-  qcircuit: { name: '양자 회로', w: 1, h: 1, val: 520, kind: 'umat', tier: '행성', color: '#ffd166', desc: '금빛 회로 위에 침식 결정을 얹은 기판. 행성 부품의 심장.' },
+  qcircuit: { name: '양자 회로', w: 1, h: 1, val: 520, img: 'assets/i_qcircuit.png', kind: 'umat', tier: '행성', color: '#ffd166', desc: '금빛 회로 위에 침식 결정을 얹은 기판. 행성 부품의 심장.' },
   stardata: { name: '성구 데이터', w: 1, h: 1, val: 120, kind: 'data', tier: '일반', color: '#a8c8ff', desc: '사용: 이 구역의 지도를 한 번에 밝힌다 (소행성·장소 전부). 단축키 3.' },
   bb_reward: { name: '신호 블랙박스', w: 1, h: 1, val: 150, kind: 'lore', tier: '강화', color: '#ffb347', desc: '좌표가 남아 있는 블랙박스. 기지에서 해독하면 다음 출격 맵에 신호 지점이 뜬다.' },
   // 해독키: 필드에서 줍고 기지에서 보안해독기에 '등록'한다. 등록하면 사용 횟수가 생기고, 다 쓰면 상점에서 충전한다
@@ -495,6 +495,7 @@ SA.SPEAKERS = {
   serena: { name: '세레나', title: '왕국 장군', color: '#8fb6ff' },
   volk:   { name: '볼크', title: '제국 돌격 에이스', color: '#ff7a6b' },
   mina:   { name: '미나', title: '정비병', color: '#ffd166' },
+  lumina: { name: '루미나', title: '성운 나방', color: '#c9b8ff' },   // 초상화 임시 (portrait_lumina.png, 원화 오면 교체). 페이즈 전환 대사용
   dan:    { name: '단장', title: '', color: '#8f9bb8' },   // 튜토리얼 뒤의 단장 (통신)
 };
 SA.DIALOG = { min: 4, max: 9, perChar: 0.07, queue: 3 };
