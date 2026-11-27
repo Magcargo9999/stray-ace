@@ -84,16 +84,22 @@ SA.Main = (() => {
       pnl.innerHTML = `<b>연습장</b><div class="small dim">허수아비 부르기</div>${types.map(([t, n]) => `<button class="btn tiny" data-t="${t}">${n}</button>`).join('')}
         <div class="small dim">행동</div>${modes.map(([m, n]) => `<button class="btn tiny${R.dummyMode === m ? ' on' : ''}" data-m="${m}">${n}</button>`).join('')}
         <div class="small dim">설정</div><button class="btn tiny${R.rangeGod ? ' on' : ''}" data-god>피해 무효</button><button class="btn tiny" data-clear>모두 치우기</button>
+        <div class="small dim">보스전 (보상·손실 없음)</div>${R.arena ? '<button class="btn tiny" data-bx>균열에서 나가기</button>' : [['0', '루미나'], ['1', '2페이즈'], ['2', '3페이즈'], ['3', '발악']].map(([p, n]) => `<button class="btn tiny" data-b="${p}">${n}</button>`).join('') + `<button class="btn tiny${R.pAgain ? ' on' : ''}" data-ag>다시 만난 루미나</button>`}
         <button class="btn small" data-out>격납고로</button>`;
       pnl.querySelectorAll('[data-t]').forEach(b => b.onclick = () => { SA.Raid.spawnDummy(b.dataset.t); });
       pnl.querySelectorAll('[data-m]').forEach(b => b.onclick = () => { R.dummyMode = b.dataset.m; for (const e of R.enemies) if (e.dummy) e.dummy = R.dummyMode; draw(); });
       pnl.querySelector('[data-god]').onclick = () => { R.rangeGod = !R.rangeGod; draw(); };
       pnl.querySelector('[data-clear]').onclick = () => { R.enemies.forEach(e => e.dead = true); R.eb = []; R.boss = null; };
       pnl.querySelector('[data-out]').onclick = () => leaveRange();
+      pnl.querySelectorAll('[data-b]').forEach(b => b.onclick = () => { SA.Raid.practiceRift({ ph: +b.dataset.b, again: !!R.pAgain, god: false }); draw(); });
+      const ag = pnl.querySelector('[data-ag]'); if (ag) ag.onclick = () => { R.pAgain = !R.pAgain; draw(); };
+      const bx = pnl.querySelector('[data-bx]'); if (bx) bx.onclick = () => { SA.Raid.practiceExit(); };
       pnl.querySelectorAll('button').forEach(b => b.addEventListener('mouseup', () => b.blur()));
     };
     draw(); document.body.appendChild(pnl);
+    rangeRedraw = draw;
   };
+  let rangeRedraw = null;
   const leaveRange = () => {
     const p = $('#rangepanel'); if (p) p.remove();
     SA.UI.tabClose(); SA.R = null; scene = 'hangar'; SA.Hangar.open();
@@ -218,5 +224,5 @@ SA.Main = (() => {
   };
 
   addEventListener('load', boot);
-  return { step, startRaid, startRange, leaveRange, showResult, openSettings, startTutorial, endTutorial };
+  return { step, startRaid, startRange, leaveRange, rangeRedraw: () => rangeRedraw && rangeRedraw(), showResult, openSettings, startTutorial, endTutorial };
 })();

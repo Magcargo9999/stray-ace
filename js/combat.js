@@ -950,7 +950,7 @@ SA.Combat = (() => {
   // ── 탄 이동·충돌 ──
   const updateBullets = (R, dt) => {
     const P = R.player, slip = P.skillState === 'slip';
-    const G = SA.CFG.GRAZE_R * (slip ? 2 : 1), hitR = slip ? 1 : P.hitR;
+    const G = SA.CFG.GRAZE_R * (slip ? 2 : 1), hitR = slip ? 1 : P.hitR * (R.arena ? SA.RIFT.hitMul || 1 : 1);   // 균열 아레나: 기체 판정 축소
     const out = [];
     const defl = pv(P, 'deflect', 0), slowF = pv(P, 'deflect', 1), refl = P.reflectT > 0;
     for (const b of R.eb) {

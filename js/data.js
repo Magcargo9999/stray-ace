@@ -26,7 +26,7 @@ SA.ITEMS = {
   core:     { name: '코어', w: 1, h: 2, val: 90, kind: 'mat', img: 'assets/i_core.png', color: '#5b9bd5', desc: '함선의 심장. 아직 따뜻하다.' },
   engine:   { name: '엔진', w: 2, h: 2, val: 160, kind: 'mat', img: 'assets/i_engine.png', color: '#d58a5b', desc: '제국 공방 각인이 긁혀 지워져 있다.' },
   goldchip: { name: '금빛 회로', w: 1, h: 1, val: 180, kind: 'mat', tier: '강화', color: '#ffd166', desc: '작고 비싸다. 용병들이 제일 먼저 챙기는 것.' },
-  prec:     { name: '정밀 부품', w: 1, h: 1, val: 120, kind: 'mat', tier: '강화', color: '#7fd3ff', desc: '군용 규격 베어링과 회로. 강화 부품에 들어간다.' },
+  prec:     { name: '정밀 부품', w: 1, h: 1, val: 120, kind: 'mat', tier: '강화', img: 'assets/i_prec.png', color: '#7fd3ff', desc: '군용 규격 베어링과 회로. 강화 부품에 들어간다.' },
   ace:      { name: '에이스 각인', w: 1, h: 1, val: 400, kind: 'mat', tier: '행성', color: '#ff4d6d', desc: '이름 있는 자의 기체에서 뜯어낸 각인. 행성 부품에 들어간다.' },
   raven_ticket: { name: '레이븐 고용권', w: 2, h: 1, val: 0, kind: 'ticket', img: 'assets/raven_ticket.png', color: '#c49ac0', desc: '창고에서 사용하면 레이븐이 용병단에 합류한다.' },
   crystal:  { name: '침식 결정', w: 1, h: 1, val: 220, kind: 'mat', tier: '강화', img: 'assets/i_crystal.png', color: '#b98cff', desc: '침식체가 남긴 결정. 만지면 손끝이 저린다.' },
@@ -413,14 +413,14 @@ SA.BENCH = {
 SA.ITEMS.bp_sensor.img = 'assets/bp_sensor.png';   // 도트 설계도 카드
 SA.PARTS.scatter.img = 'assets/p_scatter.png';   // 산탄 포탑 도트
 SA.PARTS.missile.img = 'assets/p_missile.png';   // 미사일 포드 도트
-for (const k of ['pulse', 'lance', 'sniper', 'glass']) SA.PARTS[k].img = `assets/p_${k}_v.png`;   // 정사각 칸용: 총구가 위를 향한 세로판. 창고 3×1 칸용 가로판은 아래 부품 완성품 아이템에서 덮어쓴다 (p_<id>.png)   // 주무기 4종 도트 (장비창·창고용, v0.105). 기체에는 달지 않는다(히트박스 가독성)
+for (const k of ['pulse', 'lance', 'sniper', 'glass', 'swarm']) SA.PARTS[k].img = `assets/p_${k}_v.png`;   // 정사각 칸용: 총구가 위를 향한 세로판. 창고 3×1 칸용 가로판은 아래 부품 완성품 아이템에서 덮어쓴다 (p_<id>.png)   // 주무기 4종 도트 (장비창·창고용, v0.105). 기체에는 달지 않는다(히트박스 가독성)
 SA.ITEMS.chip.img = 'assets/i_chip.png';   // 비행 기록 칩 도트
 // 부품 완성품 아이템 (필드 드랍용). 탈출하면 부품함으로 들어간다
 for (const id in SA.PARTS) {
   const d = SA.PARTS[id], sz = SA.PART_DROP.size[d.slot];
   SA.ITEMS['pt_' + id] = { name: d.name, w: sz[0], h: sz[1], val: Math.round(d.val * 0.6), kind: 'part', tier: d.tier, part: id, img: d.img, color: SA.TIER_COL[d.tier], desc: `[부품] ${SA.partDesc(id, 0)} 탈출하면 부품함으로 들어간다.` };
 }
-for (const k of ['pulse', 'lance', 'sniper', 'glass']) SA.ITEMS['pt_' + k].img = `assets/p_${k}.png`;   // 창고·화물칸 3×1 칸: 가로판
+for (const k of ['pulse', 'lance', 'sniper', 'glass', 'swarm']) SA.ITEMS['pt_' + k].img = `assets/p_${k}.png`;   // 창고·화물칸 3×1 칸: 가로판
 // 아이템 분류 이름
 // 레이드 소모품 단축키: 상단 숫자 1·2·3 = 숫자패드 1·2·3 (화물칸에서 알아서 찾아 쓴다)
 SA.QUICK = [{ n: 1, id: 'repairkit' }, { n: 2, id: 'canister' }, { n: 3, id: 'stardata' }, { n: 4, id: 'accel' }];
@@ -683,7 +683,8 @@ SA.RIFT = {
   w: 300, h: 340, zoom: 2,          // 아레나 크기 (월드 단위) · 화면 배율 (세로 340이 화면 높이 720에 꽉 찬다)
   near: 60,                         // 균열에 들어갈 수 있는 거리
   again: 0.15,                      // 한 번 이긴 뒤 출격마다 다시 나올 확률
-  hp: [2400, 2700, 3000],           // 페이즈 1~3 체력 (펄스건 기본 기준 약 45~55초)
+  hp: [5000, 5600, 6200],           // 페이즈 1~3 체력 (v0.106: 1막 끝 예상 스펙 초당 약 140 기준 35~45초, 임시)
+  hitMul: 0.6,                      // 아레나 안 기체 판정 배율 (v0.106: 헥스 2.5 → 1.5, 임시). 일반 출격은 그대로
   phaseT: 60, lastT: 30,            // 페이즈 제한 시간 · 마지막 발악 버티는 시간
   gap: 1.6,                         // 페이즈 사이 쉬는 시간 (패턴 이름이 뜬다)
   phaseBonus: 200,                  // 체력으로 깨고 그 페이즈 동안 안 맞으면 ₵200

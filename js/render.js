@@ -769,11 +769,12 @@ SA.Render = (() => {
     if (P.shieldT > 0) { ctx.fillStyle = 'rgba(160,255,240,0.18)'; ctx.beginPath(); ctx.arc(P.x, P.y - 2, 24, 0, 6.29); ctx.fill(); }
     if (P.skillState === 'slip') { ctx.strokeStyle = '#ff4d6d'; ctx.globalAlpha = 0.7; ctx.lineWidth = 1; ctx.beginPath(); ctx.arc(P.x, P.y, SA.CFG.GRAZE_R * 2, 0, 6.29); ctx.stroke(); ctx.globalAlpha = 1; }
     if (P.skillState === 'repair') { ctx.strokeStyle = '#9df07f'; ctx.lineWidth = 1; ctx.beginPath(); ctx.arc(P.x, P.y, 18 + Math.sin(R.t * 10) * 2, 0, 6.29); ctx.stroke(); }
-    if (P.slow) { ctx.strokeStyle = 'rgba(61,255,181,0.8)'; ctx.lineWidth = 1; ctx.beginPath(); ctx.arc(P.x, P.y, P.hitR + 6 + Math.sin(R.t * 8), 0, 6.29); ctx.stroke(); }   // Shift 저속: 판정점 강조
+    const hr = P.hitR * (R.arena ? SA.RIFT.hitMul || 1 : 1);   // 균열 아레나: 판정점도 줄여 그린다
+    if (P.slow) { ctx.strokeStyle = 'rgba(61,255,181,0.8)'; ctx.lineWidth = 1; ctx.beginPath(); ctx.arc(P.x, P.y, hr + 6 + Math.sin(R.t * 8), 0, 6.29); ctx.stroke(); }   // Shift 저속: 판정점 강조
     // 판정점: 항상 보인다
-    ctx.fillStyle = '#062018'; ctx.beginPath(); ctx.arc(P.x, P.y, P.hitR + 2.2, 0, 6.29); ctx.fill();
-    ctx.fillStyle = '#3dffb5'; ctx.beginPath(); ctx.arc(P.x, P.y, P.hitR + 1.2, 0, 6.29); ctx.fill();
-    ctx.fillStyle = '#ffffff'; ctx.beginPath(); ctx.arc(P.x, P.y, P.hitR, 0, 6.29); ctx.fill();
+    ctx.fillStyle = '#062018'; ctx.beginPath(); ctx.arc(P.x, P.y, hr + 2.2, 0, 6.29); ctx.fill();
+    ctx.fillStyle = '#3dffb5'; ctx.beginPath(); ctx.arc(P.x, P.y, hr + 1.2, 0, 6.29); ctx.fill();
+    ctx.fillStyle = '#ffffff'; ctx.beginPath(); ctx.arc(P.x, P.y, hr, 0, 6.29); ctx.fill();
   };
 
   // ── HUD (화면 좌표 1280x720) ──
