@@ -111,7 +111,7 @@ SA.PARTS = {
   shockplate: { name: '충격 장갑', slot: 'pas', tier: '일반', val: 180, fx: [0.2, 0.5], desc: '가까운 적(80 이내)에게 피해 +{0}%, 기절 시간 +{1}%.' },
   sensor:  { name: '조준 센서', slot: 'pas', tier: '강화', val: 420, img: 'assets/sensor.png', fx: [0.6, 0.1], desc: '탄 퍼짐 -{0}%, 주무기 탄속 +{1}%. 조준선이 붉고 좁아진다.' },
   decoder: { name: '보안해독기', slot: 'pas', tier: '강화', val: 480, noUp: true, desc: '등록된 해독 코드로 잠긴 상자·보안 구역을 연다. 보안상자는 해독기만 있으면 해킹으로 연다 (5초 버티기).' },
-  barrier: { name: '베리어 발생기', slot: 'pas', tier: '강화', val: 300, fx: 40, desc: '4초간 안 맞으면 차오르는 보호막 {v}.' },
+  barrier: { name: '베리어 발생기', slot: 'pas', tier: '강화', val: 300, fx: 40, desc: '8초간 안 맞으면 10초에 걸쳐 차오르는 보호막 {v}.' },
   counter: { name: '반격 장치', slot: 'pas', tier: '강화', val: 320, fx: 0.6, desc: '맞으면 주변 적 탄을 지우고 {v}초 더 무적 (5초마다).' },
   grazeamp:{ name: '스침 증폭기', slot: 'pas', tier: '강화', val: 300, fx: [0.2, 0.1], desc: '스침 스택 보너스 상한: 드랍 +{0}%p, 피해 +{1}%p.' },
   grazeflow:{ name: '스침 환류기', slot: 'pas', tier: '강화', val: 300, fx: 1, desc: '5번 스칠 때마다 액티브 쿨타임 -{v}초.' },
@@ -204,6 +204,7 @@ SA.itemVal = (it) => { const d = SA.ITEMS[it.id], v = Math.round(d.val * SA.LV_V
 SA.partVal = (p) => Math.round(SA.PARTS[p.id].val * SA.LV_VAL[p.lv || 0]);
 SA.canUp = (id) => { const d = SA.PARTS[id]; return !!d && !d.noUp; };
 // 패시브 fx 값 (i번째) × 배율
+SA.BARRIER = { delay: 8, fill: 10 };   // 베리어 발생기: 안 맞은 지 8초 뒤부터 10초에 걸쳐 충전 (v0.118, 임시. 이전: 4초 뒤 초당 20 = 2초 만에 가득)
 SA.fxv = (id, i = 0, mul = 1) => { const f = SA.PARTS[id].fx; const v = Array.isArray(f) ? f[i] : f; return (v || 0) * mul; };
 SA.partDesc = (id, lv = 0) => {
   const d = SA.PARTS[id], m = d.gal ? SA.GAL_MUL : SA.LV_MUL[lv || 0], r2 = (x) => Math.round(x * 100) / 100;

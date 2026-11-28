@@ -197,7 +197,7 @@ SA.Combat = (() => {
     P.invuln = Math.max(0, P.invuln - dt);
     if (P.barrierMax) {
       P.barrierT += dt;
-      if (P.barrierT > 4) P.barrier = Math.min(P.barrierMax, P.barrier + 20 * dt);
+      if (P.barrierT > SA.BARRIER.delay) P.barrier = Math.min(P.barrierMax, P.barrier + P.barrierMax / SA.BARRIER.fill * dt);   // 안 맞은 지 delay초 뒤부터 fill초에 걸쳐 가득 찬다
     }
 
     // 주무기: 휠로 2개 교체, 동력원 에너지로 쏜다, R로 동력원 교체

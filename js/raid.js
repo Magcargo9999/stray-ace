@@ -44,7 +44,7 @@ SA.Raid = (() => {
     R.player = {
       x: 0, y: 0, vx: 0, vy: 0, aim: -Math.PI / 2, ship: prof.ship, def: ship, pilot: prof.pilot,
       hp: ship.hp, maxHp: ship.hp, speed: ship.speed, accel: ship.accel, turn: ship.turn, hitR: ship.hitR,
-      barrier: hasBarrier ? 40 : 0, barrierMax: hasBarrier ? 40 : 0, barrierT: 5,
+      barrier: hasBarrier ? 40 : 0, barrierMax: hasBarrier ? 40 : 0, barrierT: SA.BARRIER.delay,
       invuln: 1.5, fireCd: 0, main: part(lo.main) || part(lo.main2), mains: [part(lo.main), part(lo.main2)], wi: part(lo.main) ? 0 : 1, subs, pas, obs: part(lo.obs),
       cell: null, emer: SA.ENERGY.emerMax, reloadT: 0, swapT: 0, aimC: 0,
       acts: [0, 1].map(i => { const p = part((lo.act || [])[i]); return p ? { part: p, cd: 0 } : null; }),
